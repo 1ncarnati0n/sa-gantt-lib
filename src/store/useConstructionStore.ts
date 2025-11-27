@@ -1,100 +1,170 @@
 import { create } from 'zustand';
-import { ConstructionTask, Milestone, CalendarRule } from '../types/gantt';
-import { addDays, getDay, format, parseISO } from 'date-fns';
+import { ConstructionTask, Milestone, Placement, CalendarSettings } from '../types/gantt';
+import { calculateDualCalendarDates } from '../utils/dateUtils';
+import { parseISO } from 'date-fns';
+import mockData from '../data/mock.json';
 
 interface ConstructionStore {
     tasks: ConstructionTask[];
     milestones: Milestone[];
     holidays: Date[];
+    calendarSettings: CalendarSettings;
+    currentView: 'MASTER' | 'DETAIL';
+    activeSummaryId: string | null;
+    zoomLevel: 'DAY' | 'WEEK' | 'MONTH';
 
-    calculateDates: (task: ConstructionTask) => Date;
-    updateTaskDuration: (id: string, newWorkDays: number, newNonWorkDays: number) => void;
-    updateMilestone: (id: string, newDate: Date) => void;
-    setTasks: (tasks: ConstructionTask[]) => void; // For flexibility
+    setTasks: (tasks: ConstructionTask[]) => void;
+    setCurrentView: (view: 'MASTER' | 'DETAIL', summaryId?: string | null) => void;
+    setCalendarSettings: (settings: Partial<CalendarSettings>) => void;
+    setZoomLevel: (level: 'DAY' | 'WEEK' | 'MONTH') => void;
+
+    updateTaskDuration: (id: string, netWorkDays: number, indirectWorkDays: number) => void;
+    updateTaskPlacement: (id: string, placement: Placement) => void;
+
+    // Helper to trigger recalculation
+    recalculateAll: () => void;
 }
 
-// Initial Data from MVP
-const initialTasks: ConstructionTask[] = [
-    { id: 'g-1', parentId: null, type: 'SUMMARY', name: '가시설 및 터파기', workDays: 0, nonWorkDays: 0, nonWorkPlacement: 'POST', startDate: parseISO('2025-10-01'), dependencies: [] },
-    { id: 't-1-1', parentId: 'g-1', type: 'TASK', name: '말뚝박기용 천공 (H-Pile)', workDays: 2, nonWorkDays: 3, nonWorkPlacement: 'PRE', startDate: parseISO('2025-10-01'), dependencies: [], workDayRule: 'WORKING_DAY_ONLY', nonWorkDayRule: 'INCLUDE_HOLIDAYS' },
-    { id: 't-1-2', parentId: 'g-1', type: 'TASK', name: '토사 굴착 (터파기)', workDays: 15, nonWorkDays: 2, nonWorkPlacement: 'POST', startDate: parseISO('2025-10-06'), dependencies: [{ predecessorId: 't-1-1', type: 'FS', lag: 0 }], workDayRule: 'WORKING_DAY_ONLY', nonWorkDayRule: 'INCLUDE_HOLIDAYS' },
-    { id: 't-1-3', parentId: 'g-1', type: 'TASK', name: '수평 지보공 설치', workDays: 7, nonWorkDays: 0, nonWorkPlacement: 'POST', startDate: parseISO('2025-10-10'), dependencies: [], workDayRule: 'WORKING_DAY_ONLY', nonWorkDayRule: 'INCLUDE_HOLIDAYS' },
+// Parse Mock Data
+const parseMockData = () => {
+    const milestones = mockData.milestones.map(m => ({
+        ...m,
+        date: parseISO(m.date),
+        type: 'MILESTONE' as const
+    }));
 
-    { id: 'g-2', parentId: null, type: 'SUMMARY', name: '기초 공사', workDays: 0, nonWorkDays: 0, nonWorkPlacement: 'POST', startDate: parseISO('2025-10-28'), dependencies: [{ predecessorId: 't-1-2', type: 'FS', lag: 0 }] },
-    { id: 't-2-1', parentId: 'g-2', type: 'TASK', name: '기성말뚝 기초', workDays: 9, nonWorkDays: 5, nonWorkPlacement: 'POST', startDate: parseISO('2025-10-28'), dependencies: [], workDayRule: 'WORKING_DAY_ONLY', nonWorkDayRule: 'INCLUDE_HOLIDAYS' },
-    { id: 't-2-2', parentId: 'g-2', type: 'TASK', name: '콘크리트 말뚝 두부 정리', workDays: 4, nonWorkDays: 1, nonWorkPlacement: 'POST', startDate: parseISO('2025-11-08'), dependencies: [{ predecessorId: 't-2-1', type: 'FS', lag: 0 }], workDayRule: 'WORKING_DAY_ONLY', nonWorkDayRule: 'INCLUDE_HOLIDAYS' },
-];
+    const tasks = mockData.tasks.map(t => ({
+        ...t,
+        wbsLevel: t.wbsLevel as 1 | 2,
+        type: t.type as 'SUMMARY' | 'TASK',
+        startDate: parseISO(t.startDate),
+        endDate: parseISO(t.endDate),
+        summary: t.summary ? { ...t.summary } : undefined,
+        task: t.task ? {
+            ...t.task,
+            placement: t.task.placement as 'PRE' | 'POST'
+        } : undefined,
+        dependencies: t.dependencies.map(d => ({
+            ...d,
+            type: d.type as 'FS' | 'SS' | 'FF' | 'SF',
+            sourceAnchor: d.sourceAnchor as any,
+            targetAnchor: d.targetAnchor as any
+        }))
+    }));
 
-const initialMilestones: Milestone[] = [
-    { id: 'm-1', date: parseISO('2025-09-30'), name: '공사 착공', type: 'MILESTONE' },
-    { id: 'm-2', date: parseISO('2025-11-20'), name: '기초 완료', type: 'MILESTONE' },
-];
+    return { milestones, tasks };
+};
+
+const { milestones: initialMilestones, tasks: initialTasks } = parseMockData();
 
 export const useConstructionStore = create<ConstructionStore>((set, get) => ({
     tasks: initialTasks,
     milestones: initialMilestones,
-    holidays: [parseISO('2025-10-03'), parseISO('2025-10-09')],
+    holidays: [parseISO('2024-05-05'), parseISO('2024-06-06'), parseISO('2024-08-15'), parseISO('2024-10-03'), parseISO('2024-12-25')],
+    calendarSettings: {
+        workOnSaturdays: false,
+        workOnSundays: false,
+        workOnHolidays: false
+    },
+    currentView: 'MASTER',
+    activeSummaryId: null,
+    zoomLevel: 'DAY',
 
     setTasks: (tasks) => set({ tasks }),
 
-    calculateDates: (task: ConstructionTask): Date => {
-        const { startDate, workDays, nonWorkDays, nonWorkPlacement } = task;
+    setCurrentView: (view, summaryId) => set({ currentView: view, activeSummaryId: summaryId }),
 
-        const getNextWorkDay = (currentDate: Date, daysToAdd: number, rule: CalendarRule = 'WORKING_DAY_ONLY'): Date => {
-            let count = 0;
-            let date = currentDate;
-            while (count < daysToAdd) {
-                date = addDays(date, 1);
-                const dayOfWeek = getDay(date);
-                const isHoliday = get().holidays.some(h => format(h, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
-
-                if (rule === 'WORKING_DAY_ONLY' && (dayOfWeek === 0 || dayOfWeek === 6 || isHoliday)) {
-                    continue; // Skip weekends/holidays
-                }
-                count++;
-            }
-            return date;
-        };
-
-        const calculateSegment = (segmentStart: Date, duration: number, rule?: CalendarRule): Date =>
-            getNextWorkDay(segmentStart, duration, rule || 'WORKING_DAY_ONLY');
-
-        const finalStart = startDate;
-        let finalEnd: Date;
-
-        if (nonWorkPlacement === 'PRE') {
-            const nonWorkEnd = calculateSegment(finalStart, nonWorkDays, task.nonWorkDayRule);
-            finalEnd = calculateSegment(nonWorkEnd, workDays, task.workDayRule);
-        } else {
-            const workEnd = calculateSegment(finalStart, workDays, task.workDayRule);
-            finalEnd = calculateSegment(workEnd, nonWorkDays, task.nonWorkDayRule);
-        }
-
-        return finalEnd;
+    setCalendarSettings: (newSettings) => {
+        set(state => ({
+            calendarSettings: { ...state.calendarSettings, ...newSettings }
+        }));
+        get().recalculateAll();
     },
 
-    updateTaskDuration: (id: string, newWorkDays: number, newNonWorkDays: number) => {
+    setZoomLevel: (level) => set({ zoomLevel: level }),
+
+    updateTaskDuration: (id, netWorkDays, indirectWorkDays) => {
         set(state => {
-            const updatedTasks = state.tasks.map(task => {
-                if (task.id === id && task.type === 'TASK') {
-                    const updatedTask: ConstructionTask = {
-                        ...task,
-                        workDays: newWorkDays,
-                        nonWorkDays: newNonWorkDays
+            const updatedTasks = state.tasks.map(t => {
+                if (t.id === id && t.task) {
+                    return {
+                        ...t,
+                        task: { ...t.task, netWorkDays, indirectWorkDays }
                     };
-                    // Recalculate dates
-                    updatedTask.endDate = get().calculateDates(updatedTask);
-                    return updatedTask;
                 }
-                return task;
+                return t;
             });
             return { tasks: updatedTasks };
         });
+        get().recalculateAll();
     },
 
-    updateMilestone: (id: string, newDate: Date) => {
-        set(state => ({
-            milestones: state.milestones.map(m => m.id === id ? { ...m, date: newDate } : m)
-        }));
+    updateTaskPlacement: (id, placement) => {
+        set(state => {
+            const updatedTasks = state.tasks.map(t => {
+                if (t.id === id && t.task) {
+                    return {
+                        ...t,
+                        task: { ...t.task, placement }
+                    };
+                }
+                return t;
+            });
+            return { tasks: updatedTasks };
+        });
+        get().recalculateAll();
+    },
+
+    recalculateAll: () => {
+        const { tasks, holidays, calendarSettings } = get();
+
+        // 1. Recalculate L2 Tasks (Dates)
+        const calculatedL2 = tasks.map(t => {
+            if (t.wbsLevel === 2 && t.task) {
+                const dates = calculateDualCalendarDates(t, holidays, calendarSettings);
+                return { ...t, startDate: dates.startDate, endDate: dates.endDate };
+            }
+            return t;
+        });
+
+        // 2. Aggregate to L1 (Summary)
+        const summaryMap = new Map<string, { work: number, nonWork: number, minStart: Date, maxEnd: Date }>();
+
+        calculatedL2.forEach(t => {
+            if (t.parentId && t.wbsLevel === 2 && t.task) {
+                const current = summaryMap.get(t.parentId) || {
+                    work: 0,
+                    nonWork: 0,
+                    minStart: new Date(8640000000000000),
+                    maxEnd: new Date(-8640000000000000)
+                };
+
+                current.work += t.task.netWorkDays;
+                current.nonWork += t.task.indirectWorkDays;
+                if (t.startDate < current.minStart) current.minStart = t.startDate;
+                if (t.endDate > current.maxEnd) current.maxEnd = t.endDate;
+
+                summaryMap.set(t.parentId, current);
+            }
+        });
+
+        // 3. Update L1 Tasks
+        const finalTasks = calculatedL2.map(t => {
+            if (t.wbsLevel === 1 && summaryMap.has(t.id)) {
+                const agg = summaryMap.get(t.id)!;
+                return {
+                    ...t,
+                    startDate: agg.minStart,
+                    endDate: agg.maxEnd,
+                    summary: {
+                        workDaysTotal: agg.work,
+                        nonWorkDaysTotal: agg.nonWork
+                    }
+                };
+            }
+            return t;
+        });
+
+        set({ tasks: finalTasks });
     }
 }));

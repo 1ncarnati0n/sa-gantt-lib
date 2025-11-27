@@ -1,34 +1,35 @@
 import { addDays, isSaturday, isSunday, isSameDay } from 'date-fns';
+import { ConstructionTask, AnchorPoint, CalendarSettings } from '../types/gantt';
 
-export const isHoliday = (date: Date, holidays: Date[] = []): boolean => {
-    if (isSaturday(date) || isSunday(date)) return true;
-    return holidays.some(h => isSameDay(h, date));
+export const isHoliday = (date: Date, holidays: Date[] = [], settings: CalendarSettings): boolean => {
+    if (!settings.workOnSaturdays && isSaturday(date)) return true;
+    if (!settings.workOnSundays && isSunday(date)) return true;
+    if (!settings.workOnHolidays && holidays.some(h => isSameDay(h, date))) return true;
+    return false;
 };
 
 /**
- * Adds working days to a date, skipping weekends and holidays.
- * Returns the date after 'days' working days have passed.
+ * Adds working days (skipping holidays based on settings).
  */
-export const addWorkingDays = (startDate: Date, days: number, holidays: Date[] = []): Date => {
+export const addWorkingDays = (startDate: Date, days: number, holidays: Date[] = [], settings: CalendarSettings): Date => {
     let currentDate = new Date(startDate);
     let daysAdded = 0;
 
     if (days <= 0) return currentDate;
 
-    while (daysAdded < days) {
+    // If start date itself is a holiday, move to next working day first
+    while (isHoliday(currentDate, holidays, settings)) {
         currentDate = addDays(currentDate, 1);
-        if (!isHoliday(currentDate, holidays)) {
-            daysAdded++;
-        } else {
-            // It's a holiday, we just advanced the date but didn't count it as a working day
-            // So we continue loop
-        }
     }
 
-    // If the final date lands on a holiday/weekend (because we just added a day to reach count),
-    // we might need to push it to the next working day? 
-    // Usually "End Date" is exclusive in time calculations, or inclusive in day calculations.
-    // Let's assume exclusive for now (00:00 of the next day).
+    while (daysAdded < days) {
+        if (!isHoliday(currentDate, holidays, settings)) {
+            daysAdded++;
+        }
+        if (daysAdded < days) {
+            currentDate = addDays(currentDate, 1);
+        }
+    }
 
     return currentDate;
 };
@@ -37,65 +38,110 @@ export const addWorkingDays = (startDate: Date, days: number, holidays: Date[] =
  * Adds calendar days (including holidays).
  */
 export const addCalendarDays = (startDate: Date, days: number): Date => {
-    return addDays(startDate, days);
+    if (days <= 0) return startDate;
+    return addDays(startDate, days - 1);
 };
 
-export const calculateTaskDates = (
-    startDate: Date,
-    workDays: number,
-    nonWorkDays: number,
-    placement: 'PRE' | 'POST',
-    holidays: Date[] = []
-) => {
-    let workStartDate: Date;
-    let workEndDate: Date;
-    let nonWorkStartDate: Date;
-    let nonWorkEndDate: Date;
-    let finalEndDate: Date;
+export interface TaskDates {
+    startDate: Date;
+    endDate: Date;
+    netWorkStartDate: Date;
+    netWorkEndDate: Date;
+    indirectStartDate?: Date;
+    indirectEndDate?: Date;
+}
+
+export const calculateDualCalendarDates = (
+    task: ConstructionTask,
+    holidays: Date[] = [],
+    settings: CalendarSettings
+): TaskDates => {
+    // Default fallback
+    if (!task.task) {
+        // Level 1 or Milestone or Summary without details
+        return {
+            startDate: task.startDate,
+            endDate: task.endDate,
+            netWorkStartDate: task.startDate,
+            netWorkEndDate: task.endDate
+        };
+    }
+
+    const { netWorkDays, indirectWorkDays, placement } = task.task;
+    const baseStartDate = new Date(task.startDate);
+
+    let netStart: Date;
+    let netEnd: Date;
+    let indirectStart: Date;
+    let indirectEnd: Date;
+    let totalStart: Date;
+    let totalEnd: Date;
 
     if (placement === 'PRE') {
-        // Non-work days come first (Teal)
-        nonWorkStartDate = new Date(startDate);
-        nonWorkEndDate = addCalendarDays(nonWorkStartDate, nonWorkDays);
+        // Indirect (Blue) -> Net Work (Red)
 
-        // Work days follow (Vermilion)
-        // If nonWorkDays ends on a holiday, does work start immediately or wait for next working day?
-        // Usually work must start on a working day.
-        workStartDate = nonWorkEndDate;
-        // Adjust workStartDate to next working day if it falls on a holiday?
-        // For now, let's keep it simple. If the previous phase ends, the next starts.
-        // But if "Work" cannot happen on Sat, and Non-Work ended on Fri night (Sat 00:00),
-        // Work starts Sat 00:00? No, work starts Mon 00:00.
+        // 1. Calculate Indirect (Include Holidays)
+        indirectStart = baseStartDate;
+        indirectEnd = addCalendarDays(indirectStart, indirectWorkDays);
 
-        while (isHoliday(workStartDate, holidays) && workDays > 0) {
-            workStartDate = addDays(workStartDate, 1);
+        // 2. Calculate Net Work (Skip Holidays)
+        if (indirectWorkDays > 0) {
+            netStart = addDays(indirectEnd, 1);
+        } else {
+            netStart = baseStartDate;
         }
 
-        workEndDate = addWorkingDays(workStartDate, workDays, holidays);
-        finalEndDate = workEndDate;
+        // Ensure net work starts on a working day
+        while (isHoliday(netStart, holidays, settings)) {
+            netStart = addDays(netStart, 1);
+        }
+
+        netEnd = addWorkingDays(netStart, netWorkDays, holidays, settings);
+
+        totalStart = indirectStart;
+        totalEnd = netEnd;
 
     } else {
-        // Work days come first (Vermilion)
-        workStartDate = new Date(startDate);
-        // Ensure start date is a working day
-        while (isHoliday(workStartDate, holidays) && workDays > 0) {
-            workStartDate = addDays(workStartDate, 1);
+        // Net Work (Red) -> Indirect (Blue)
+
+        // 1. Calculate Net Work (Skip Holidays)
+        netStart = baseStartDate;
+        // Ensure start is working day
+        while (isHoliday(netStart, holidays, settings)) {
+            netStart = addDays(netStart, 1);
         }
 
-        workEndDate = addWorkingDays(workStartDate, workDays, holidays);
+        netEnd = addWorkingDays(netStart, netWorkDays, holidays, settings);
 
-        // Non-work days follow (Teal)
-        nonWorkStartDate = workEndDate;
-        nonWorkEndDate = addCalendarDays(nonWorkStartDate, nonWorkDays);
-        finalEndDate = nonWorkEndDate;
+        // 2. Calculate Indirect (Include Holidays)
+        if (netWorkDays > 0) {
+            indirectStart = addDays(netEnd, 1);
+        } else {
+            indirectStart = baseStartDate;
+        }
+
+        indirectEnd = addCalendarDays(indirectStart, indirectWorkDays);
+
+        totalStart = netStart;
+        totalEnd = indirectEnd;
     }
 
     return {
-        startDate,
-        endDate: finalEndDate,
-        workStartDate,
-        workEndDate,
-        nonWorkStartDate,
-        nonWorkEndDate
+        startDate: totalStart,
+        endDate: totalEnd,
+        netWorkStartDate: netStart,
+        netWorkEndDate: netEnd,
+        indirectStartDate: indirectStart,
+        indirectEndDate: indirectEnd
     };
+};
+
+export const getAnchorDate = (_task: ConstructionTask, anchor: AnchorPoint, dates: TaskDates): Date => {
+    switch (anchor) {
+        case 'START': return dates.startDate;
+        case 'NET_WORK_START': return dates.netWorkStartDate;
+        case 'NET_WORK_END': return dates.netWorkEndDate;
+        case 'END': return dates.endDate;
+        default: return dates.endDate;
+    }
 };
