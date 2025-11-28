@@ -1,11 +1,11 @@
 import React, { useMemo, forwardRef } from 'react';
 import { useConstructionStore } from '../../store/useConstructionStore';
-import { format, addDays, getDay, getYear, differenceInDays, isSameMonth, isSameWeek, startOfWeek, endOfWeek, getISOWeek } from 'date-fns';
-import { ConstructionTask, Milestone, Dependency, CalendarSettings } from '../../types/gantt';
+import { format, addDays, getDay, getYear, differenceInDays, isSameMonth, isSameWeek, getISOWeek } from 'date-fns';
+import { ConstructionTask, Milestone, Dependency, CalendarSettings, AnchorPoint } from '../../types/gantt';
 import { calculateDualCalendarDates, getAnchorDate, isHoliday } from '../../utils/dateUtils';
+import { GANTT_CONSTANTS } from '../../utils/ganttConstants';
 
-const ROW_HEIGHT = 40;
-const MILESTONE_LANE_HEIGHT = 40; // Height reserved for milestones within the SVG
+const { ROW_HEIGHT, MILESTONE_LANE_HEIGHT, BAR_HEIGHT } = GANTT_CONSTANTS;
 
 // --- Sub-components ---
 
@@ -32,8 +32,15 @@ const DependencyLink: React.FC<DependencyLinkProps> = ({ dependency, sourceTask,
     const sourceDates = calculateDualCalendarDates(sourceTask, holidays, calendarSettings);
     const targetDates = calculateDualCalendarDates(targetTask, holidays, calendarSettings);
 
-    const sourceDate = getAnchorDate(sourceTask, dependency.sourceAnchor, sourceDates);
-    const targetDate = getAnchorDate(targetTask, dependency.targetAnchor, targetDates);
+    // Determine anchors based on dependency type if not explicitly provided
+    const defaultSourceAnchor = dependency.type === 'SS' || dependency.type === 'SF' ? 'START' : 'END';
+    const defaultTargetAnchor = dependency.type === 'SS' || dependency.type === 'FS' ? 'START' : 'END';
+
+    const sourceAnchor = dependency.sourceAnchor || defaultSourceAnchor;
+    const targetAnchor = dependency.targetAnchor || defaultTargetAnchor;
+
+    const sourceDate = getAnchorDate(sourceTask, sourceAnchor, sourceDates);
+    const targetDate = getAnchorDate(targetTask, targetAnchor, targetDates);
 
     const x1 = dateToX(sourceDate);
     const y1 = sourceIndex * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2 + MILESTONE_LANE_HEIGHT + 12; // Center of bar
@@ -59,26 +66,64 @@ const DependencyLink: React.FC<DependencyLinkProps> = ({ dependency, sourceTask,
     );
 };
 
+// --- Interaction Helpers ---
+
+interface DragState {
+    taskId: string;
+    type: 'RESIZE_NET' | 'RESIZE_INDIRECT' | 'MOVE' | 'LINK';
+    initialX: number;
+    initialNetDays?: number;
+    initialIndirectDays?: number;
+    initialStartDate?: Date;
+    // For Link
+    sourceAnchor?: AnchorPoint;
+    currentX?: number;
+    currentY?: number;
+    sourceY?: number;
+}
+
 interface GanttBarProps {
     task: ConstructionTask;
     y: number;
     dateToX: (date: Date) => number;
     isMasterView: boolean;
     pixelsPerDay: number;
-    headerHeight: number; // Added headerHeight prop
 }
 
-const GanttBar: React.FC<GanttBarProps> = ({ task, y, dateToX, isMasterView, pixelsPerDay, headerHeight }) => {
-    const height = 24;
+const GanttBar: React.FC<GanttBarProps & {
+    onMouseDown: (e: React.MouseEvent, task: ConstructionTask, type: 'RESIZE_NET' | 'RESIZE_INDIRECT' | 'MOVE') => void;
+    onAnchorMouseDown: (e: React.MouseEvent, task: ConstructionTask, anchor: AnchorPoint) => void;
+    onAnchorMouseUp: (e: React.MouseEvent, task: ConstructionTask, anchor: AnchorPoint) => void;
+}> = ({ task, y, dateToX, isMasterView, pixelsPerDay, onMouseDown, onAnchorMouseDown, onAnchorMouseUp }) => {
+    const height = BAR_HEIGHT;
     const radius = 4;
     const startX = dateToX(task.startDate);
 
-    // Adjust Y based on header height difference if needed, but usually Y is relative to SVG content start
-    // Here y is passed from parent loop which accounts for headerHeight? No, SVG is inside scrollable div.
-    // The SVG starts AFTER the header. So y is relative to SVG top.
+    // Helper to render an anchor point
+    const renderAnchor = (x: number, type: AnchorPoint) => (
+        <circle
+            cx={x}
+            cy={height / 2}
+            r={4}
+            fill="white"
+            stroke="#6B7280"
+            strokeWidth={2}
+            className="opacity-0 group-hover:opacity-100 hover:fill-blue-500 hover:scale-125 transition-all cursor-crosshair z-30"
+            onMouseDown={(e) => {
+                e.stopPropagation();
+                onAnchorMouseDown(e, task, type);
+            }}
+            onMouseUp={(e) => {
+                e.stopPropagation();
+                onAnchorMouseUp(e, task, type);
+            }}
+        >
+            <title>{type}</title>
+        </circle>
+    );
 
     if (isMasterView) {
-        // Level 1: Aggregate Bar (Vermilion/Teal)
+        // Level 1: Aggregate Bar (Vermilion/Teal) - Read Only
         const workDays = task.summary?.workDaysTotal || 0;
         const nonWorkDays = task.summary?.nonWorkDaysTotal || 0;
         const totalDays = workDays + nonWorkDays;
@@ -91,37 +136,37 @@ const GanttBar: React.FC<GanttBarProps> = ({ task, y, dateToX, isMasterView, pix
 
         return (
             <g transform={`translate(${startX}, ${y})`} className="cursor-pointer group">
-                {/* Work Part */}
+                {/* Work Part (Vermilion) */}
                 <rect
                     x={0}
                     y={0}
                     width={workWidth}
                     height={height}
-                    fill="var(--color-vermilion)"
+                    fill="#E34234"
                     rx={radius}
                     ry={radius}
-                    className="opacity-90 hover:opacity-100 transition-opacity"
+                    className="opacity-90 hover:opacity-100 transition-opacity filter drop-shadow-sm"
                 />
-                {/* Non-Work Part */}
+                {/* Non-Work Part (Teal) */}
                 <rect
                     x={workWidth}
                     y={0}
                     width={nonWorkWidth}
                     height={height}
-                    fill="var(--color-teal)"
+                    fill="#008080"
                     rx={radius}
                     ry={radius}
-                    className="opacity-90 hover:opacity-100 transition-opacity"
+                    className="opacity-90 hover:opacity-100 transition-opacity filter drop-shadow-sm"
                 />
 
                 {/* Label */}
-                <text x={totalWidth + 8} y={height / 2 + 5} className="text-xs fill-gray-700 font-bold pointer-events-none">
+                <text x={totalWidth + 8} y={height / 2 + 4} className="text-[11px] fill-gray-700 font-bold pointer-events-none select-none">
                     {task.name}
                 </text>
             </g>
         );
     } else {
-        // Level 2: Detail Bar (Red/Blue)
+        // Level 2: Detail Bar (Red/Blue) - Interactive
         if (!task.task) return null;
 
         const { netWorkDays, indirectWorkDays, placement } = task.task;
@@ -130,49 +175,123 @@ const GanttBar: React.FC<GanttBarProps> = ({ task, y, dateToX, isMasterView, pix
 
         let netX = 0;
         let indirectX = 0;
+        let anchors: { x: number, type: AnchorPoint }[] = [];
 
         if (placement === 'PRE') {
+            // Indirect -> Net
             indirectX = 0;
             netX = indirectWidth;
+
+            anchors = [
+                { x: 0, type: 'START' }, // Start of Indirect
+                { x: indirectWidth, type: 'NET_WORK_START' }, // Start of Net (End of Indirect)
+                { x: indirectWidth + netWidth, type: 'NET_WORK_END' }, // End of Net
+                { x: indirectWidth + netWidth, type: 'END' } // End of Task (Same as Net End here)
+            ];
         } else {
+            // Net -> Indirect
             netX = 0;
             indirectX = netWidth;
+
+            anchors = [
+                { x: 0, type: 'START' }, // Start of Net
+                { x: 0, type: 'NET_WORK_START' }, // Start of Net (Same as Start)
+                { x: netWidth, type: 'NET_WORK_END' }, // End of Net (Start of Indirect)
+                { x: netWidth + indirectWidth, type: 'END' } // End of Indirect
+            ];
         }
+
+        // Deduplicate anchors at same position (e.g. START == NET_WORK_START)
+        // We prioritize specific anchors: NET_WORK_START/END over START/END if they overlap visually?
+        // Actually, for linking, we might want to offer all logical points, but visually overlapping is bad.
+        // Let's just render them. If they overlap, the last one rendered (top) catches events.
+        // Better strategy: Filter out duplicates based on X position to avoid visual clutter, 
+        // but wait, the user needs to select specific logic. 
+        // For now, let's render unique X positions, mapping to the most "inner" logic (Net Work) as priority.
+
+        // Simplified: Just render START, MIDDLE (Boundary), END.
+        // But the requirement says 4 points. Let's render them all but shift slightly if needed?
+        // No, let's just render them. Overlapping is fine for now, usually they are distinct unless duration is 0.
 
         return (
             <g transform={`translate(${startX}, ${y})`} className="cursor-pointer group">
                 {/* Indirect Work (Blue) */}
                 {indirectWorkDays > 0 && (
-                    <rect
-                        x={indirectX}
-                        y={0}
-                        width={indirectWidth}
-                        height={height}
-                        fill="#448AFF" // Blue
-                        rx={radius}
-                        ry={radius}
-                        className="opacity-90 hover:opacity-100 transition-opacity"
-                    />
+                    <g>
+                        <rect
+                            x={indirectX}
+                            y={0}
+                            width={indirectWidth}
+                            height={height}
+                            fill="#448AFF"
+                            rx={radius}
+                            ry={radius}
+                            className="opacity-90 hover:opacity-100 transition-opacity filter drop-shadow-sm"
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                onMouseDown(e, task, 'MOVE');
+                            }}
+                        />
+                        {/* Resize Handle for Indirect */}
+                        <rect
+                            x={indirectX + indirectWidth - 4}
+                            y={0}
+                            width={8}
+                            height={height}
+                            fill="transparent"
+                            className="cursor-col-resize hover:fill-black/10"
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                onMouseDown(e, task, 'RESIZE_INDIRECT');
+                            }}
+                        />
+                    </g>
                 )}
 
                 {/* Net Work (Red) */}
                 {netWorkDays > 0 && (
-                    <rect
-                        x={netX}
-                        y={0}
-                        width={netWidth}
-                        height={height}
-                        fill="#FF5252" // Red
-                        rx={radius}
-                        ry={radius}
-                        className="opacity-90 hover:opacity-100 transition-opacity"
-                    />
+                    <g>
+                        <rect
+                            x={netX}
+                            y={0}
+                            width={netWidth}
+                            height={height}
+                            fill="#FF5252"
+                            rx={radius}
+                            ry={radius}
+                            className="opacity-90 hover:opacity-100 transition-opacity filter drop-shadow-sm"
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                onMouseDown(e, task, 'MOVE');
+                            }}
+                        />
+                        {/* Resize Handle for Net Work */}
+                        <rect
+                            x={netX + netWidth - 4}
+                            y={0}
+                            width={8}
+                            height={height}
+                            fill="transparent"
+                            className="cursor-col-resize hover:fill-black/10"
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                onMouseDown(e, task, 'RESIZE_NET');
+                            }}
+                        />
+                    </g>
                 )}
 
                 {/* Label */}
-                <text x={netWidth + indirectWidth + 8} y={height / 2 + 5} className="text-xs fill-gray-700 font-medium pointer-events-none">
+                <text x={netWidth + indirectWidth + 8} y={height / 2 + 4} className="text-[11px] fill-gray-700 font-medium pointer-events-none select-none">
                     {task.name}
                 </text>
+
+                {/* Anchor Points */}
+                {anchors.map((anchor, i) => (
+                    <React.Fragment key={i}>
+                        {renderAnchor(anchor.x, anchor.type)}
+                    </React.Fragment>
+                ))}
             </g>
         );
     }
@@ -185,21 +304,40 @@ interface MilestoneMarkerProps {
 
 const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({ milestone, dateToX }) => {
     const x = dateToX(milestone.date);
-    const size = 14;
-    const y = MILESTONE_LANE_HEIGHT / 2; // Center vertically in milestone lane
+    const size = 12;
+    const y = MILESTONE_LANE_HEIGHT / 2;
 
     return (
         <g transform={`translate(${x}, ${y})`} className="cursor-pointer group z-20">
+            {/* Vertical Guide Line (Dashed) */}
+            <line
+                x1="0"
+                y1={0}
+                x2="0"
+                y2={1000}
+                stroke="#E5E7EB"
+                strokeWidth="2"
+                strokeDasharray="4, 4"
+                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            />
+
             {/* Inverted Triangle Symbol */}
             <path
                 d={`M ${-size / 2} ${-size / 2} L ${size / 2} ${-size / 2} L 0 ${size / 2} Z`}
-                fill="#333"
-                className="transition-all duration-150 group-hover:scale-125 hover:fill-blue-600"
+                fill="#4B5563"
+                stroke="white"
+                strokeWidth="1"
+                className="transition-all duration-150 group-hover:scale-125 group-hover:fill-blue-600 drop-shadow-sm"
             />
-            {/* Vertical Guide Line */}
-            <line x1="0" y1={size / 2} x2="0" y2={1000} stroke="#333" strokeDasharray="3, 3" opacity="0.3" pointerEvents="none" />
 
-            <text x={10} y={5} className="text-xs font-bold fill-gray-800">{milestone.name}</text>
+            {/* Label */}
+            <text
+                x={8}
+                y={4}
+                className="text-[11px] font-bold fill-gray-600 group-hover:fill-blue-700 transition-colors select-none"
+            >
+                {milestone.name}
+            </text>
         </g>
     );
 };
@@ -255,92 +393,57 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
     const { holidays, calendarSettings, zoomLevel } = useConstructionStore();
     const headerDays = Array.from({ length: totalDays }, (_, i) => addDays(effectiveMinDate, i));
 
-    // 1. Top Row: Year (or Year + Month for Day view)
+    // 1. Top Row: Year
     const topRow = useMemo(() => {
-        if (zoomLevel === 'DAY') {
-            // Group by Month (Year + Month)
-            const groups: { label: string, days: number }[] = [];
-            let currentMonth = headerDays[0];
-            let count = 0;
-
-            headerDays.forEach(date => {
-                if (!isSameMonth(date, currentMonth)) {
-                    groups.push({ label: format(currentMonth, 'yyyy년 M월'), days: count });
-                    currentMonth = date;
-                    count = 1;
-                } else {
-                    count++;
-                }
-            });
-            groups.push({ label: format(currentMonth, 'yyyy년 M월'), days: count });
-
-            return (
-                <div className="flex h-[30px] bg-gray-700 text-white text-xs font-bold items-center">
-                    {groups.map((g, i) => (
-                        <div
-                            key={i}
-                            className="border-r border-gray-600 pl-2 flex items-center justify-center"
-                            style={{ width: g.days * pixelsPerDay }}
-                        >
-                            {g.label}
-                        </div>
-                    ))}
-                </div>
-            );
-        } else {
-            // Group by Year
-            const groups: { year: number, days: number }[] = [];
-            let currentYear = getYear(headerDays[0]);
-            let count = 0;
-
-            headerDays.forEach(date => {
-                if (getYear(date) !== currentYear) {
-                    groups.push({ year: currentYear, days: count });
-                    currentYear = getYear(date);
-                    count = 1;
-                } else {
-                    count++;
-                }
-            });
-            groups.push({ year: currentYear, days: count });
-
-            return (
-                <div className="flex h-6 bg-gray-700 text-white text-xs font-bold items-center">
-                    {groups.map((g, i) => (
-                        <div
-                            key={i}
-                            className="border-r border-gray-600 pl-2 flex items-center"
-                            style={{ width: g.days * pixelsPerDay }}
-                        >
-                            {g.year}년차
-                        </div>
-                    ))}
-                </div>
-            );
-        }
-    }, [headerDays, zoomLevel, pixelsPerDay]);
-
-    // 2. Middle Row: Week (Only for Day View)
-    const middleRow = useMemo(() => {
-        if (zoomLevel !== 'DAY') return null;
-
         const groups: { label: string, days: number }[] = [];
-        let currentWeek = startOfWeek(headerDays[0], { weekStartsOn: 0 }); // Start of week for the first day
+        let currentYear = getYear(headerDays[0]);
         let count = 0;
 
         headerDays.forEach(date => {
-            if (!isSameWeek(date, currentWeek, { weekStartsOn: 0 })) {
-                groups.push({ label: `${getISOWeek(currentWeek)}주`, days: count });
-                currentWeek = startOfWeek(date, { weekStartsOn: 0 });
+            if (getYear(date) !== currentYear) {
+                groups.push({ label: `${currentYear}년`, days: count });
+                currentYear = getYear(date);
                 count = 1;
             } else {
                 count++;
             }
         });
-        groups.push({ label: `${getISOWeek(currentWeek)}주`, days: count });
+        groups.push({ label: `${currentYear}년`, days: count });
 
         return (
-            <div className="flex h-[30px] bg-gray-100 text-gray-600 text-xs font-medium items-center border-b border-gray-200">
+            <div className="flex h-[24px] bg-gray-800 text-white text-xs font-bold items-center border-b border-gray-700">
+                {groups.map((g, i) => (
+                    <div
+                        key={i}
+                        className="border-r border-gray-600 pl-2 flex items-center"
+                        style={{ width: g.days * pixelsPerDay }}
+                    >
+                        {g.label}
+                    </div>
+                ))}
+            </div>
+        );
+    }, [headerDays, pixelsPerDay]);
+
+    // 2. Middle Row: Month
+    const middleRow = useMemo(() => {
+        const groups: { label: string, days: number }[] = [];
+        let currentMonth = headerDays[0];
+        let count = 0;
+
+        headerDays.forEach(date => {
+            if (!isSameMonth(date, currentMonth)) {
+                groups.push({ label: format(currentMonth, 'M월'), days: count });
+                currentMonth = date;
+                count = 1;
+            } else {
+                count++;
+            }
+        });
+        groups.push({ label: format(currentMonth, 'M월'), days: count });
+
+        return (
+            <div className="flex h-[24px] bg-gray-100 text-gray-700 text-xs font-medium items-center border-b border-gray-200">
                 {groups.map((g, i) => (
                     <div
                         key={i}
@@ -352,78 +455,25 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
                 ))}
             </div>
         );
-    }, [headerDays, zoomLevel, pixelsPerDay]);
+    }, [headerDays, pixelsPerDay]);
 
-    // 3. Bottom Row: Day/Week/Month
+    // 3. Bottom Row: Week/Day based on Zoom
     const bottomRow = useMemo(() => {
-        if (zoomLevel === 'MONTH') {
-            // Group by Month
-            const groups: { label: string, days: number }[] = [];
-            let currentMonth = headerDays[0];
-            let count = 0;
-
-            headerDays.forEach(date => {
-                if (!isSameMonth(date, currentMonth)) {
-                    groups.push({ label: format(currentMonth, 'M월'), days: count });
-                    currentMonth = date;
-                    count = 1;
-                } else {
-                    count++;
-                }
-            });
-            groups.push({ label: format(currentMonth, 'M월'), days: count });
-
+        if (zoomLevel === 'DAY') {
+            // Day View: Show Days
             return (
-                <div className="flex h-9 items-end pb-1">
-                    {groups.map((g, i) => (
-                        <div
-                            key={i}
-                            className="flex items-center justify-center border-r border-gray-100 h-full text-xs font-medium text-gray-600"
-                            style={{ width: g.days * pixelsPerDay }}
-                        >
-                            {g.label}
-                        </div>
-                    ))}
-                </div>
-            );
-        } else if (zoomLevel === 'WEEK') {
-            // Group by Week
-            const groups: { label: string, days: number }[] = [];
-            let currentWeek = headerDays[0];
-            let count = 0;
-
-            headerDays.forEach(date => {
-                if (!isSameWeek(date, currentWeek, { weekStartsOn: 0 })) { // Sunday start
-                    groups.push({ label: format(currentWeek, 'w주'), days: count });
-                    currentWeek = date;
-                    count = 1;
-                } else {
-                    count++;
-                }
-            });
-            groups.push({ label: format(currentWeek, 'w주'), days: count });
-
-            return (
-                <div className="flex h-9 items-end pb-1">
-                    {groups.map((g, i) => (
-                        <div
-                            key={i}
-                            className="flex items-center justify-center border-r border-gray-100 h-full text-xs font-medium text-gray-600"
-                            style={{ width: g.days * pixelsPerDay }}
-                        >
-                            {g.label}
-                        </div>
-                    ))}
-                </div>
-            );
-        } else {
-            // Day View (Default)
-            return (
-                <div className="flex h-[30px] items-center">
+                <div className="flex h-[32px] items-center bg-white">
                     {headerDays.map((date, index) => {
                         const day = getDay(date); // 0: Sun, 6: Sat
                         const isHol = isHoliday(date, holidays, calendarSettings);
                         const dayClasses = isHol ? 'text-red-500 bg-red-50/30' : 'text-gray-600';
+                        const isSundayItem = day === 0;
+                        const isSaturdayItem = day === 6;
+
+                        let textColor = 'text-gray-600';
+                        if (isSundayItem) textColor = 'text-red-500';
+                        if (isSaturdayItem) textColor = 'text-blue-500';
+                        if (isHol && !isSundayItem && !isSaturdayItem) textColor = 'text-red-500';
 
                         return (
                             <div
@@ -431,13 +481,43 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
                                 className={`flex flex-col justify-center items-center font-medium border-r border-gray-100 h-full ${dayClasses}`}
                                 style={{ width: `${pixelsPerDay}px`, minWidth: `${pixelsPerDay}px` }}
                             >
-                                <span className="text-[10px] leading-none">{format(date, 'd')}</span>
-                                <span className="text-[9px] font-bold leading-none mt-0.5">
+                                <span className={`text-[10px] leading-none ${textColor}`}>{format(date, 'd')}</span>
+                                <span className={`text-[9px] font-bold leading-none mt-0.5 ${textColor}`}>
                                     {['일', '월', '화', '수', '목', '금', '토'][day]}
                                 </span>
                             </div>
                         );
                     })}
+                </div>
+            );
+        } else {
+            // Week/Month View: Show Weeks
+            const groups: { label: string, days: number }[] = [];
+            let currentWeek = headerDays[0];
+            let count = 0;
+
+            headerDays.forEach(date => {
+                if (!isSameWeek(date, currentWeek, { weekStartsOn: 0 })) {
+                    groups.push({ label: `${getISOWeek(currentWeek)}주`, days: count });
+                    currentWeek = date;
+                    count = 1;
+                } else {
+                    count++;
+                }
+            });
+            groups.push({ label: `${getISOWeek(currentWeek)}주`, days: count });
+
+            return (
+                <div className="flex h-[32px] items-center bg-white">
+                    {groups.map((g, i) => (
+                        <div
+                            key={i}
+                            className="flex items-center justify-center border-r border-gray-100 h-full text-xs font-medium text-gray-600"
+                            style={{ width: g.days * pixelsPerDay }}
+                        >
+                            {g.label}
+                        </div>
+                    ))}
                 </div>
             );
         }
@@ -454,8 +534,9 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
 
 // --- Main Timeline Component ---
 
-export const GanttTimeline = forwardRef<HTMLDivElement>((_, ref) => {
-    const { tasks, milestones, currentView, activeSummaryId, holidays, calendarSettings, zoomLevel } = useConstructionStore();
+const GanttTimelineComponent = forwardRef<HTMLDivElement>((_, ref) => {
+    const { tasks, milestones, expandedTaskIds, currentView, activeSummaryId, holidays, calendarSettings, zoomLevel, updateTaskDuration, addDependency } = useConstructionStore();
+    const [dragState, setDragState] = React.useState<DragState | null>(null);
 
     const pixelsPerDay = useMemo(() => {
         switch (zoomLevel) {
@@ -466,14 +547,33 @@ export const GanttTimeline = forwardRef<HTMLDivElement>((_, ref) => {
         }
     }, [zoomLevel]);
 
-    // Filter tasks based on view
+    // Filter tasks based on Master-Detail View (sync with Grid)
     const visibleTasks = useMemo(() => {
         if (currentView === 'MASTER') {
-            return tasks.filter(t => t.wbsLevel === 1);
+            // Master View: Show only Level 1 CP (exclude GROUP, they have no bars)
+            const visible: ConstructionTask[] = [];
+
+            tasks.forEach(task => {
+                if (task.wbsLevel === 1 && task.type !== 'GROUP') {
+                    // Only show CP, not GROUP
+                    if (!task.parentId) {
+                        // Top-level CP
+                        visible.push(task);
+                    } else if (task.parentId) {
+                        // CP under a GROUP - show only if GROUP is expanded
+                        if (expandedTaskIds.includes(task.parentId)) {
+                            visible.push(task);
+                        }
+                    }
+                }
+            });
+
+            return visible;
         } else {
+            // Detail View: Show Level 2 Tasks of selected CP
             return tasks.filter(t => t.wbsLevel === 2 && t.parentId === activeSummaryId);
         }
-    }, [tasks, currentView, activeSummaryId]);
+    }, [tasks, currentView, activeSummaryId, expandedTaskIds]);
 
     // Calculate Scales
     const { effectiveMinDate, totalDays, dateToX } = useMemo(() => {
@@ -508,13 +608,116 @@ export const GanttTimeline = forwardRef<HTMLDivElement>((_, ref) => {
         return { effectiveMinDate: effectiveMin, effectiveMaxDate: effectiveMax, totalDays: days, dateToX: toX };
     }, [visibleTasks, milestones, pixelsPerDay]);
 
+
+    const handleMouseDown = (e: React.MouseEvent, task: ConstructionTask, type: 'RESIZE_NET' | 'RESIZE_INDIRECT' | 'MOVE') => {
+        if (!task.task) return;
+        setDragState({
+            taskId: task.id,
+            type,
+            initialX: e.clientX,
+            initialNetDays: task.task.netWorkDays,
+            initialIndirectDays: task.task.indirectWorkDays,
+            initialStartDate: task.startDate
+        });
+    };
+
+    const handleAnchorMouseDown = (e: React.MouseEvent, task: ConstructionTask, anchor: AnchorPoint) => {
+        e.stopPropagation();
+        const taskIndex = visibleTasks.findIndex(t => t.id === task.id);
+        const y = taskIndex * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2 + MILESTONE_LANE_HEIGHT + 12; // Center of bar
+
+        // Calculate initial X based on anchor type
+        const dates = calculateDualCalendarDates(task, holidays, calendarSettings);
+        const date = getAnchorDate(task, anchor, dates);
+        const x = dateToX(date);
+
+        setDragState({
+            taskId: task.id,
+            type: 'LINK',
+            initialX: x,
+            sourceAnchor: anchor,
+            sourceY: y,
+            currentX: x,
+            currentY: y
+        });
+    };
+
+    const handleMouseMove = React.useCallback((e: MouseEvent) => {
+        if (!dragState) return;
+
+        if (dragState.type === 'RESIZE_NET' || dragState.type === 'RESIZE_INDIRECT' || dragState.type === 'MOVE') {
+            const deltaX = e.clientX - dragState.initialX;
+            const deltaDays = Math.round(deltaX / pixelsPerDay);
+
+            if (deltaDays === 0) return;
+
+            if (dragState.type === 'RESIZE_NET' && dragState.initialNetDays !== undefined && dragState.initialIndirectDays !== undefined) {
+                const newNetDays = Math.max(1, dragState.initialNetDays + deltaDays);
+                updateTaskDuration(dragState.taskId, newNetDays, dragState.initialIndirectDays);
+            } else if (dragState.type === 'RESIZE_INDIRECT' && dragState.initialNetDays !== undefined && dragState.initialIndirectDays !== undefined) {
+                const newIndirectDays = Math.max(0, dragState.initialIndirectDays + deltaDays);
+                updateTaskDuration(dragState.taskId, dragState.initialNetDays, newIndirectDays);
+            }
+        }
+    }, [dragState, pixelsPerDay, updateTaskDuration]);
+
+    const handleAnchorMouseUp = (e: React.MouseEvent, targetTask: ConstructionTask, targetAnchor: AnchorPoint) => {
+        if (dragState?.type === 'LINK' && dragState.sourceAnchor) {
+            e.stopPropagation();
+
+            // Prevent self-linking
+            if (dragState.taskId === targetTask.id) {
+                setDragState(null);
+                return;
+            }
+
+            // Determine dependency type based on anchors (fallback)
+            // Start -> Start: SS, End -> End: FF, End -> Start: FS, Start -> End: SF
+            // But we store exact anchors now.
+            let type: 'FS' | 'SS' | 'FF' | 'SF' = 'FS';
+            const src = dragState.sourceAnchor;
+            const tgt = targetAnchor;
+
+            if (src.includes('START') && tgt.includes('START')) type = 'SS';
+            else if (src.includes('END') && tgt.includes('END')) type = 'FF';
+            else if (src.includes('START') && tgt.includes('END')) type = 'SF';
+            else type = 'FS'; // Default End -> Start
+
+            const newDependency: Dependency = {
+                id: crypto.randomUUID(),
+                predecessorId: dragState.taskId,
+                type: type,
+                lag: 0,
+                sourceAnchor: dragState.sourceAnchor,
+                targetAnchor: targetAnchor
+            };
+
+            addDependency(targetTask.id, newDependency);
+            setDragState(null);
+        }
+    };
+
+    const handleMouseUp = React.useCallback(() => {
+        // Global mouse up clears drag state if not handled by anchor
+        setDragState(null);
+    }, []);
+
+    React.useEffect(() => {
+        if (dragState) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [dragState, handleMouseMove, handleMouseUp]);
+
     const chartHeight = Math.max(visibleTasks.length * ROW_HEIGHT + 100, 500);
     const chartWidth = totalDays * pixelsPerDay;
 
-    // Generate Links (Only in Detail View for now, or if we want L1 dependencies later)
+    // Generate Links (Only for visible tasks)
     const links = useMemo(() => {
-        if (currentView === 'MASTER') return [];
-
         const linkElements: React.ReactNode[] = [];
 
         visibleTasks.forEach((currentTask, currentIndex) => {
@@ -543,19 +746,26 @@ export const GanttTimeline = forwardRef<HTMLDivElement>((_, ref) => {
             });
         });
         return linkElements;
-    }, [visibleTasks, currentView, dateToX, holidays, calendarSettings]);
+    }, [visibleTasks, dateToX, holidays, calendarSettings]);
 
-    const headerHeight = useMemo(() => {
-        return zoomLevel === 'DAY' ? 90 : 60; // 30*3 for Day, 30*2 for others
-    }, [zoomLevel]);
+    const headerHeight = 80; // Fixed height for 3-tier header (24 + 24 + 32)
 
-    const MILESTONE_LANE_HEIGHT = 40; // Define the constant here
+    // const MILESTONE_LANE_HEIGHT = 40; // Define the constant here - already defined globally
 
     return (
         <div className="flex flex-col h-full w-full overflow-hidden bg-white">
             <div
                 ref={ref}
                 className="flex-1 overflow-auto relative"
+                onMouseMove={(e) => {
+                    // Track mouse for Ghost Line if linking
+                    if (dragState?.type === 'LINK') {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left + e.currentTarget.scrollLeft;
+                        const y = e.clientY - rect.top + e.currentTarget.scrollTop;
+                        setDragState(prev => prev ? { ...prev, currentX: x, currentY: y } : null);
+                    }
+                }}
             >
                 <TimelineHeader effectiveMinDate={effectiveMinDate} totalDays={totalDays} pixelsPerDay={pixelsPerDay} headerHeight={headerHeight} />
 
@@ -588,6 +798,20 @@ export const GanttTimeline = forwardRef<HTMLDivElement>((_, ref) => {
                     {/* 4. Links (Layered below bars) */}
                     {links}
 
+                    {/* Ghost Line for Linking */}
+                    {dragState?.type === 'LINK' && dragState.currentX !== undefined && dragState.currentY !== undefined && (
+                        <line
+                            x1={dragState.initialX}
+                            y1={dragState.sourceY}
+                            x2={dragState.currentX}
+                            y2={dragState.currentY}
+                            stroke="#9CA3AF"
+                            strokeWidth="2"
+                            strokeDasharray="5, 5"
+                            pointerEvents="none"
+                        />
+                    )}
+
                     {/* 5. Task Bars */}
                     {visibleTasks.map((task, index) => {
                         const y = index * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2 + MILESTONE_LANE_HEIGHT; // Center vertically + offset
@@ -597,9 +821,11 @@ export const GanttTimeline = forwardRef<HTMLDivElement>((_, ref) => {
                                 task={task}
                                 y={y}
                                 dateToX={dateToX}
-                                isMasterView={currentView === 'MASTER'}
+                                isMasterView={task.wbsLevel === 1}
                                 pixelsPerDay={pixelsPerDay}
-                                headerHeight={headerHeight}
+                                onMouseDown={handleMouseDown}
+                                onAnchorMouseDown={handleAnchorMouseDown}
+                                onAnchorMouseUp={handleAnchorMouseUp}
                             />
                         );
                     })}
@@ -609,4 +835,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement>((_, ref) => {
     );
 });
 
-GanttTimeline.displayName = 'GanttTimeline';
+GanttTimelineComponent.displayName = 'GanttTimeline';
+
+export const GanttTimeline = GanttTimelineComponent;

@@ -3,6 +3,7 @@ import { GanttGrid } from './gantt/GanttGrid';
 import { GanttTimeline } from './gantt/GanttTimeline';
 import { format } from 'date-fns';
 import { useConstructionStore } from '../store/useConstructionStore';
+import { GANTT_CONSTANTS } from '../utils/ganttConstants';
 
 export const GanttChart: React.FC = () => {
     const { zoomLevel, setZoomLevel } = useConstructionStore();
@@ -63,8 +64,8 @@ export const GanttChart: React.FC = () => {
                                 key={level}
                                 onClick={() => setZoomLevel(level)}
                                 className={`px-3 py-1 text-xs font-medium rounded transition-colors ${zoomLevel === level
-                                        ? 'bg-white text-gray-800 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white text-gray-800 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 {level === 'DAY' ? '일' : level === 'WEEK' ? '주' : '월'}
@@ -79,8 +80,11 @@ export const GanttChart: React.FC = () => {
             </header>
 
             <div className="flex flex-1 overflow-hidden">
-                {/* Left Panel: Grid */}
-                <div className="w-[620px] shrink-0 border-r border-gray-200 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 flex flex-col">
+                {/* Left Panel: Grid - Using GANTT_CONSTANTS.GRID_WIDTH for consistency */}
+                <div
+                    className="shrink-0 border-r border-gray-200 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 flex flex-col"
+                    style={{ width: `${GANTT_CONSTANTS.GRID_WIDTH}px` }}
+                >
                     <GanttGrid ref={gridScrollRef} />
                 </div>
 

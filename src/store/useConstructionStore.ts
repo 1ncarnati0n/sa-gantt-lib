@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ConstructionTask, Milestone, Placement, CalendarSettings } from '../types/gantt';
+import { ConstructionTask, Milestone, Placement, CalendarSettings, Dependency } from '../types/gantt';
 import { calculateDualCalendarDates } from '../utils/dateUtils';
 import { parseISO } from 'date-fns';
 import mockData from '../data/mock.json';
@@ -21,6 +21,14 @@ interface ConstructionStore {
     updateTaskDuration: (id: string, netWorkDays: number, indirectWorkDays: number) => void;
     updateTaskPlacement: (id: string, placement: Placement) => void;
 
+    addDependency: (taskId: string, dependency: Dependency) => void;
+
+    // Tree Grid State
+    expandedTaskIds: string[];
+    toggleTask: (taskId: string) => void;
+    expandAll: () => void;
+    collapseAll: () => void;
+
     // Helper to trigger recalculation
     recalculateAll: () => void;
 }
@@ -36,7 +44,7 @@ const parseMockData = () => {
     const tasks = mockData.tasks.map(t => ({
         ...t,
         wbsLevel: t.wbsLevel as 1 | 2,
-        type: t.type as 'SUMMARY' | 'TASK',
+        type: t.type as 'GROUP' | 'SUMMARY' | 'TASK',
         startDate: parseISO(t.startDate),
         endDate: parseISO(t.endDate),
         summary: t.summary ? { ...t.summary } : undefined,
@@ -69,6 +77,25 @@ export const useConstructionStore = create<ConstructionStore>((set, get) => ({
     currentView: 'MASTER',
     activeSummaryId: null,
     zoomLevel: 'DAY',
+
+    // Initialize with all tasks expanded
+    expandedTaskIds: initialTasks.map(t => t.id),
+
+    toggleTask: (taskId) => set((state) => {
+        const isExpanded = state.expandedTaskIds.includes(taskId);
+        return {
+            expandedTaskIds: isExpanded
+                ? state.expandedTaskIds.filter(id => id !== taskId)
+                : [...state.expandedTaskIds, taskId]
+        };
+    }),
+
+    expandAll: () => set((state) => ({
+        expandedTaskIds: state.tasks.map(t => t.id)
+    })),
+
+    collapseAll: () => set({ expandedTaskIds: [] }),
+
 
     setTasks: (tasks) => set({ tasks }),
 
@@ -106,6 +133,22 @@ export const useConstructionStore = create<ConstructionStore>((set, get) => ({
                     return {
                         ...t,
                         task: { ...t.task, placement }
+                    };
+                }
+                return t;
+            });
+            return { tasks: updatedTasks };
+        });
+        get().recalculateAll();
+    },
+
+    addDependency: (taskId: string, dependency: Dependency) => {
+        set(state => {
+            const updatedTasks = state.tasks.map(t => {
+                if (t.id === taskId) {
+                    return {
+                        ...t,
+                        dependencies: [...t.dependencies, dependency]
                     };
                 }
                 return t;

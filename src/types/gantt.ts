@@ -1,6 +1,6 @@
 export type CalendarRule = 'WORKING_DAY_ONLY' | 'INCLUDE_HOLIDAYS';
 export type Placement = 'PRE' | 'POST';
-export type TaskType = 'MILESTONE' | 'SUMMARY' | 'TASK';
+export type TaskType = 'MILESTONE' | 'GROUP' | 'SUMMARY' | 'TASK';
 export type WbsLevel = 1 | 2;
 export type AnchorPoint = 'START' | 'NET_WORK_START' | 'NET_WORK_END' | 'END';
 
@@ -14,9 +14,9 @@ export interface Dependency {
   id: string; // Unique ID for the dependency
   predecessorId: string;
   type: 'FS' | 'SS' | 'FF' | 'SF';
-  lag: number;
-  sourceAnchor: AnchorPoint;
-  targetAnchor: AnchorPoint;
+  lag?: number; // Lag in days
+  sourceAnchor?: AnchorPoint;
+  targetAnchor?: AnchorPoint;
 }
 
 export interface ConstructionTask {
