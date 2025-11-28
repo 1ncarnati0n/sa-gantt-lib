@@ -11,6 +11,11 @@ export default defineConfig({
             insertTypesEntry: true,
         }),
     ],
+    server: {
+        hmr: {
+            overlay: false,
+        },
+    },
     build: {
         lib: {
             entry: resolve(__dirname, 'src/lib/index.ts'),
