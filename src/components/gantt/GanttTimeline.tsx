@@ -392,6 +392,9 @@ interface TimelineHeaderProps {
 const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, totalDays, pixelsPerDay, headerHeight }) => {
     const { holidays, calendarSettings, zoomLevel } = useConstructionStore();
     const headerDays = Array.from({ length: totalDays }, (_, i) => addDays(effectiveMinDate, i));
+    
+    // 전체 헤더 너비 계산 (스크롤 영역과 동기화)
+    const totalWidth = totalDays * pixelsPerDay;
 
     // 1. Top Row: Year
     const topRow = useMemo(() => {
@@ -411,11 +414,11 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
         groups.push({ label: `${currentYear}년`, days: count });
 
         return (
-            <div className="flex h-[24px] bg-gray-800 text-white text-xs font-bold items-center border-b border-gray-700">
+            <div className="flex h-[24px] bg-gray-100 text-gray-800 text-xs font-bold items-center border-b border-gray-300" style={{ minWidth: totalWidth }}>
                 {groups.map((g, i) => (
                     <div
                         key={i}
-                        className="border-r border-gray-600 pl-2 flex items-center"
+                        className="border-r border-gray-300 pl-2 flex items-center shrink-0"
                         style={{ width: g.days * pixelsPerDay }}
                     >
                         {g.label}
@@ -423,7 +426,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
                 ))}
             </div>
         );
-    }, [headerDays, pixelsPerDay]);
+    }, [headerDays, pixelsPerDay, totalWidth]);
 
     // 2. Middle Row: Month
     const middleRow = useMemo(() => {
@@ -443,11 +446,11 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
         groups.push({ label: format(currentMonth, 'M월'), days: count });
 
         return (
-            <div className="flex h-[24px] bg-gray-100 text-gray-700 text-xs font-medium items-center border-b border-gray-200">
+            <div className="flex h-[24px] bg-gray-100 text-gray-700 text-xs font-medium items-center border-b border-gray-200" style={{ minWidth: totalWidth }}>
                 {groups.map((g, i) => (
                     <div
                         key={i}
-                        className="border-r border-gray-300 flex items-center justify-center"
+                        className="border-r border-gray-300 flex items-center justify-center shrink-0"
                         style={{ width: g.days * pixelsPerDay }}
                     >
                         {g.label}
@@ -455,14 +458,14 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
                 ))}
             </div>
         );
-    }, [headerDays, pixelsPerDay]);
+    }, [headerDays, pixelsPerDay, totalWidth]);
 
     // 3. Bottom Row: Week/Day based on Zoom
     const bottomRow = useMemo(() => {
         if (zoomLevel === 'DAY') {
             // Day View: Show Days
             return (
-                <div className="flex h-[32px] items-center bg-white">
+                <div className="flex h-[32px] items-center bg-white" style={{ minWidth: totalWidth }}>
                     {headerDays.map((date, index) => {
                         const day = getDay(date); // 0: Sun, 6: Sat
                         const isHol = isHoliday(date, holidays, calendarSettings);
@@ -478,7 +481,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
                         return (
                             <div
                                 key={index}
-                                className={`flex flex-col justify-center items-center font-medium border-r border-gray-100 h-full ${dayClasses}`}
+                                className={`flex flex-col justify-center items-center font-medium border-r border-gray-100 h-full shrink-0 ${dayClasses}`}
                                 style={{ width: `${pixelsPerDay}px`, minWidth: `${pixelsPerDay}px` }}
                             >
                                 <span className={`text-[10px] leading-none ${textColor}`}>{format(date, 'd')}</span>
@@ -508,11 +511,11 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
             groups.push({ label: `${getISOWeek(currentWeek)}주`, days: count });
 
             return (
-                <div className="flex h-[32px] items-center bg-white">
+                <div className="flex h-[32px] items-center bg-white" style={{ minWidth: totalWidth }}>
                     {groups.map((g, i) => (
                         <div
                             key={i}
-                            className="flex items-center justify-center border-r border-gray-100 h-full text-xs font-medium text-gray-600"
+                            className="flex items-center justify-center border-r border-gray-100 h-full text-xs font-medium text-gray-600 shrink-0"
                             style={{ width: g.days * pixelsPerDay }}
                         >
                             {g.label}
@@ -521,10 +524,10 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
                 </div>
             );
         }
-    }, [headerDays, zoomLevel, pixelsPerDay, holidays, calendarSettings]);
+    }, [headerDays, zoomLevel, pixelsPerDay, holidays, calendarSettings, totalWidth]);
 
     return (
-        <div className="flex flex-col bg-white border-b border-gray-300 sticky top-0 z-20 shadow-sm" style={{ height: headerHeight }}>
+        <div className="flex flex-col bg-white border-b border-gray-300 sticky top-0 z-20 shadow-sm" style={{ height: headerHeight, minWidth: totalWidth }}>
             {topRow}
             {middleRow}
             {bottomRow}

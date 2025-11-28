@@ -1,130 +1,278 @@
 import { create } from 'zustand';
-import { GanttTask, GanttLink, ViewMode } from '../types';
-import { addDays, startOfDay } from 'date-fns';
+import { 
+  ConstructionNode, 
+  Dependency, 
+  ViewMode, 
+  CurrentView, 
+  CalendarConfig,
+  WbsLevel,
+  AnchorPoint
+} from '../types';
+import { addDays, startOfDay, parseISO } from 'date-fns';
+import { calculateNetWorkEndDate } from '../utils/calendarUtils';
 
 interface GanttState {
-    // Data
-    tasks: GanttTask[];
-    links: GanttLink[];
+  // =================================
+  // Data State
+  // =================================
+  nodes: ConstructionNode[];
+  dependencies: Dependency[];
+  milestones: ConstructionNode[]; // milestones are essentially nodes with type='milestone'
+  calendar: CalendarConfig;
 
-    // View Settings
-    viewMode: ViewMode;
-    columnWidth: number;
-    rowHeight: number;
+  // =================================
+  // View State
+  // =================================
+  currentView: CurrentView;
+  currentCPId: string | null;     // Detail View에서 선택된 CP ID
+  viewMode: ViewMode;
+  
+  // Time Range
+  startDate: Date | null;
+  endDate: Date | null;
 
-    // Time Range (Computed from tasks or set manually)
-    startDate: Date | null;
-    endDate: Date | null;
+  // Layout Settings
+  columnWidth: number;
+  rowHeight: number;
 
-    // UI State
-    scrollX: number;
-    scrollY: number;
-    selectedTaskId: string | null;
-    expandedTaskIds: Set<string | number>;
+  // =================================
+  // UI Interaction State
+  // =================================
+  scrollX: number;
+  scrollY: number;
+  selectedNodeId: string | null;
+  hoveredNodeId: string | null;
+  expandedNodeIds: Set<string>;
+  
+  // Drag & Drop
+  isDragging: boolean;
+  dragSource: { nodeId: string, anchor: AnchorPoint } | null;
+  dragTarget: { nodeId: string, anchor: AnchorPoint } | null;
 
-    // Actions
-    setTasks: (tasks: GanttTask[]) => void;
-    setLinks: (links: GanttLink[]) => void;
-    setViewMode: (mode: ViewMode) => void;
-    toggleTask: (taskId: string | number) => void;
-    updateTask: (taskId: string, updates: Partial<GanttTask>) => void;
-    getVisibleTasks: () => GanttTask[];
+  // =================================
+  // Actions
+  // =================================
+  // Data Setters
+  setNodes: (nodes: ConstructionNode[]) => void;
+  setDependencies: (deps: Dependency[]) => void;
+  setCalendar: (config: CalendarConfig) => void;
+  
+  // View Management
+  switchToMasterView: () => void;
+  switchToDetailView: (cpId: string) => void;
+  setViewMode: (mode: ViewMode) => void;
+  
+  // Node Operations
+  toggleNode: (nodeId: string) => void;
+  updateNode: (nodeId: string, updates: Partial<ConstructionNode>) => void;
+  selectNode: (nodeId: string | null) => void;
+  setHoveredNode: (nodeId: string | null) => void;
+  expandAll: () => void;
+  collapseAll: () => void;
+  
+  // Data Accessors (Selector-like)
+  getVisibleNodes: () => ConstructionNode[];
+  
+  // Drag Actions
+  setDragSource: (source: { nodeId: string, anchor: AnchorPoint } | null) => void;
+  setDragTarget: (target: { nodeId: string, anchor: AnchorPoint } | null) => void;
 }
 
+const DEFAULT_CALENDAR: CalendarConfig = {
+  nonWorkingDays: [],
+  weekendPolicy: 'skip',
+  holidayPolicy: 'skip',
+};
+
 export const useGanttStore = create<GanttState>((set, get) => ({
-    tasks: [],
-    links: [],
-    viewMode: 'day',
-    columnWidth: 50,
-    rowHeight: 40,
-    startDate: null,
-    endDate: null,
-    scrollX: 0,
-    scrollY: 0,
-    selectedTaskId: null,
-    expandedTaskIds: new Set(),
+  // Initial Data
+  nodes: [],
+  dependencies: [],
+  milestones: [],
+  calendar: DEFAULT_CALENDAR,
 
-    setTasks: (tasks) => {
-        // Calculate global start/end dates
-        if (tasks.length === 0) {
-            set({ tasks, startDate: new Date(), endDate: addDays(new Date(), 30) });
-            return;
-        }
+  // Initial View
+  currentView: 'master',
+  currentCPId: null,
+  viewMode: 'month', // Master view defaults to month
+  startDate: null,
+  endDate: null,
+  
+  // Initial Layout
+  columnWidth: 30, // Month view default
+  rowHeight: 40,
+  
+  // Initial UI
+  scrollX: 0,
+  scrollY: 0,
+  selectedNodeId: null,
+  hoveredNodeId: null,
+  expandedNodeIds: new Set(),
+  
+  isDragging: false,
+  dragSource: null,
+  dragTarget: null,
 
-        const startDates = tasks.map(t => t.start_date.getTime());
-        const endDates = tasks.map(t => t.end_date.getTime());
+  // Actions
+  setNodes: (nodes) => {
+    // Separate milestones if needed, or keep them in nodes. 
+    // Here we'll keep them in nodes but can filter for specific UI.
+    // Initialize date range based on Master View nodes (Level 1)
+    
+    // Sort by order/index if possible
+    // nodes.sort((a, b) => a.order - b.order);
 
-        // Buffer days
-        const minDate = startOfDay(new Date(Math.min(...startDates)));
-        const maxDate = startOfDay(new Date(Math.max(...endDates)));
-
-        set({
-            tasks,
-            startDate: addDays(minDate, -7),
-            endDate: addDays(maxDate, 7)
-        });
-    },
-
-    setLinks: (links) => set({ links }),
-
-    setViewMode: (mode) => {
-        let newWidth = 50;
-        switch (mode) {
-            case 'day': newWidth = 50; break;
-            case 'week': newWidth = 40; break; // per day
-            case 'month': newWidth = 30; break; // per day
-        }
-        set({ viewMode: mode, columnWidth: newWidth });
-    },
-
-    toggleTask: (taskId) => set((state) => {
-        const newExpanded = new Set(state.expandedTaskIds);
-        if (newExpanded.has(taskId)) {
-            newExpanded.delete(taskId);
-        } else {
-            newExpanded.add(taskId);
-        }
-        return { expandedTaskIds: newExpanded };
-    }),
-
-    updateTask: (taskId, updates) => set((state) => ({
-        tasks: state.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t)
-    })),
-
-    getVisibleTasks: () => {
-        const state = get();
-        // const visibleTasks: GanttTask[] = [];
-        const { tasks, expandedTaskIds } = state;
-
-        // Helper to check if all parents are expanded
-        // This assumes tasks are flat but have parent pointers. 
-        // For better performance, we might want to build a tree or map, but for now linear scan is okay for < 1000 tasks?
-        // Actually, a better way is to iterate and skip children of collapsed parents.
-        // But tasks might not be sorted by hierarchy.
-        // Let's assume we need to check ancestry.
-
-        // Optimization: Create a map for quick lookup
-        // const taskMap = new Map(tasks.map(t => [t.id, t]));
-
-        // Simple approach: Filter
-        // A task is visible if its parent is 0 OR (parent is expanded AND parent is visible)
-        // This requires top-down traversal or recursive check.
-
-        // Let's assume tasks are sorted by display order (DFS).
-        // If so, we can just maintain a "skipping" state.
-        // But we can't guarantee sort order yet.
-
-        // Robust approach:
-        const isVisible = (taskId: string | number): boolean => {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return false;
-            if (task.parent === 0 || task.parent === "0") return true;
-            return expandedTaskIds.has(task.parent) && isVisible(task.parent);
-        };
-
-        return tasks.filter(t => {
-            if (t.parent === 0 || t.parent === "0") return true;
-            return expandedTaskIds.has(t.parent) && isVisible(t.parent);
-        });
+    const masterNodes = nodes.filter(n => n.wbsLevel === 1);
+    
+    if (masterNodes.length === 0) {
+      set({ nodes, startDate: new Date(), endDate: addDays(new Date(), 30) });
+      return;
     }
+
+    const startDates = masterNodes.map(n => parseISO(n.startDate).getTime());
+    const endDates = masterNodes.map(n => parseISO(n.endDate).getTime());
+
+    const minDate = startOfDay(new Date(Math.min(...startDates)));
+    const maxDate = startOfDay(new Date(Math.max(...endDates)));
+
+    set({
+      nodes,
+      startDate: addDays(minDate, -30), // Buffer
+      endDate: addDays(maxDate, 30),
+      // Auto expand root nodes if needed
+      // expandedNodeIds: new Set(nodes.filter(n => n.depth === 0).map(n => n.id))
+    });
+  },
+
+  setDependencies: (deps) => set({ dependencies: deps }),
+  setCalendar: (config) => set({ calendar: config }),
+
+  switchToMasterView: () => {
+    const { nodes } = get();
+    // Filter Level 1
+    const masterNodes = nodes.filter(n => n.wbsLevel === 1);
+    
+    if (masterNodes.length === 0) return;
+
+    const startDates = masterNodes.map(n => parseISO(n.startDate).getTime());
+    const endDates = masterNodes.map(n => parseISO(n.endDate).getTime());
+
+    set({
+      currentView: 'master',
+      currentCPId: null,
+      viewMode: 'month',
+      columnWidth: 30,
+      startDate: addDays(new Date(Math.min(...startDates)), -30),
+      endDate: addDays(new Date(Math.max(...endDates)), 30),
+      expandedNodeIds: new Set(), // Reset expansion or keep? Let's reset for clean view
+    });
+  },
+
+  switchToDetailView: (cpId) => {
+    const { nodes } = get();
+    const cpNode = nodes.find(n => n.id === cpId);
+    if (!cpNode) return;
+
+    // Find all descendants of this CP (Level 2)
+    // Assuming flat list with parentId
+    const detailNodes = nodes.filter(n => n.wbsLevel === 2 && n.parentId === cpId);
+    
+    // If no children, maybe fallback or show empty
+    // Calculate range based on children
+    let minTime = parseISO(cpNode.startDate).getTime();
+    let maxTime = parseISO(cpNode.endDate).getTime();
+
+    if (detailNodes.length > 0) {
+      const startDates = detailNodes.map(n => parseISO(n.startDate).getTime());
+      const endDates = detailNodes.map(n => parseISO(n.endDate).getTime());
+      minTime = Math.min(...startDates);
+      maxTime = Math.max(...endDates);
+    }
+
+    set({
+      currentView: 'detail',
+      currentCPId: cpId,
+      viewMode: 'day', // Detail view usually day
+      columnWidth: 50,
+      startDate: addDays(new Date(minTime), -7),
+      endDate: addDays(new Date(maxTime), 7),
+      expandedNodeIds: new Set(nodes.map(n => n.id)), // Expand all in detail view by default?
+    });
+  },
+
+  setViewMode: (mode) => {
+    let width = 50;
+    switch (mode) {
+      case 'day': width = 50; break;
+      case 'week': width = 40; break;
+      case 'month': width = 30; break;
+      case 'year': width = 60; break; // per month? or year cell
+    }
+    set({ viewMode: mode, columnWidth: width });
+  },
+
+  toggleNode: (nodeId) => set((state) => {
+    const newExpanded = new Set(state.expandedNodeIds);
+    if (newExpanded.has(nodeId)) {
+      newExpanded.delete(nodeId);
+    } else {
+      newExpanded.add(nodeId);
+    }
+    return { expandedNodeIds: newExpanded };
+  }),
+
+  updateNode: (nodeId, updates) => set((state) => ({
+    nodes: state.nodes.map(n => n.id === nodeId ? { ...n, ...updates } : n)
+  })),
+
+  selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
+  setHoveredNode: (nodeId) => set({ hoveredNodeId: nodeId }),
+
+  expandAll: () => set((state) => ({
+    expandedNodeIds: new Set(state.nodes.map(n => n.id))
+  })),
+
+  collapseAll: () => set({ expandedNodeIds: new Set() }),
+
+  getVisibleNodes: () => {
+    const state = get();
+    const { nodes, currentView, currentCPId, expandedNodeIds } = state;
+
+    if (currentView === 'master') {
+      // Show Level 1 Nodes
+      // Filter hierarchy
+      // Only show if parent is expanded (if parent is also L1)
+      // Or just show all L1 roots and their children if expanded
+      
+      const level1Nodes = nodes.filter(n => n.wbsLevel === 1);
+      
+      // Helper to check visibility
+      const isVisible = (node: ConstructionNode): boolean => {
+        if (!node.parentId) return true; // Root
+        // Check if parent exists in L1 list
+        const parent = level1Nodes.find(p => p.id === node.parentId);
+        if (!parent) return true; // Implicit root or orphan
+        
+        return expandedNodeIds.has(parent.id) && isVisible(parent);
+      };
+      
+      return level1Nodes.filter(isVisible);
+
+    } else {
+      // Detail View
+      // Show only children of currentCPId (Level 2)
+      if (!currentCPId) return [];
+      
+      // We might want to show the CP itself as a header? Or just tasks.
+      // Usually just tasks.
+      const level2Nodes = nodes.filter(n => n.wbsLevel === 2 && n.parentId === currentCPId);
+      
+      // If L2 has its own hierarchy (Sub-groups), apply expansion logic
+      // Assuming 1 level depth for now in L2, or simple flat list
+      return level2Nodes;
+    }
+  },
+  
+  setDragSource: (source) => set({ dragSource: source, isDragging: !!source }),
+  setDragTarget: (target) => set({ dragTarget: target }),
 }));
