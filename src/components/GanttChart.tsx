@@ -1,16 +1,22 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GanttGrid } from './gantt/GanttGrid';
 import { GanttTimeline } from './gantt/GanttTimeline';
 import { format } from 'date-fns';
 import { useConstructionStore } from '../store/useConstructionStore';
+import { GANTT_CONSTANTS } from '../utils/ganttConstants';
 
 export const GanttChart: React.FC = () => {
     const { zoomLevel, setZoomLevel } = useConstructionStore();
+
+    // Grid 너비 상태
+    const [gridWidth, setGridWidth] = useState(GANTT_CONSTANTS.GRID_WIDTH);
+    const [isResizing, setIsResizing] = useState(false);
 
     // Refs for scroll synchronization
     const gridScrollRef = useRef<HTMLDivElement>(null);
     const timelineScrollRef = useRef<HTMLDivElement>(null);
     const isScrollingRef = useRef<boolean>(false);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     // Initial Calculation on Mount (if needed)
     useEffect(() => {
@@ -48,6 +54,42 @@ export const GanttChart: React.FC = () => {
         };
     }, []);
 
+    // 리사이저 드래그 핸들러
+    const handleResizeStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    useEffect(() => {
+        if (!isResizing) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!containerRef.current) return;
+            const containerRect = containerRef.current.getBoundingClientRect();
+            const newWidth = e.clientX - containerRect.left;
+            // 최소/최대 너비 제한
+            const clampedWidth = Math.max(250, Math.min(newWidth, 800));
+            setGridWidth(clampedWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing]);
+
+    // 리사이저 더블클릭 시 기본 너비로 리셋
+    const handleResizeDoubleClick = useCallback(() => {
+        setGridWidth(GANTT_CONSTANTS.GRID_WIDTH);
+    }, []);
+
     return (
         <div className="flex h-screen w-full flex-col bg-gray-50">
             <header className="p-4 bg-white border-b border-gray-200 shadow-sm flex justify-between items-center z-20 h-[60px]">
@@ -63,8 +105,8 @@ export const GanttChart: React.FC = () => {
                                 key={level}
                                 onClick={() => setZoomLevel(level)}
                                 className={`px-3 py-1 text-xs font-medium rounded transition-colors ${zoomLevel === level
-                                        ? 'bg-white text-gray-800 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white text-gray-800 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 {level === 'DAY' ? '일' : level === 'WEEK' ? '주' : '월'}
@@ -78,16 +120,34 @@ export const GanttChart: React.FC = () => {
                 </div>
             </header>
 
-            <div className="flex flex-1 overflow-hidden">
+            <div ref={containerRef} className="flex flex-1 overflow-hidden relative">
                 {/* Left Panel: Grid */}
-                <div className="w-[620px] shrink-0 border-r border-gray-200 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 flex flex-col">
+                <div
+                    className="shrink-0 bg-white z-10 flex flex-col"
+                    style={{ width: `${gridWidth}px` }}
+                >
                     <GanttGrid ref={gridScrollRef} />
                 </div>
+
+                {/* Resizer Handle */}
+                <div
+                    className={`w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-500 transition-colors z-20 flex-shrink-0 ${
+                        isResizing ? 'bg-blue-500' : 'bg-gray-200 hover:bg-gray-300'
+                    }`}
+                    onMouseDown={handleResizeStart}
+                    onDoubleClick={handleResizeDoubleClick}
+                    title="드래그하여 너비 조절 / 더블클릭으로 초기화"
+                />
 
                 {/* Right Panel: Timeline */}
                 <div className="flex-1 overflow-hidden relative bg-white flex flex-col">
                     <GanttTimeline ref={timelineScrollRef} />
                 </div>
+
+                {/* Resize Overlay (드래그 중 다른 요소 이벤트 방지) */}
+                {isResizing && (
+                    <div className="fixed inset-0 z-50 cursor-col-resize" />
+                )}
             </div>
         </div>
     );

@@ -9,25 +9,25 @@
         {
             "id": "m2",
             "date": "2024-06-15",
-            "name": "토공 완료",
+            "name": "터파기 완료",
             "type": "MILESTONE"
         },
         {
             "id": "m3",
-            "date": "2024-08-30",
+            "date": "2024-07-10",
             "name": "기초 완료",
             "type": "MILESTONE"
         },
         {
             "id": "m4",
-            "date": "2025-05-30",
-            "name": "골조 완료",
+            "date": "2024-08-10",
+            "name": "지하골조 완료",
             "type": "MILESTONE"
         },
         {
             "id": "m5",
-            "date": "2025-11-30",
-            "name": "마감 완료",
+            "date": "2025-05-30",
+            "name": "지상골조 완료",
             "type": "MILESTONE"
         },
         {
@@ -39,27 +39,81 @@
     ],
     "tasks": [
         {
-            "id": "cp-1",
+            "id": "cp-prep",
             "parentId": null,
             "wbsLevel": 1,
             "type": "SUMMARY",
-            "name": "가설 및 토공사 CP",
+            "name": "공사 준비기간 CP",
             "startDate": "2024-03-01",
-            "endDate": "2024-06-15",
+            "endDate": "2024-04-15",
             "summary": {
                 "workDaysTotal": 0,
-                "nonWorkDaysTotal": 0
+                "nonWorkDaysTotal": 45
             },
             "dependencies": []
         },
         {
-            "id": "t-1-1",
-            "parentId": "cp-1",
+            "id": "t-prep-1",
+            "parentId": "cp-prep",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "현장 사무소 설치",
+            "startDate": "2024-03-01",
+            "endDate": "2024-03-15",
+            "task": {
+                "netWorkDays": 10,
+                "indirectWorkDays": 5,
+                "placement": "POST"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "t-prep-2",
+            "parentId": "cp-prep",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "측량 및 경계 확인",
+            "startDate": "2024-03-05",
+            "endDate": "2024-03-20",
+            "task": {
+                "netWorkDays": 10,
+                "indirectWorkDays": 5,
+                "placement": "POST"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "group-civil",
+            "parentId": null,
+            "wbsLevel": 1,
+            "type": "GROUP",
+            "name": "토목공사",
+            "startDate": "2024-04-16",
+            "endDate": "2024-07-10",
+            "dependencies": []
+        },
+        {
+            "id": "cp-excavation",
+            "parentId": "group-civil",
+            "wbsLevel": 1,
+            "type": "SUMMARY",
+            "name": "가시설 및 터파기 CP",
+            "startDate": "2024-04-16",
+            "endDate": "2024-06-15",
+            "summary": {
+                "workDaysTotal": 47,
+                "nonWorkDaysTotal": 15
+            },
+            "dependencies": []
+        },
+        {
+            "id": "t-exc-1",
+            "parentId": "cp-excavation",
             "wbsLevel": 2,
             "type": "TASK",
             "name": "가설 울타리 설치",
-            "startDate": "2024-03-01",
-            "endDate": "2024-03-10",
+            "startDate": "2024-04-16",
+            "endDate": "2024-04-25",
             "task": {
                 "netWorkDays": 7,
                 "indirectWorkDays": 3,
@@ -68,22 +122,22 @@
             "dependencies": []
         },
         {
-            "id": "t-1-2",
-            "parentId": "cp-1",
+            "id": "t-exc-2",
+            "parentId": "cp-excavation",
             "wbsLevel": 2,
             "type": "TASK",
             "name": "터파기 및 잔토처리",
-            "startDate": "2024-03-11",
-            "endDate": "2024-05-30",
+            "startDate": "2024-04-26",
+            "endDate": "2024-06-15",
             "task": {
-                "netWorkDays": 60,
-                "indirectWorkDays": 20,
+                "netWorkDays": 40,
+                "indirectWorkDays": 10,
                 "placement": "POST"
             },
             "dependencies": [
                 {
-                    "id": "d-1",
-                    "predecessorId": "t-1-1",
+                    "id": "d-exc-1",
+                    "predecessorId": "t-exc-1",
                     "type": "FS",
                     "lag": 0,
                     "sourceAnchor": "END",
@@ -92,181 +146,220 @@
             ]
         },
         {
-            "id": "cp-2",
-            "parentId": null,
+            "id": "cp-foundation",
+            "parentId": "group-civil",
             "wbsLevel": 1,
             "type": "SUMMARY",
-            "name": "기초 및 지하골조 CP",
-            "startDate": "2024-06-01",
-            "endDate": "2024-10-30",
+            "name": "기초공사 CP",
+            "startDate": "2024-06-16",
+            "endDate": "2024-07-10",
             "summary": {
-                "workDaysTotal": 0,
-                "nonWorkDaysTotal": 0
+                "workDaysTotal": 14,
+                "nonWorkDaysTotal": 11
             },
             "dependencies": []
         },
         {
-            "id": "t-2-1",
-            "parentId": "cp-2",
+            "id": "t-fnd-1",
+            "parentId": "cp-foundation",
             "wbsLevel": 2,
             "type": "TASK",
-            "name": "기초 철근/거푸집",
-            "startDate": "2024-06-01",
+            "name": "PHC 파일 항타",
+            "startDate": "2024-06-16",
             "endDate": "2024-06-30",
             "task": {
-                "netWorkDays": 25,
-                "indirectWorkDays": 5,
+                "netWorkDays": 14,
+                "indirectWorkDays": 1,
                 "placement": "POST"
             },
             "dependencies": []
         },
         {
-            "id": "t-2-2",
-            "parentId": "cp-2",
+            "id": "t-fnd-2",
+            "parentId": "cp-foundation",
             "wbsLevel": 2,
             "type": "TASK",
-            "name": "기초 콘크리트 타설",
+            "name": "재하 시험",
             "startDate": "2024-07-01",
-            "endDate": "2024-07-07",
+            "endDate": "2024-07-10",
             "task": {
-                "netWorkDays": 2,
-                "indirectWorkDays": 5,
+                "netWorkDays": 0,
+                "indirectWorkDays": 10,
                 "placement": "POST"
             },
             "dependencies": [
                 {
-                    "id": "d-2",
-                    "predecessorId": "t-2-1",
+                    "id": "d-fnd-1",
+                    "predecessorId": "t-fnd-1",
                     "type": "FS",
                     "lag": 0,
-                    "sourceAnchor": "NET_WORK_END",
+                    "sourceAnchor": "END",
                     "targetAnchor": "START"
                 }
             ]
         },
         {
-            "id": "cp-3",
+            "id": "group-building",
             "parentId": null,
             "wbsLevel": 1,
+            "type": "GROUP",
+            "name": "건축공사",
+            "startDate": "2024-07-11",
+            "endDate": "2025-10-30",
+            "dependencies": []
+        },
+        {
+            "id": "cp-basement",
+            "parentId": "group-building",
+            "wbsLevel": 1,
             "type": "SUMMARY",
-            "name": "지상 골조 공사 CP",
-            "startDate": "2024-11-01",
-            "endDate": "2025-05-30",
+            "name": "지하골조공사 CP",
+            "startDate": "2024-07-11",
+            "endDate": "2024-08-10",
             "summary": {
-                "workDaysTotal": 0,
+                "workDaysTotal": 30,
                 "nonWorkDaysTotal": 0
             },
             "dependencies": []
         },
         {
-            "id": "t-3-1",
-            "parentId": "cp-3",
+            "id": "t-bsm-1",
+            "parentId": "cp-basement",
             "wbsLevel": 2,
             "type": "TASK",
-            "name": "1층 옹벽/슬래브",
-            "startDate": "2024-11-01",
-            "endDate": "2024-11-20",
+            "name": "지하2층 골조 (벽체/슬래브)",
+            "startDate": "2024-07-11",
+            "endDate": "2024-07-25",
             "task": {
                 "netWorkDays": 15,
-                "indirectWorkDays": 5,
+                "indirectWorkDays": 0,
                 "placement": "POST"
             },
             "dependencies": []
         },
         {
-            "id": "t-3-2",
-            "parentId": "cp-3",
+            "id": "t-bsm-2",
+            "parentId": "cp-basement",
             "wbsLevel": 2,
             "type": "TASK",
-            "name": "2층 옹벽/슬래브",
-            "startDate": "2024-11-21",
-            "endDate": "2024-12-10",
+            "name": "지하1층 골조 (벽체/슬래브)",
+            "startDate": "2024-07-26",
+            "endDate": "2024-08-10",
             "task": {
                 "netWorkDays": 15,
-                "indirectWorkDays": 5,
+                "indirectWorkDays": 0,
                 "placement": "POST"
             },
             "dependencies": [
                 {
-                    "id": "d-3",
-                    "predecessorId": "t-3-1",
+                    "id": "d-bsm-1",
+                    "predecessorId": "t-bsm-1",
                     "type": "FS",
                     "lag": 0,
-                    "sourceAnchor": "NET_WORK_END",
-                    "targetAnchor": "NET_WORK_START"
+                    "sourceAnchor": "END",
+                    "targetAnchor": "START"
                 }
             ]
         },
         {
-            "id": "t-3-3",
-            "parentId": "cp-3",
-            "wbsLevel": 2,
-            "type": "TASK",
-            "name": "3층~10층 기준층 골조",
-            "startDate": "2024-12-11",
-            "endDate": "2025-05-30",
-            "task": {
-                "netWorkDays": 120,
-                "indirectWorkDays": 30,
-                "placement": "POST"
-            },
-            "dependencies": [
-                {
-                    "id": "d-4",
-                    "predecessorId": "t-3-2",
-                    "type": "FS",
-                    "lag": 0,
-                    "sourceAnchor": "NET_WORK_END",
-                    "targetAnchor": "NET_WORK_START"
-                }
-            ]
-        },
-        {
-            "id": "cp-4",
-            "parentId": null,
+            "id": "cp-structure",
+            "parentId": "group-building",
             "wbsLevel": 1,
             "type": "SUMMARY",
-            "name": "마감 공사 CP",
-            "startDate": "2025-03-01",
-            "endDate": "2025-11-30",
+            "name": "지상골조공사 CP",
+            "startDate": "2024-08-11",
+            "endDate": "2025-05-30",
             "summary": {
-                "workDaysTotal": 0,
+                "workDaysTotal": 262,
+                "nonWorkDaysTotal": 30
+            },
+            "dependencies": []
+        },
+        {
+            "id": "t-str-1",
+            "parentId": "cp-structure",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "1층 갱폼/알폼 셋팅",
+            "startDate": "2024-08-11",
+            "endDate": "2024-08-30",
+            "task": {
+                "netWorkDays": 19,
+                "indirectWorkDays": 1,
+                "placement": "POST"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "t-str-2",
+            "parentId": "cp-structure",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "기준층(2~29층) 골조",
+            "startDate": "2024-09-01",
+            "endDate": "2025-05-30",
+            "task": {
+                "netWorkDays": 243,
+                "indirectWorkDays": 29,
+                "placement": "POST"
+            },
+            "dependencies": [
+                {
+                    "id": "d-str-1",
+                    "predecessorId": "t-str-1",
+                    "type": "FS",
+                    "lag": 0,
+                    "sourceAnchor": "END",
+                    "targetAnchor": "START"
+                }
+            ]
+        },
+        {
+            "id": "cp-finishing",
+            "parentId": "group-building",
+            "wbsLevel": 1,
+            "type": "SUMMARY",
+            "name": "마감공사 CP",
+            "startDate": "2025-03-01",
+            "endDate": "2025-10-30",
+            "summary": {
+                "workDaysTotal": 110,
                 "nonWorkDaysTotal": 0
             },
             "dependencies": []
         },
         {
-            "id": "t-4-1",
-            "parentId": "cp-4",
+            "id": "t-fin-1",
+            "parentId": "cp-finishing",
             "wbsLevel": 2,
             "type": "TASK",
-            "name": "조적 공사",
+            "name": "조적 공사 (벽돌쌓기)",
             "startDate": "2025-03-01",
-            "endDate": "2025-05-30",
+            "endDate": "2025-04-30",
             "task": {
                 "netWorkDays": 60,
-                "indirectWorkDays": 10,
+                "indirectWorkDays": 2,
                 "placement": "POST"
             },
             "dependencies": []
         },
         {
-            "id": "t-4-2",
-            "parentId": "cp-4",
+            "id": "t-fin-2",
+            "parentId": "cp-finishing",
             "wbsLevel": 2,
             "type": "TASK",
             "name": "미장/방수 공사",
             "startDate": "2025-04-01",
-            "endDate": "2025-07-30",
+            "endDate": "2025-06-20",
             "task": {
                 "netWorkDays": 80,
-                "indirectWorkDays": 20,
+                "indirectWorkDays": 2,
                 "placement": "POST"
             },
             "dependencies": [
                 {
-                    "id": "d-5",
-                    "predecessorId": "t-4-1",
+                    "id": "d-fin-1",
+                    "predecessorId": "t-fin-1",
                     "type": "SS",
                     "lag": 30,
                     "sourceAnchor": "START",
@@ -275,19 +368,96 @@
             ]
         },
         {
-            "id": "t-4-3",
-            "parentId": "cp-4",
+            "id": "t-fin-3",
+            "parentId": "cp-finishing",
             "wbsLevel": 2,
             "type": "TASK",
             "name": "내장 목공사",
             "startDate": "2025-06-01",
-            "endDate": "2025-09-30",
+            "endDate": "2025-08-30",
             "task": {
                 "netWorkDays": 90,
-                "indirectWorkDays": 10,
+                "indirectWorkDays": 2,
                 "placement": "POST"
             },
             "dependencies": []
+        },
+        {
+            "id": "t-fin-4",
+            "parentId": "cp-finishing",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "도배 및 마루 공사",
+            "startDate": "2025-08-01",
+            "endDate": "2025-10-30",
+            "task": {
+                "netWorkDays": 90,
+                "indirectWorkDays": 2,
+                "placement": "POST"
+            },
+            "dependencies": [
+                {
+                    "id": "d-fin-2",
+                    "predecessorId": "t-fin-3",
+                    "type": "SS",
+                    "lag": 60,
+                    "sourceAnchor": "START",
+                    "targetAnchor": "START"
+                }
+            ]
+        },
+        {
+            "id": "cp-cleanup",
+            "parentId": null,
+            "wbsLevel": 1,
+            "type": "SUMMARY",
+            "name": "정리기간 CP",
+            "startDate": "2025-11-01",
+            "endDate": "2025-11-30",
+            "summary": {
+                "workDaysTotal": 0,
+                "nonWorkDaysTotal": 30
+            },
+            "dependencies": []
+        },
+        {
+            "id": "t-cln-1",
+            "parentId": "cp-cleanup",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "준공 청소 및 정리",
+            "startDate": "2025-11-01",
+            "endDate": "2025-11-15",
+            "task": {
+                "netWorkDays": 15,
+                "indirectWorkDays": 0,
+                "placement": "POST"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "t-cln-2",
+            "parentId": "cp-cleanup",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "입주 사전 점검",
+            "startDate": "2025-11-16",
+            "endDate": "2025-11-30",
+            "task": {
+                "netWorkDays": 15,
+                "indirectWorkDays": 0,
+                "placement": "POST"
+            },
+            "dependencies": [
+                {
+                    "id": "d-cln-1",
+                    "predecessorId": "t-cln-1",
+                    "type": "FS",
+                    "lag": 0,
+                    "sourceAnchor": "END",
+                    "targetAnchor": "START"
+                }
+            ]
         }
     ]
 }
