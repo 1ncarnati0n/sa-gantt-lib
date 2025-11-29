@@ -1,0 +1,317 @@
+'use client';
+
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
+import { format } from 'date-fns';
+import { GanttSidebar } from './GanttSidebar';
+import { GanttTimeline } from './GanttTimeline';
+import { useGanttStore, useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion } from '../store/useGanttStore';
+import { useGanttVirtualization } from '../hooks/useGanttVirtualization';
+import {
+    GanttChartProps,
+    ConstructionTask,
+    GANTT_LAYOUT,
+    ZOOM_CONFIG,
+    CalendarSettings,
+} from '../types';
+
+// 기본 캘린더 설정
+const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
+    workOnSaturdays: false,
+    workOnSundays: false,
+    workOnHolidays: false,
+};
+
+/**
+ * SA-Gantt-Lib 메인 컴포넌트
+ * 
+ * 건설 공정표 전문 간트 차트 라이브러리
+ * 
+ * @example
+ * ```tsx
+ * // 기본 사용
+ * <GanttChart tasks={tasks} />
+ * 
+ * // Supabase 연동 시
+ * <GanttChart
+ *   tasks={tasks}
+ *   milestones={milestones}
+ *   onTaskUpdate={async (task) => {
+ *     await supabase.from('tasks').update(task).eq('id', task.id);
+ *   }}
+ * />
+ * ```
+ */
+export function GanttChart({
+    tasks,
+    milestones = [],
+    holidays = [],
+    calendarSettings = DEFAULT_CALENDAR_SETTINGS,
+    initialView = 'MASTER',
+    initialZoomLevel = 'MONTH',  // Master View 기본: 월
+    initialExpandedIds,
+    onTaskUpdate,
+    onViewChange,
+    className,
+    style,
+}: GanttChartProps) {
+    // ====================================
+    // Store State & Actions
+    // ====================================
+    const { viewMode, activeSummaryId, zoomLevel } = useGanttViewState();
+    const { setViewMode, setZoomLevel } = useGanttViewActions();
+    const { sidebarWidth, setSidebarWidth } = useGanttSidebar();
+    const { expandedTaskIds, toggleTask, expandAll } = useGanttExpansion();
+
+    // ====================================
+    // Refs
+    // ====================================
+    const containerRef = useRef<HTMLDivElement>(null);
+    const sidebarScrollRef = useRef<HTMLDivElement>(null);
+    const timelineScrollRef = useRef<HTMLDivElement>(null);
+    const isScrollingRef = useRef(false);
+    const isResizingRef = useRef(false);
+
+    // ====================================
+    // 초기화 (마운트 시 1회만)
+    // ====================================
+    const isInitialized = useRef(false);
+    
+    useEffect(() => {
+        if (isInitialized.current) return;
+        isInitialized.current = true;
+
+        // 초기 뷰 모드 설정
+        setViewMode(initialView);
+
+        // 초기 줌 레벨 설정
+        setZoomLevel(initialZoomLevel);
+
+        // 초기 확장 상태 설정
+        if (initialExpandedIds && initialExpandedIds.length > 0) {
+            expandAll(initialExpandedIds);
+        } else if (tasks.length > 0) {
+            // 기본적으로 모든 태스크 확장
+            expandAll(tasks.map(t => t.id));
+        }
+    }, [tasks.length]); // tasks가 로드된 후 1회 실행
+
+    // ====================================
+    // 뷰에 따른 태스크 필터링
+    // ====================================
+    const visibleTasks = useMemo(() => {
+        if (viewMode === 'MASTER') {
+            // Master View: Level 1 (GROUP + CP)
+            const visible: ConstructionTask[] = [];
+
+            tasks.forEach(task => {
+                if (task.wbsLevel === 1 && !task.parentId) {
+                    // 최상위 GROUP 또는 CP
+                    visible.push(task);
+                } else if (task.wbsLevel === 1 && task.parentId) {
+                    // GROUP에 속한 CP - 부모가 확장된 경우에만 표시
+                    if (expandedTaskIds.has(task.parentId)) {
+                        visible.push(task);
+                    }
+                }
+            });
+
+            return visible;
+        } else {
+            // Detail View: Level 2 Tasks of selected CP
+            return tasks.filter(t => t.wbsLevel === 2 && t.parentId === activeSummaryId);
+        }
+    }, [tasks, viewMode, activeSummaryId, expandedTaskIds]);
+
+    // ====================================
+    // 가상화 (대규모 공정표 성능 최적화)
+    // ====================================
+    const { virtualRows, totalHeight } = useGanttVirtualization({
+        containerRef: timelineScrollRef,
+        count: visibleTasks.length,
+    });
+
+    // ====================================
+    // 스크롤 동기화
+    // ====================================
+    useEffect(() => {
+        const sidebar = sidebarScrollRef.current;
+        const timeline = timelineScrollRef.current;
+
+        if (!sidebar || !timeline) return;
+
+        const handleSidebarScroll = () => {
+            if (isScrollingRef.current) return;
+            isScrollingRef.current = true;
+            timeline.scrollTop = sidebar.scrollTop;
+            requestAnimationFrame(() => {
+                isScrollingRef.current = false;
+            });
+        };
+
+        const handleTimelineScroll = () => {
+            if (isScrollingRef.current) return;
+            isScrollingRef.current = true;
+            sidebar.scrollTop = timeline.scrollTop;
+            requestAnimationFrame(() => {
+                isScrollingRef.current = false;
+            });
+        };
+
+        sidebar.addEventListener('scroll', handleSidebarScroll);
+        timeline.addEventListener('scroll', handleTimelineScroll);
+
+        return () => {
+            sidebar.removeEventListener('scroll', handleSidebarScroll);
+            timeline.removeEventListener('scroll', handleTimelineScroll);
+        };
+    }, []);
+
+    // ====================================
+    // 사이드바 리사이즈
+    // ====================================
+    const handleResizeStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        isResizingRef.current = true;
+
+        const startX = e.clientX;
+        const startWidth = sidebarWidth;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizingRef.current) return;
+            const delta = e.clientX - startX;
+            setSidebarWidth(startWidth + delta);
+        };
+
+        const handleMouseUp = () => {
+            isResizingRef.current = false;
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }, [sidebarWidth, setSidebarWidth]);
+
+    const handleResizeDoubleClick = useCallback(() => {
+        setSidebarWidth(GANTT_LAYOUT.SIDEBAR_WIDTH);
+    }, [setSidebarWidth]);
+
+    // ====================================
+    // 뷰 전환 핸들러
+    // ====================================
+    const handleViewChange = useCallback((mode: 'MASTER' | 'DETAIL', summaryId?: string) => {
+        setViewMode(mode, summaryId);
+        onViewChange?.(mode, summaryId);
+    }, [setViewMode, onViewChange]);
+
+    const handleTaskClick = useCallback((task: ConstructionTask) => {
+        if (viewMode === 'MASTER' && task.type === 'SUMMARY') {
+            handleViewChange('DETAIL', task.id);
+        }
+    }, [viewMode, handleViewChange]);
+
+    // ====================================
+    // 렌더링
+    // ====================================
+    return (
+        <div
+            ref={containerRef}
+            className={`flex h-full w-full flex-col bg-gray-50 ${className || ''}`}
+            style={style}
+        >
+            {/* Header */}
+            <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm">
+                <h1 className="flex items-center gap-2 text-xl font-extrabold text-gray-800">
+                    <span>
+                        <span className="text-teal">건설</span>{' '}
+                        <span className="text-vermilion">표준공정표</span> 관리 시스템
+                    </span>
+                </h1>
+
+                <div className="flex items-center gap-4">
+                    {/* Zoom Controls - 뷰 모드에 따라 다른 옵션 표시 */}
+                    <div className="flex rounded bg-gray-100 p-1">
+                        {(viewMode === 'MASTER' 
+                            ? (['WEEK', 'MONTH'] as const)  // Level 1: 주, 월만
+                            : (['DAY', 'WEEK'] as const)    // Level 2: 일, 주만
+                        ).map((level) => (
+                            <button
+                                key={level}
+                                onClick={() => setZoomLevel(level)}
+                                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                                    zoomLevel === level
+                                        ? 'bg-white text-gray-800 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                {ZOOM_CONFIG[level].label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* 기준일 */}
+                    <div className="text-sm text-gray-500">
+                        기준일: {format(new Date(), 'yyyy-MM-dd')}
+                    </div>
+                </div>
+            </header>
+
+            {/* Main Content */}
+            <div className="relative flex flex-1 overflow-hidden">
+                {/* Sidebar */}
+                <div
+                    className="z-10 flex shrink-0 flex-col bg-white"
+                    style={{ width: sidebarWidth }}
+                >
+                    <GanttSidebar
+                        ref={sidebarScrollRef}
+                        tasks={visibleTasks}
+                        allTasks={tasks}
+                        viewMode={viewMode}
+                        expandedIds={expandedTaskIds}
+                        onToggle={toggleTask}
+                        onTaskClick={handleTaskClick}
+                        onBackToMaster={() => handleViewChange('MASTER')}
+                        onTaskUpdate={onTaskUpdate}
+                        virtualRows={virtualRows}
+                        totalHeight={totalHeight}
+                    />
+                </div>
+
+                {/* Resizer */}
+                <div
+                    className={`z-20 w-1 shrink-0 cursor-col-resize transition-colors ${
+                        isResizingRef.current
+                            ? 'bg-blue-500'
+                            : 'bg-gray-200 hover:bg-gray-300'
+                    }`}
+                    onMouseDown={handleResizeStart}
+                    onDoubleClick={handleResizeDoubleClick}
+                    title="드래그하여 너비 조절 / 더블클릭으로 초기화"
+                />
+
+                {/* Timeline */}
+                <div className="relative flex flex-1 flex-col overflow-hidden bg-white">
+                    <GanttTimeline
+                        ref={timelineScrollRef}
+                        tasks={visibleTasks}
+                        milestones={milestones}
+                        viewMode={viewMode}
+                        zoomLevel={zoomLevel}
+                        holidays={holidays}
+                        calendarSettings={calendarSettings}
+                        onTaskUpdate={onTaskUpdate}
+                        virtualRows={virtualRows}
+                        totalHeight={totalHeight}
+                    />
+                </div>
+
+                {/* Resize Overlay */}
+                {isResizingRef.current && (
+                    <div className="fixed inset-0 z-50 cursor-col-resize" />
+                )}
+            </div>
+        </div>
+    );
+}
+
