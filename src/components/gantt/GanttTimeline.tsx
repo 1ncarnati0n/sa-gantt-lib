@@ -1,9 +1,9 @@
 import React, { useMemo, forwardRef } from 'react';
 import { useConstructionStore } from '../../store/useConstructionStore';
 import { format, addDays, getDay, getYear, differenceInDays, isSameMonth, isSameWeek, getISOWeek } from 'date-fns';
-import { ConstructionTask, Milestone } from '../../types/gantt';
-import { isHoliday } from '../../utils/dateUtils';
+import { ConstructionTask, Milestone, AnchorPoint, Dependency, CalendarSettings } from '../../types/gantt';
 import { GANTT_CONSTANTS } from '../../utils/ganttConstants';
+import { isHoliday, calculateDualCalendarDates, getAnchorDate, TaskDates } from '../../utils/dateUtils';
 
 const { ROW_HEIGHT, MILESTONE_LANE_HEIGHT, BAR_HEIGHT } = GANTT_CONSTANTS;
 
@@ -11,11 +11,16 @@ const { ROW_HEIGHT, MILESTONE_LANE_HEIGHT, BAR_HEIGHT } = GANTT_CONSTANTS;
 
 interface DragState {
     taskId: string;
-    type: 'RESIZE_NET' | 'RESIZE_INDIRECT' | 'MOVE';
+    type: 'RESIZE_NET' | 'RESIZE_INDIRECT' | 'MOVE' | 'LINK';
     initialX: number;
     initialNetDays?: number;
     initialIndirectDays?: number;
     initialStartDate?: Date;
+    // For LINK type
+    sourceAnchor?: AnchorPoint;
+    sourceY?: number;
+    currentX?: number;
+    currentY?: number;
 }
 
 interface GanttBarProps {
@@ -28,7 +33,9 @@ interface GanttBarProps {
 
 const GanttBar: React.FC<GanttBarProps & {
     onMouseDown: (e: React.MouseEvent, task: ConstructionTask, type: 'RESIZE_NET' | 'RESIZE_INDIRECT' | 'MOVE') => void;
-}> = ({ task, y, dateToX, isMasterView, pixelsPerDay, onMouseDown }) => {
+    onAnchorMouseDown?: (e: React.MouseEvent, task: ConstructionTask, anchor: AnchorPoint) => void;
+    onAnchorMouseUp?: (e: React.MouseEvent, task: ConstructionTask, anchor: AnchorPoint) => void;
+}> = ({ task, y, dateToX, isMasterView, pixelsPerDay, onMouseDown, onAnchorMouseDown, onAnchorMouseUp }) => {
     // GROUP은 바를 렌더링하지 않음 (빈 행으로 유지)
     if (task.type === 'GROUP') {
         return null;
@@ -177,6 +184,74 @@ const GanttBar: React.FC<GanttBarProps & {
             </g>
         );
     }
+};
+
+// SVG Defs for arrow markers and gradients
+const Defs: React.FC = () => (
+    <defs>
+        <marker
+            id="arrowhead"
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+        >
+            <polygon points="0 0, 10 3.5, 0 7" fill="#9CA3AF" />
+        </marker>
+    </defs>
+);
+
+// Dependency Link Component
+interface DependencyLinkProps {
+    dependency: Dependency;
+    sourceTask: ConstructionTask;
+    targetTask: ConstructionTask;
+    sourceIndex: number;
+    targetIndex: number;
+    dateToX: (date: Date) => number;
+    holidays: Date[];
+    calendarSettings: CalendarSettings;
+}
+
+const DependencyLink: React.FC<DependencyLinkProps> = ({
+    dependency,
+    sourceTask,
+    targetTask,
+    sourceIndex,
+    targetIndex,
+    dateToX,
+    holidays,
+    calendarSettings
+}) => {
+    const sourceDates = calculateDualCalendarDates(sourceTask, holidays, calendarSettings);
+    const targetDates = calculateDualCalendarDates(targetTask, holidays, calendarSettings);
+
+    const sourceAnchor = dependency.sourceAnchor || 'END';
+    const targetAnchor = dependency.targetAnchor || 'START';
+
+    const sourceDate = getAnchorDate(sourceTask, sourceAnchor, sourceDates);
+    const targetDate = getAnchorDate(targetTask, targetAnchor, targetDates);
+
+    const x1 = dateToX(sourceDate);
+    const x2 = dateToX(targetDate);
+    const y1 = sourceIndex * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2 + MILESTONE_LANE_HEIGHT + BAR_HEIGHT / 2;
+    const y2 = targetIndex * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2 + MILESTONE_LANE_HEIGHT + BAR_HEIGHT / 2;
+
+    // Simple path: source → horizontal → vertical → target
+    const midX = (x1 + x2) / 2;
+    const path = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
+
+    return (
+        <path
+            d={path}
+            fill="none"
+            stroke="#9CA3AF"
+            strokeWidth="1.5"
+            markerEnd="url(#arrowhead)"
+            className="opacity-60 hover:opacity-100 transition-opacity"
+        />
+    );
 };
 
 interface MilestoneMarkerProps {
@@ -420,7 +495,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ effectiveMinDate, total
 // --- Main Timeline Component ---
 
 const GanttTimelineComponent = forwardRef<HTMLDivElement>((_, ref) => {
-    const { tasks, milestones, expandedTaskIds, currentView, activeSummaryId, holidays, calendarSettings, zoomLevel, updateTaskDuration } = useConstructionStore();
+    const { tasks, milestones, expandedTaskIds, currentView, activeSummaryId, holidays, calendarSettings, zoomLevel, updateTaskDuration, addDependency } = useConstructionStore();
     const [dragState, setDragState] = React.useState<DragState | null>(null);
 
     const pixelsPerDay = useMemo(() => {
@@ -504,24 +579,84 @@ const GanttTimelineComponent = forwardRef<HTMLDivElement>((_, ref) => {
         });
     };
 
+    const handleAnchorMouseDown = (e: React.MouseEvent, task: ConstructionTask, anchor: AnchorPoint) => {
+        e.stopPropagation();
+        const taskIndex = visibleTasks.findIndex(t => t.id === task.id);
+        const y = taskIndex * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2 + MILESTONE_LANE_HEIGHT + 12; // Center of bar
+
+        // Calculate initial X based on anchor type
+        const dates = calculateDualCalendarDates(task, holidays, calendarSettings);
+        const date = getAnchorDate(task, anchor, dates);
+        const x = dateToX(date);
+
+        setDragState({
+            taskId: task.id,
+            type: 'LINK',
+            initialX: x,
+            sourceAnchor: anchor,
+            sourceY: y,
+            currentX: x,
+            currentY: y
+        });
+    };
+
     const handleMouseMove = React.useCallback((e: MouseEvent) => {
         if (!dragState) return;
 
-        const deltaX = e.clientX - dragState.initialX;
-        const deltaDays = Math.round(deltaX / pixelsPerDay);
+        if (dragState.type === 'RESIZE_NET' || dragState.type === 'RESIZE_INDIRECT' || dragState.type === 'MOVE') {
+            const deltaX = e.clientX - dragState.initialX;
+            const deltaDays = Math.round(deltaX / pixelsPerDay);
 
-        if (deltaDays === 0) return;
+            if (deltaDays === 0) return;
 
-        if (dragState.type === 'RESIZE_NET' && dragState.initialNetDays !== undefined && dragState.initialIndirectDays !== undefined) {
-            const newNetDays = Math.max(1, dragState.initialNetDays + deltaDays);
-            updateTaskDuration(dragState.taskId, newNetDays, dragState.initialIndirectDays);
-        } else if (dragState.type === 'RESIZE_INDIRECT' && dragState.initialNetDays !== undefined && dragState.initialIndirectDays !== undefined) {
-            const newIndirectDays = Math.max(0, dragState.initialIndirectDays + deltaDays);
-            updateTaskDuration(dragState.taskId, dragState.initialNetDays, newIndirectDays);
+            if (dragState.type === 'RESIZE_NET' && dragState.initialNetDays !== undefined && dragState.initialIndirectDays !== undefined) {
+                const newNetDays = Math.max(1, dragState.initialNetDays + deltaDays);
+                updateTaskDuration(dragState.taskId, newNetDays, dragState.initialIndirectDays);
+            } else if (dragState.type === 'RESIZE_INDIRECT' && dragState.initialNetDays !== undefined && dragState.initialIndirectDays !== undefined) {
+                const newIndirectDays = Math.max(0, dragState.initialIndirectDays + deltaDays);
+                updateTaskDuration(dragState.taskId, dragState.initialNetDays, newIndirectDays);
+            }
         }
     }, [dragState, pixelsPerDay, updateTaskDuration]);
 
+    const handleAnchorMouseUp = (e: React.MouseEvent, targetTask: ConstructionTask, targetAnchor: AnchorPoint) => {
+        if (dragState?.type === 'LINK' && dragState.sourceAnchor) {
+            e.stopPropagation();
+
+            // Prevent self-linking
+            if (dragState.taskId === targetTask.id) {
+                setDragState(null);
+                return;
+            }
+
+            // Determine dependency type based on anchors (fallback)
+            // Start -> Start: SS, End -> End: FF, End -> Start: FS, Start -> End: SF
+            // But we store exact anchors now.
+            let type: 'FS' | 'SS' | 'FF' | 'SF' = 'FS';
+            const src = dragState.sourceAnchor;
+            const tgt = targetAnchor;
+
+            if (src.includes('START') && tgt.includes('START')) type = 'SS';
+            else if (src.includes('END') && tgt.includes('END')) type = 'FF';
+            else if (src.includes('START') && tgt.includes('END')) type = 'SF';
+            else type = 'FS'; // Default End -> Start
+
+            const newDependency: Dependency = {
+                id: crypto.randomUUID(),
+                predecessorId: dragState.taskId,
+                type: type,
+                lag: 0,
+                sourceAnchor: dragState.sourceAnchor,
+                targetAnchor: targetAnchor
+            };
+
+            addDependency(targetTask.id, newDependency);
+            setDragState(null);
+        }
+    };
+
     const handleMouseUp = React.useCallback(() => {
+        // Global mouse up clears drag state if not handled by anchor
         setDragState(null);
     }, []);
 
@@ -538,6 +673,38 @@ const GanttTimelineComponent = forwardRef<HTMLDivElement>((_, ref) => {
 
     const chartHeight = Math.max(visibleTasks.length * ROW_HEIGHT + 100, 500);
     const chartWidth = totalDays * pixelsPerDay;
+
+    // Generate Links (Only for visible tasks)
+    const links = useMemo(() => {
+        const linkElements: React.ReactNode[] = [];
+
+        visibleTasks.forEach((currentTask, currentIndex) => {
+            currentTask.dependencies.forEach(dep => {
+                // Dependency: currentTask depends on predecessor.
+                // Link direction: Predecessor (Source) -> CurrentTask (Target)
+
+                const predecessorTask = visibleTasks.find(t => t.id === dep.predecessorId);
+                const predecessorIndex = visibleTasks.findIndex(t => t.id === dep.predecessorId);
+
+                if (predecessorTask && predecessorIndex !== -1) {
+                    linkElements.push(
+                        <DependencyLink
+                            key={`${predecessorTask.id}-${currentTask.id}`}
+                            dependency={dep}
+                            sourceTask={predecessorTask}
+                            targetTask={currentTask}
+                            sourceIndex={predecessorIndex}
+                            targetIndex={currentIndex}
+                            dateToX={dateToX}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                        />
+                    );
+                }
+            });
+        });
+        return linkElements;
+    }, [visibleTasks, dateToX, holidays, calendarSettings]);
 
     const headerHeight = 80; // Fixed height for 3-tier header (24 + 24 + 32)
 
@@ -561,6 +728,8 @@ const GanttTimelineComponent = forwardRef<HTMLDivElement>((_, ref) => {
                 <TimelineHeader effectiveMinDate={effectiveMinDate} totalDays={totalDays} pixelsPerDay={pixelsPerDay} headerHeight={headerHeight} />
 
                 <svg width={chartWidth} height={chartHeight} className="bg-white block">
+                    <Defs />
+
                     {/* 1. Background Grid */}
                     <WeekendGrid effectiveMinDate={effectiveMinDate} totalDays={totalDays} chartHeight={chartHeight} dateToX={dateToX} pixelsPerDay={pixelsPerDay} />
 
@@ -584,7 +753,24 @@ const GanttTimelineComponent = forwardRef<HTMLDivElement>((_, ref) => {
                         />
                     ))}
 
-                    {/* 4. GROUP Row Background (to sync with Grid) */}
+                    {/* 4. Links (Layered below bars) */}
+                    {links}
+
+                    {/* Ghost Line for Linking */}
+                    {dragState?.type === 'LINK' && dragState.currentX !== undefined && dragState.currentY !== undefined && (
+                        <line
+                            x1={dragState.initialX}
+                            y1={dragState.sourceY}
+                            x2={dragState.currentX}
+                            y2={dragState.currentY}
+                            stroke="#9CA3AF"
+                            strokeWidth="2"
+                            strokeDasharray="5, 5"
+                            pointerEvents="none"
+                        />
+                    )}
+
+                    {/* 5. GROUP Row Background (to sync with Grid) */}
                     {visibleTasks.map((task, index) => {
                         if (task.type === 'GROUP') {
                             const rowY = index * ROW_HEIGHT + MILESTONE_LANE_HEIGHT;
@@ -603,7 +789,7 @@ const GanttTimelineComponent = forwardRef<HTMLDivElement>((_, ref) => {
                         return null;
                     })}
 
-                    {/* 5. Task Bars */}
+                    {/* 6. Task Bars */}
                     {visibleTasks.map((task, index) => {
                         const y = index * ROW_HEIGHT + (ROW_HEIGHT - 24) / 2 + MILESTONE_LANE_HEIGHT; // Center vertically + offset
                         return (
@@ -615,6 +801,8 @@ const GanttTimelineComponent = forwardRef<HTMLDivElement>((_, ref) => {
                                 isMasterView={task.wbsLevel === 1}
                                 pixelsPerDay={pixelsPerDay}
                                 onMouseDown={handleMouseDown}
+                                onAnchorMouseDown={handleAnchorMouseDown}
+                                onAnchorMouseUp={handleAnchorMouseUp}
                             />
                         );
                     })}
