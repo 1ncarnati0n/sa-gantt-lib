@@ -1,7 +1,7 @@
 'use client';
 
 import React, { forwardRef, useMemo } from 'react';
-import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getISOWeek } from 'date-fns';
+import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth } from 'date-fns';
 import {
     ConstructionTask,
     Milestone,
@@ -121,21 +121,21 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                 </div>
             );
         } else {
-            // Week View
+            // Week View (월별 주차로 표시)
             const groups: { label: string; days: number }[] = [];
             let currentWeek = headerDays[0];
             let count = 0;
 
             headerDays.forEach(date => {
                 if (!isSameWeek(date, currentWeek, { weekStartsOn: 0 })) {
-                    groups.push({ label: `${getISOWeek(currentWeek)}주`, days: count });
+                    groups.push({ label: `${getWeekOfMonth(currentWeek, { weekStartsOn: 0 })}주`, days: count });
                     currentWeek = date;
                     count = 1;
                 } else {
                     count++;
                 }
             });
-            groups.push({ label: `${getISOWeek(currentWeek)}주`, days: count });
+            groups.push({ label: `${getWeekOfMonth(currentWeek, { weekStartsOn: 0 })}주`, days: count });
 
             return (
                 <div className="flex h-[32px] items-center bg-white" style={{ minWidth: totalWidth }}>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { forwardRef, useMemo, useCallback } from 'react';
+import { forwardRef, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import {
@@ -129,10 +129,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 return (
                                     <div
                                         key={row.key}
-                                        className={`box-border flex items-center border-b border-gray-100 transition-colors ${
+                                        className={`box-border flex items-center border-b border-gray-100 transition-all duration-150 ${
                                             isGroup
                                                 ? 'bg-gray-50'
-                                                : 'cursor-pointer hover:bg-blue-50'
+                                                : 'cursor-pointer hover:bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)] hover:pl-1'
                                         }`}
                                         style={{ 
                                             height: ROW_HEIGHT,
@@ -144,7 +144,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 transform: `translateY(${row.start}px)`,
                                             } : {}),
                                         }}
-                                        onClick={() => !isGroup && onTaskClick(task)}
+                                        onDoubleClick={() => !isGroup && onTaskClick(task)}
+                                        title={!isGroup ? '더블클릭하여 상세 공정표 보기' : undefined}
                                     >
                                         {/* CP Name */}
                                         <div

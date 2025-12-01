@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { GanttSidebar } from './GanttSidebar';
 import { GanttTimeline } from './GanttTimeline';
@@ -70,6 +70,7 @@ export function GanttChart({
     const timelineScrollRef = useRef<HTMLDivElement>(null);
     const isScrollingRef = useRef(false);
     const isResizingRef = useRef(false);
+    const [isResizing, setIsResizing] = useState(false);
 
     // ====================================
     // 초기화 (마운트 시 1회만)
@@ -172,6 +173,7 @@ export function GanttChart({
     const handleResizeStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         isResizingRef.current = true;
+        setIsResizing(true);
 
         const startX = e.clientX;
         const startWidth = sidebarWidth;
@@ -184,6 +186,7 @@ export function GanttChart({
 
         const handleMouseUp = () => {
             isResizingRef.current = false;
+            setIsResizing(false);
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         };
@@ -281,7 +284,7 @@ export function GanttChart({
                 {/* Resizer */}
                 <div
                     className={`z-20 w-1 shrink-0 cursor-col-resize transition-colors ${
-                        isResizingRef.current
+                        isResizing
                             ? 'bg-blue-500'
                             : 'bg-gray-200 hover:bg-gray-300'
                     }`}
@@ -307,7 +310,7 @@ export function GanttChart({
                 </div>
 
                 {/* Resize Overlay */}
-                {isResizingRef.current && (
+                {isResizing && (
                     <div className="fixed inset-0 z-50 cursor-col-resize" />
                 )}
             </div>
