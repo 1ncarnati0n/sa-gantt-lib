@@ -85,9 +85,12 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
         return groups;
     }, [headerDays]);
 
-    // Bottom Row: Week or Day
+    // Bottom Row: Week or Day (MONTH 줌 레벨에서는 주 표기 없음)
     const bottomRow = useMemo(() => {
-        if (zoomLevel === 'DAY') {
+        if (zoomLevel === 'MONTH') {
+            // MONTH 줌 레벨: 주 표기 없음, null 반환
+            return null;
+        } else if (zoomLevel === 'DAY') {
             return (
                 <div className="flex h-[32px] items-center bg-white" style={{ minWidth: totalWidth }}>
                     {headerDays.map((date, index) => {
@@ -121,7 +124,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                 </div>
             );
         } else {
-            // Week View (월별 주차로 표시)
+            // WEEK View (월별 주차로 표시)
             const groups: { label: string; days: number }[] = [];
             let currentWeek = headerDays[0];
             let count = 0;
@@ -153,39 +156,87 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
         }
     }, [headerDays, zoomLevel, pixelsPerDay, holidays, calendarSettings, totalWidth]);
 
+    // MONTH 줌 레벨: 연도 2줄(48px) + 월 1줄(32px)
+    // WEEK/DAY 줌 레벨: 연도 1줄(24px) + 월 1줄(24px) + 주/일 1줄(32px)
+    const isMonthView = zoomLevel === 'MONTH';
+
     return (
         <div
             className="sticky top-0 z-20 flex flex-col border-b border-gray-300 bg-white shadow-sm"
             style={{ height: HEADER_HEIGHT, minWidth: totalWidth }}
         >
-            {/* Year Row */}
-            <div className="flex h-[24px] items-center border-b border-gray-300 bg-gray-100 text-xs font-bold text-gray-800" style={{ minWidth: totalWidth }}>
-                {yearGroups.map((g, i) => (
-                    <div
-                        key={i}
-                        className="flex shrink-0 items-center border-r border-gray-300 pl-2"
-                        style={{ width: g.days * pixelsPerDay }}
+            {isMonthView ? (
+                <>
+                    {/* MONTH View: Year Row (2줄 높이 = 48px) */}
+                    <div 
+                        className="flex h-[48px] items-center border-b border-gray-300 bg-gray-100 text-sm font-bold text-gray-800" 
+                        style={{ minWidth: totalWidth }}
                     >
-                        {g.label}
+                        {yearGroups.map((g, i) => (
+                            <div
+                                key={i}
+                                className="flex h-full shrink-0 items-center justify-center border-r border-gray-300"
+                                style={{ width: g.days * pixelsPerDay }}
+                            >
+                                {g.label}
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
 
-            {/* Month Row */}
-            <div className="flex h-[24px] items-center border-b border-gray-200 bg-gray-100 text-xs font-medium text-gray-700" style={{ minWidth: totalWidth }}>
-                {monthGroups.map((g, i) => (
-                    <div
-                        key={i}
-                        className="flex shrink-0 items-center justify-center border-r border-gray-300"
-                        style={{ width: g.days * pixelsPerDay }}
+                    {/* MONTH View: Month Row (1줄 높이 = 32px, 각 월이 한 칸) */}
+                    <div 
+                        className="flex h-[32px] items-center bg-white text-xs font-medium text-gray-700" 
+                        style={{ minWidth: totalWidth }}
                     >
-                        {g.label}
+                        {monthGroups.map((g, i) => (
+                            <div
+                                key={i}
+                                className="flex h-full shrink-0 items-center justify-center border-r border-gray-200"
+                                style={{ width: g.days * pixelsPerDay }}
+                            >
+                                {g.label}
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
+                </>
+            ) : (
+                <>
+                    {/* WEEK/DAY View: Year Row */}
+                    <div 
+                        className="flex h-[24px] items-center border-b border-gray-300 bg-gray-100 text-xs font-bold text-gray-800" 
+                        style={{ minWidth: totalWidth }}
+                    >
+                        {yearGroups.map((g, i) => (
+                            <div
+                                key={i}
+                                className="flex shrink-0 items-center border-r border-gray-300 pl-2"
+                                style={{ width: g.days * pixelsPerDay }}
+                            >
+                                {g.label}
+                            </div>
+                        ))}
+                    </div>
 
-            {/* Day/Week Row */}
-            {bottomRow}
+                    {/* WEEK/DAY View: Month Row */}
+                    <div 
+                        className="flex h-[24px] items-center border-b border-gray-200 bg-gray-100 text-xs font-medium text-gray-700" 
+                        style={{ minWidth: totalWidth }}
+                    >
+                        {monthGroups.map((g, i) => (
+                            <div
+                                key={i}
+                                className="flex shrink-0 items-center justify-center border-r border-gray-300"
+                                style={{ width: g.days * pixelsPerDay }}
+                            >
+                                {g.label}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* WEEK/DAY View: Day/Week Row */}
+                    {bottomRow}
+                </>
+            )}
         </div>
     );
 };
@@ -471,7 +522,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
         // Calculate date range
         const { minDate, totalDays } = useMemo(() => {
-            return calculateDateRange(tasks, milestones, 5);
+            return calculateDateRange(tasks, milestones, 60);
         }, [tasks, milestones]);
 
         const chartWidth = totalDays * pixelsPerDay;

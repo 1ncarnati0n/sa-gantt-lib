@@ -70,7 +70,7 @@ export const GANTT_LAYOUT = {
 export const ZOOM_CONFIG: Record<ZoomLevel, { pixelsPerDay: number; label: string }> = {
     DAY: { pixelsPerDay: 30, label: '일' },
     WEEK: { pixelsPerDay: 10, label: '주' },
-    MONTH: { pixelsPerDay: 4, label: '월' },
+    MONTH: { pixelsPerDay: 2, label: '월' },
 };
 
 // ============================================
