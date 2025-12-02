@@ -327,7 +327,7 @@ const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({ milestone, x }) => {
 
     return (
         <g transform={`translate(${x}, ${y})`} className="group cursor-pointer">
-            {/* Vertical Guide Line */}
+            {/* Vertical Guide Line - 기본으로 표시 */}
             <line
                 x1={0}
                 y1={0}
@@ -336,16 +336,27 @@ const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({ milestone, x }) => {
                 stroke={GANTT_COLORS.grid}
                 strokeWidth={2}
                 strokeDasharray="4, 4"
-                className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                className="opacity-100"
             />
 
-            {/* Triangle Symbol */}
+            {/* Triangle Symbol - 기본 상태 (호버 시 숨김) */}
             <path
                 d={`M ${-size / 2} ${-size / 2} L ${size / 2} ${-size / 2} L 0 ${size / 2} Z`}
                 fill={GANTT_COLORS.milestone}
                 stroke="white"
                 strokeWidth={1}
-                className="drop-shadow-sm transition-all duration-150 group-hover:scale-125 group-hover:fill-blue-600"
+                className="drop-shadow-sm transition-all duration-150 group-hover:opacity-0 group-hover:scale-0"
+            />
+
+            {/* Circle Symbol - 호버 시 표시 */}
+            <circle
+                cx={0}
+                cy={0}
+                r={size / 2}
+                fill="#3B82F6"
+                stroke="white"
+                strokeWidth={2}
+                className="drop-shadow-sm opacity-0 scale-0 transition-all duration-150 group-hover:opacity-100 group-hover:scale-100"
             />
 
             {/* Label - 좌측에 우측 정렬 */}

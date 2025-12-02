@@ -2,7 +2,7 @@
 
 import { forwardRef, useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { format, addDays } from 'date-fns';
-import { ChevronRight, ChevronDown, Plus, Check, X, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronDown, Check, X, GripVertical } from 'lucide-react';
 import {
     ConstructionTask,
     ViewMode,
@@ -51,14 +51,11 @@ interface GanttSidebarProps {
     expandedIds: Set<string>;
     onToggle: (taskId: string) => void;
     onTaskClick: (task: ConstructionTask) => void;
-    onBackToMaster: () => void;
     onTaskUpdate?: (task: ConstructionTask) => void;
     /** 새 Task 생성 콜백 */
     onTaskCreate?: (task: Partial<ConstructionTask>) => void | Promise<void>;
     /** Task 순서 변경 콜백 */
     onTaskReorder?: (taskId: string, newIndex: number) => void;
-    /** 첫 번째 Task로 스크롤 콜백 */
-    onScrollToFirstTask?: () => void;
     /** 현재 선택된 CP ID (Detail View) */
     activeCPId?: string | null;
     /** 가상화된 행 목록 */
@@ -71,6 +68,10 @@ interface GanttSidebarProps {
     onTaskGroup?: (taskIds: string[]) => void;
     /** 그룹 해제 콜백 (GROUP taskId) */
     onTaskUngroup?: (groupId: string) => void;
+    /** 새 Task 추가 모드 (GanttChart에서 제어) */
+    isAddingTask?: boolean;
+    /** 새 Task 추가 취소 콜백 */
+    onCancelAddTask?: () => void;
 }
 
 /**
@@ -81,12 +82,11 @@ interface GanttSidebarProps {
  * - 컬럼 너비 드래그로 조절 가능
  */
 export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
-    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onBackToMaster, onTaskUpdate, onTaskCreate, onTaskReorder, onScrollToFirstTask, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup }, ref) => {
+    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, isAddingTask = false, onCancelAddTask }, ref) => {
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
         
-        // 새 Task 추가 상태
-        const [isAddingTask, setIsAddingTask] = useState(false);
+        // 새 Task 추가 폼 상태
         const [newTaskForm, setNewTaskForm] = useState<NewTaskForm>(INITIAL_NEW_TASK_FORM);
         const newTaskNameInputRef = useRef<HTMLInputElement>(null);
         
@@ -302,21 +302,21 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // 새 Task 추가 핸들러
         // ====================================
         
-        // 새 Task 추가 모드 시작
-        const handleStartAddTask = useCallback(() => {
-            setIsAddingTask(true);
-            setNewTaskForm(INITIAL_NEW_TASK_FORM);
-            // 다음 렌더링 후 input에 포커스
-            setTimeout(() => {
-                newTaskNameInputRef.current?.focus();
-            }, 0);
-        }, []);
+        // isAddingTask가 true가 되면 input에 포커스
+        useEffect(() => {
+            if (isAddingTask) {
+                setNewTaskForm(INITIAL_NEW_TASK_FORM);
+                setTimeout(() => {
+                    newTaskNameInputRef.current?.focus();
+                }, 0);
+            }
+        }, [isAddingTask]);
 
         // 새 Task 추가 취소
         const handleCancelAddTask = useCallback(() => {
-            setIsAddingTask(false);
             setNewTaskForm(INITIAL_NEW_TASK_FORM);
-        }, []);
+            onCancelAddTask?.();
+        }, [onCancelAddTask]);
 
         // 새 Task 저장
         const handleSaveNewTask = useCallback(() => {
@@ -345,9 +345,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             };
 
             onTaskCreate(newTask);
-            setIsAddingTask(false);
             setNewTaskForm(INITIAL_NEW_TASK_FORM);
-        }, [newTaskForm, onTaskCreate, activeCPId, tasks]);
+            onCancelAddTask?.();
+        }, [newTaskForm, onTaskCreate, activeCPId, tasks, onCancelAddTask]);
 
         // Enter 키로 저장, Escape 키로 취소
         const handleNewTaskKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -811,35 +811,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     className="flex flex-col border-b border-gray-300 bg-gray-50"
                     style={{ height: HEADER_HEIGHT }}
                 >
-                    <div className="flex flex-1 items-center justify-between px-4">
-                        <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-700">주공정표 (Level 2)</span>
-                            {onScrollToFirstTask && (
-                                <button
-                                    onClick={onScrollToFirstTask}
-                                    className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
-                                    title="첫 번째 작업으로 스크롤"
-                                >
-                                    ◀ 첫 작업
-                                </button>
-                            )}
-                            {onTaskCreate && !isAddingTask && (
-                                <button
-                                    onClick={handleStartAddTask}
-                                    className="flex items-center gap-1 rounded bg-blue-500 px-2 py-1 text-xs font-medium text-white hover:bg-blue-600 transition-colors"
-                                    title="새 공정 추가"
-                                >
-                                    <Plus size={12} />
-                                    추가
-                                </button>
-                            )}
-                        </div>
-                        <button
-                            onClick={onBackToMaster}
-                            className="rounded bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
-                        >
-                            ← 공구 공정표로
-                        </button>
+                    <div className="flex flex-1 items-center px-4">
+                        <span className="font-bold text-gray-700">주공정표 (Level 2)</span>
                     </div>
                     {renderColumnHeaders()}
                 </div>

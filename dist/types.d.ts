@@ -115,6 +115,10 @@ export interface GanttChartProps {
     onViewChange?: (view: ViewMode, activeCPId?: string) => void;
     onTaskGroup?: (taskIds: string[]) => void | Promise<void>;
     onTaskUngroup?: (groupId: string) => void | Promise<void>;
+    onSave?: () => void;
+    onReset?: () => void;
+    hasUnsavedChanges?: boolean;
+    saveStatus?: 'idle' | 'saving' | 'saved';
     className?: string;
     style?: React.CSSProperties;
 }

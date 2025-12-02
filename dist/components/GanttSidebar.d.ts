@@ -8,14 +8,11 @@ interface GanttSidebarProps {
     expandedIds: Set<string>;
     onToggle: (taskId: string) => void;
     onTaskClick: (task: ConstructionTask) => void;
-    onBackToMaster: () => void;
     onTaskUpdate?: (task: ConstructionTask) => void;
     /** 새 Task 생성 콜백 */
     onTaskCreate?: (task: Partial<ConstructionTask>) => void | Promise<void>;
     /** Task 순서 변경 콜백 */
     onTaskReorder?: (taskId: string, newIndex: number) => void;
-    /** 첫 번째 Task로 스크롤 콜백 */
-    onScrollToFirstTask?: () => void;
     /** 현재 선택된 CP ID (Detail View) */
     activeCPId?: string | null;
     /** 가상화된 행 목록 */
@@ -28,6 +25,10 @@ interface GanttSidebarProps {
     onTaskGroup?: (taskIds: string[]) => void;
     /** 그룹 해제 콜백 (GROUP taskId) */
     onTaskUngroup?: (groupId: string) => void;
+    /** 새 Task 추가 모드 (GanttChart에서 제어) */
+    isAddingTask?: boolean;
+    /** 새 Task 추가 취소 콜백 */
+    onCancelAddTask?: () => void;
 }
 /**
  * 간트 차트 사이드바 (왼쪽 그리드)

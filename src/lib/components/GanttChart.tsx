@@ -56,6 +56,10 @@ export function GanttChart({
     onTaskGroup,
     onTaskUngroup,
     onViewChange,
+    onSave,
+    onReset,
+    hasUnsavedChanges,
+    saveStatus,
     className,
     style,
 }: GanttChartProps) {
@@ -76,6 +80,19 @@ export function GanttChart({
     const isScrollingRef = useRef(false);
     const isResizingRef = useRef(false);
     const [isResizing, setIsResizing] = useState(false);
+
+    // ====================================
+    // 새 Task 추가 상태 (헤더에서 제어)
+    // ====================================
+    const [isAddingTask, setIsAddingTask] = useState(false);
+
+    const handleStartAddTask = useCallback(() => {
+        setIsAddingTask(true);
+    }, []);
+
+    const handleCancelAddTask = useCallback(() => {
+        setIsAddingTask(false);
+    }, []);
 
     // ====================================
     // 초기화 (마운트 시 1회만)
@@ -245,19 +262,34 @@ export function GanttChart({
         timeline.scrollLeft = Math.max(0, x - 50);
     }, [zoomLevel, tasks, milestones]);
 
-    // 첫 번째 Task로 스크롤 (버튼용)
+    // 첫 번째 Task/CP로 스크롤 (버튼용)
     const scrollToFirstTask = useCallback(() => {
-        if (viewMode !== 'DETAIL' || !activeCPId) return;
-        
-        const childTasks = tasks.filter(t => t.parentId === activeCPId);
-        if (childTasks.length > 0) {
-            // 가장 빠른 시작일의 task 찾기
-            const firstTask = childTasks.reduce((a, b) => 
-                a.startDate < b.startDate ? a : b
-            );
-            scrollToDate(firstTask.startDate);
+        if (viewMode === 'MASTER') {
+            // Master View: 모든 CP 중 가장 빠른 시작일로 스크롤
+            const cpTasks = visibleTasks.filter(t => t.type === 'CP');
+            if (cpTasks.length > 0) {
+                const firstCP = cpTasks.reduce((a, b) => 
+                    a.startDate < b.startDate ? a : b
+                );
+                // 시작일보다 5일 전으로 스크롤 (여유 있게 보기)
+                const targetDate = new Date(firstCP.startDate);
+                targetDate.setDate(targetDate.getDate() - 5);
+                scrollToDate(targetDate);
+            }
+        } else if (viewMode === 'DETAIL' && activeCPId) {
+            // Detail View: 선택된 CP의 하위 task 중 가장 빠른 시작일로 스크롤
+            const childTasks = tasks.filter(t => t.parentId === activeCPId);
+            if (childTasks.length > 0) {
+                const firstTask = childTasks.reduce((a, b) => 
+                    a.startDate < b.startDate ? a : b
+                );
+                // 시작일보다 5일 전으로 스크롤 (여유 있게 보기)
+                const targetDate = new Date(firstTask.startDate);
+                targetDate.setDate(targetDate.getDate() - 5);
+                scrollToDate(targetDate);
+            }
         }
-    }, [viewMode, activeCPId, tasks, scrollToDate]);
+    }, [viewMode, activeCPId, tasks, visibleTasks, scrollToDate]);
 
     const handleTaskClick = useCallback((task: ConstructionTask) => {
         if (viewMode === 'MASTER' && task.type === 'CP') {
@@ -310,14 +342,43 @@ export function GanttChart({
         >
             {/* Header */}
             <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm">
-                <h1 className="flex items-center gap-2 text-xl font-extrabold text-gray-800">
-                    <span>
-                        <span className="text-teal">건설</span>{' '}
-                        <span className="text-vermilion">표준공정표</span> 관리 시스템
-                    </span>
-                </h1>
+                {/* 왼쪽: 상위 공정표로 버튼 + 추가 버튼 (고정 배치) */}
+                <div className="flex items-center gap-3 shrink-0">
+                    {viewMode === 'DETAIL' ? (
+                        <>
+                            <button
+                                onClick={() => handleViewChange('MASTER')}
+                                className="rounded bg-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-300 transition-colors"
+                            >
+                                ← 상위 공정표로
+                            </button>
+                            {/* 추가 버튼 */}
+                            {onTaskCreate && !isAddingTask && (
+                                <button
+                                    onClick={handleStartAddTask}
+                                    className="flex items-center gap-1 rounded bg-blue-500 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-600 transition-colors"
+                                    title="새 공정 추가"
+                                >
+                                    + Task 추가
+                                </button>
+                            )}
+                        </>
+                    ) : (
+                        <div className="w-[180px]" />
+                    )}
+                </div>
 
+                {/* 중앙: Focusing 버튼 + 줌 컨트롤 + 기준일 */}
                 <div className="flex items-center gap-4">
+                    {/* Focusing 버튼 (모든 View에서 표시) */}
+                    <button
+                        onClick={scrollToFirstTask}
+                        className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                        title={viewMode === 'MASTER' ? '첫 번째 CP로 스크롤' : '첫 번째 작업으로 스크롤'}
+                    >
+                        Focusing
+                    </button>
+
                     {/* Zoom Controls - 뷰 모드에 따라 다른 옵션 표시 */}
                     <div className="flex rounded bg-gray-100 p-1">
                         {(viewMode === 'MASTER' 
@@ -343,6 +404,50 @@ export function GanttChart({
                         기준일: {format(new Date(), 'yyyy-MM-dd')}
                     </div>
                 </div>
+
+                {/* 오른쪽: 저장/초기화 버튼 */}
+                <div className="flex items-center gap-2">
+                    {onSave && (
+                        <button
+                            onClick={onSave}
+                            disabled={!hasUnsavedChanges || saveStatus === 'saving'}
+                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                hasUnsavedChanges
+                                    ? 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                        >
+                            {saveStatus === 'saving' ? (
+                                <>
+                                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    저장 중...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                    </svg>
+                                    저장
+                                </>
+                            )}
+                        </button>
+                    )}
+                    
+                    {onReset && (
+                        <button
+                            onClick={onReset}
+                            className="flex items-center gap-1.5 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200 active:bg-gray-300"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            초기화
+                        </button>
+                    )}
+                </div>
             </header>
 
             {/* Main Content */}
@@ -360,17 +465,17 @@ export function GanttChart({
                         expandedIds={expandedTaskIds}
                         onToggle={toggleTask}
                         onTaskClick={handleTaskClick}
-                        onBackToMaster={() => handleViewChange('MASTER')}
                         onTaskUpdate={onTaskUpdate}
                         onTaskCreate={onTaskCreate}
                         onTaskReorder={onTaskReorder}
                         onTaskGroup={onTaskGroup}
                         onTaskUngroup={onTaskUngroup}
-                        onScrollToFirstTask={scrollToFirstTask}
                         activeCPId={activeCPId}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
                         onTotalWidthChange={setSidebarTotalWidth}
+                        isAddingTask={isAddingTask}
+                        onCancelAddTask={handleCancelAddTask}
                     />
                 </div>
 

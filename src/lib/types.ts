@@ -207,6 +207,12 @@ export interface GanttChartProps {
     onTaskGroup?: (taskIds: string[]) => void | Promise<void>;
     onTaskUngroup?: (groupId: string) => void | Promise<void>;
 
+    // 저장/초기화 (외부에서 제어)
+    onSave?: () => void;
+    onReset?: () => void;
+    hasUnsavedChanges?: boolean;
+    saveStatus?: 'idle' | 'saving' | 'saved';
+
     // 스타일링
     className?: string;
     style?: React.CSSProperties;

@@ -512,7 +512,12 @@ function App() {
             {/* 상단 헤더 바 */}
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-lg font-bold text-gray-800">SA-Gantt</h1>
+                    <h1 className="flex items-center gap-2 text-lg font-extrabold text-gray-800">
+                        <span>
+                            <span className="text-teal">건설</span>{' '}
+                            <span className="text-vermilion">표준공정표</span> 관리 시스템
+                        </span>
+                    </h1>
                     
                     {/* 변경사항 표시 */}
                     {hasUnsavedChanges && (
@@ -530,47 +535,6 @@ function App() {
                         </span>
                     )}
                 </div>
-                
-                <div className="flex items-center gap-2">
-                    {/* 저장 버튼 */}
-                    <button
-                        onClick={handleSave}
-                        disabled={!hasUnsavedChanges || saveStatus === 'saving'}
-                        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                            hasUnsavedChanges
-                                ? 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
-                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        }`}
-                    >
-                        {saveStatus === 'saving' ? (
-                            <>
-                                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                                저장 중...
-                            </>
-                        ) : (
-                            <>
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                                </svg>
-                                저장
-                            </>
-                        )}
-                    </button>
-                    
-                    {/* 초기화 버튼 */}
-                    <button
-                        onClick={handleReset}
-                        className="flex items-center gap-1.5 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200 active:bg-gray-300"
-                    >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        초기화
-                    </button>
-                </div>
             </div>
             
             {/* 간트 차트 영역 */}
@@ -586,6 +550,10 @@ function App() {
                     onTaskGroup={handleTaskGroup}
                     onTaskUngroup={handleTaskUngroup}
                     onViewChange={handleViewChange}
+                    onSave={handleSave}
+                    onReset={handleReset}
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    saveStatus={saveStatus}
                 />
             </div>
         </div>
