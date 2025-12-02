@@ -206,6 +206,9 @@ export interface GanttChartProps {
     onViewChange?: (view: ViewMode, activeCPId?: string) => void;
     onTaskGroup?: (taskIds: string[]) => void | Promise<void>;
     onTaskUngroup?: (groupId: string) => void | Promise<void>;
+    
+    // 마일스톤 이벤트 핸들러
+    onMilestoneUpdate?: (milestone: Milestone) => void | Promise<void>;
 
     // 저장/초기화 (외부에서 제어)
     onSave?: () => void;

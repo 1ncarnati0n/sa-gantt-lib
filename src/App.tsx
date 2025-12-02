@@ -242,7 +242,7 @@ function App() {
     }, []);
 
     // ====================================
-    // 변경사항 감지 (tasks 변경 시)
+    // 변경사항 감지 (tasks 또는 milestones 변경 시)
     // ====================================
     useEffect(() => {
         // 초기 로드 시에는 변경사항으로 표시하지 않음
@@ -250,7 +250,7 @@ function App() {
         
         setHasUnsavedChanges(true);
         setSaveStatus('idle');
-    }, [tasks, isLoaded]);
+    }, [tasks, milestones, isLoaded]);
 
     // ====================================
     // 수동 저장 핸들러
@@ -389,12 +389,13 @@ function App() {
             // 새 태스크 추가
             const taskToAdd: ConstructionTask = {
                 id: newTask.id || `task-${Date.now()}`,
-                parentId: newTask.parentId || null,
+                parentId: newTask.parentId ?? null,
                 wbsLevel: newTask.wbsLevel || 2,
                 type: newTask.type || 'TASK',
                 name: newTask.name || '새 공정',
                 startDate: newTask.startDate || new Date(),
                 endDate: newTask.endDate || new Date(),
+                cp: newTask.cp,
                 task: newTask.task,
                 dependencies: newTask.dependencies || [],
             };
@@ -579,6 +580,24 @@ function App() {
         console.log('View changed:', view, activeCPId);
     }, []);
 
+    // ====================================
+    // 마일스톤 업데이트 핸들러
+    // ====================================
+    const handleMilestoneUpdate = useCallback(async (updatedMilestone: Milestone) => {
+        try {
+            setMilestones(prevMilestones => {
+                const newMilestones = prevMilestones.map(m =>
+                    m.id === updatedMilestone.id ? updatedMilestone : m
+                );
+                console.log('Milestone updated:', updatedMilestone);
+                return newMilestones;
+            });
+        } catch (error) {
+            console.error('Failed to update milestone:', error);
+            alert('마일스톤 업데이트 중 오류가 발생했습니다.');
+        }
+    }, []);
+
     if (tasks.length === 0) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-gray-100">
@@ -630,6 +649,7 @@ function App() {
                     onTaskGroup={handleTaskGroup}
                     onTaskUngroup={handleTaskUngroup}
                     onViewChange={handleViewChange}
+                    onMilestoneUpdate={handleMilestoneUpdate}
                     onSave={handleSave}
                     onReset={handleReset}
                     hasUnsavedChanges={hasUnsavedChanges}

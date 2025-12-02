@@ -313,58 +313,212 @@ const WeekendGrid: React.FC<WeekendGridProps> = ({
 };
 
 // ============================================
+// Milestone Collision Detection
+// ============================================
+
+interface MilestoneWithLayout {
+    milestone: Milestone;
+    x: number;
+    labelLevel: number;
+}
+
+/**
+ * 마일스톤 충돌 감지 및 레벨 할당
+ * - 레벨 0: 마커 왼쪽 (기본)
+ * - 레벨 1: 마커 오른쪽 (왼쪽 충돌 시)
+ * - 레벨 -1: 마커 아래 (왼쪽/오른쪽 모두 충돌 시)
+ */
+const calculateMilestoneLabels = (
+    milestones: Milestone[],
+    minDate: Date,
+    pixelsPerDay: number
+): MilestoneWithLayout[] => {
+    if (milestones.length === 0) return [];
+    
+    // 텍스트 너비 추정값 (한글 기준 약 12px per character + 여백)
+    const LABEL_PADDING = 25;
+    const CHAR_WIDTH = 12;
+    const MIN_GAP = 8; // 최소 간격
+    
+    // x 좌표 계산 및 정렬
+    const milestonesWithX = milestones.map(m => ({
+        milestone: m,
+        x: dateToX(m.date, minDate, pixelsPerDay),
+        labelLevel: 0,
+        labelWidth: m.name.length * CHAR_WIDTH + LABEL_PADDING,
+    })).sort((a, b) => a.x - b.x);
+    
+    // 충돌 감지 및 레벨 할당
+    const result: MilestoneWithLayout[] = [];
+    
+    // 레벨 0 (왼쪽): 라벨 끝 x 좌표 추적
+    // 레벨 1 (오른쪽): 라벨 시작 x 좌표 추적 (역방향 체크)
+    const leftLabelEndX: number[] = []; // 왼쪽 라벨들의 끝 위치
+    const rightLabelRanges: Array<{ start: number; end: number }> = []; // 오른쪽 라벨들의 범위
+    
+    for (const item of milestonesWithX) {
+        const labelWidth = item.labelWidth;
+        
+        // 레벨 0 (왼쪽) 충돌 체크
+        const leftLabelStart = item.x - labelWidth;
+        const leftLabelEnd = item.x - MIN_GAP;
+        
+        // 이전 왼쪽 라벨들과 충돌 체크
+        const leftCollision = leftLabelEndX.some(endX => leftLabelStart < endX + MIN_GAP);
+        
+        if (!leftCollision) {
+            // 왼쪽에 배치 가능
+            leftLabelEndX.push(leftLabelEnd);
+            result.push({
+                milestone: item.milestone,
+                x: item.x,
+                labelLevel: 0,
+            });
+        } else {
+            // 레벨 1 (오른쪽) 충돌 체크
+            const rightLabelStart = item.x + MIN_GAP;
+            const rightLabelEnd = item.x + labelWidth;
+            
+            // 이전 오른쪽 라벨들과 충돌 체크
+            const rightCollision = rightLabelRanges.some(
+                range => !(rightLabelEnd < range.start || rightLabelStart > range.end)
+            );
+            
+            if (!rightCollision) {
+                // 오른쪽에 배치 가능
+                rightLabelRanges.push({ start: rightLabelStart, end: rightLabelEnd });
+                result.push({
+                    milestone: item.milestone,
+                    x: item.x,
+                    labelLevel: 1,
+                });
+            } else {
+                // 아래에 배치 (항상 가능)
+                result.push({
+                    milestone: item.milestone,
+                    x: item.x,
+                    labelLevel: -1,
+                });
+            }
+        }
+    }
+    
+    return result;
+};
+
+// ============================================
 // Milestone Marker
 // ============================================
 
 interface MilestoneMarkerProps {
     milestone: Milestone;
     x: number;
+    labelLevel?: number; // 0: 왼쪽(기본), 1: 오른쪽, -1: 아래
+    isDragging?: boolean;
+    dragX?: number; // 드래그 중일 때 현재 X 위치
+    onMouseDown?: (e: React.MouseEvent, milestone: Milestone) => void;
+    onDoubleClick?: (milestone: Milestone) => void;
 }
 
-const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({ milestone, x }) => {
+const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({ 
+    milestone, 
+    x, 
+    labelLevel = 0,
+    isDragging = false,
+    dragX,
+    onMouseDown,
+    onDoubleClick,
+}) => {
     const size = 12;
     const y = MILESTONE_LANE_HEIGHT / 2;
+    const currentX = isDragging && dragX !== undefined ? dragX : x;
+    
+    // 레벨에 따른 라벨 위치 계산
+    let textX: number;
+    let textY: number;
+    let textAnchor: 'start' | 'middle' | 'end';
+    
+    if (labelLevel === 0) {
+        // 기본: 마커 왼쪽
+        textX = -8;
+        textY = 4;
+        textAnchor = 'end';
+    } else if (labelLevel === 1) {
+        // 충돌 시: 마커 오른쪽
+        textX = 8;
+        textY = 4;
+        textAnchor = 'start';
+    } else {
+        // 더 많은 충돌 시: 마커 아래
+        textX = 0;
+        textY = 18;
+        textAnchor = 'middle';
+    }
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (onMouseDown) {
+            e.preventDefault();
+            e.stopPropagation();
+            onMouseDown(e, milestone);
+        }
+    };
+
+    const handleDoubleClick = (e: React.MouseEvent) => {
+        if (onDoubleClick) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDoubleClick(milestone);
+        }
+    };
 
     return (
-        <g transform={`translate(${x}, ${y})`} className="group cursor-pointer">
+        <g 
+            transform={`translate(${currentX}, ${y})`} 
+            className={`group ${onMouseDown ? 'cursor-ew-resize' : 'cursor-pointer'} ${isDragging ? 'cursor-ew-resize' : ''}`}
+            onMouseDown={handleMouseDown}
+            onDoubleClick={handleDoubleClick}
+        >
             {/* Vertical Guide Line - 기본으로 표시 */}
             <line
                 x1={0}
                 y1={0}
                 x2={0}
                 y2={1000}
-                stroke={GANTT_COLORS.grid}
-                strokeWidth={2}
+                stroke={isDragging ? '#3B82F6' : '#9CA3AF'}
+                strokeWidth={isDragging ? 3 : 2}
                 strokeDasharray="4, 4"
-                className="opacity-100"
+                className={isDragging ? 'opacity-100' : 'opacity-80'}
             />
 
-            {/* Triangle Symbol - 기본 상태 (호버 시 숨김) */}
+            {/* Triangle Symbol - 호버 시 1.3배 확대 */}
             <path
                 d={`M ${-size / 2} ${-size / 2} L ${size / 2} ${-size / 2} L 0 ${size / 2} Z`}
-                fill={GANTT_COLORS.milestone}
+                fill={isDragging ? '#3B82F6' : GANTT_COLORS.milestone}
                 stroke="white"
                 strokeWidth={1}
-                className="drop-shadow-sm transition-all duration-150 group-hover:opacity-0 group-hover:scale-0"
+                className="drop-shadow-sm transition-transform duration-150 group-hover:scale-[1.3]"
+                style={{ 
+                    transformOrigin: 'center', 
+                    transformBox: 'fill-box',
+                    transform: isDragging ? 'scale(1.3)' : undefined,
+                }}
             />
 
-            {/* Circle Symbol - 호버 시 표시 */}
+            {/* 히트 영역 (클릭/드래그 감지용) */}
             <circle
                 cx={0}
                 cy={0}
-                r={size / 2}
-                fill="#3B82F6"
-                stroke="white"
-                strokeWidth={2}
-                className="drop-shadow-sm opacity-0 scale-0 transition-all duration-150 group-hover:opacity-100 group-hover:scale-100"
+                r={size}
+                fill="transparent"
+                className="cursor-ew-resize"
             />
 
-            {/* Label - 좌측에 우측 정렬 */}
+            {/* Label - 레벨에 따라 위치 변경 */}
             <text
-                x={-8}
-                y={4}
-                textAnchor="end"
-                className="select-none text-[11px] font-bold fill-gray-600 transition-colors group-hover:fill-blue-700"
+                x={textX}
+                y={textY}
+                textAnchor={textAnchor}
+                className={`select-none text-[11px] font-bold transition-colors ${isDragging ? 'fill-blue-700' : 'fill-gray-600 group-hover:fill-blue-700'}`}
             >
                 {milestone.name}
             </text>
@@ -708,6 +862,10 @@ interface GanttTimelineProps {
     onTaskUpdate?: (task: ConstructionTask) => void;
     /** Bar 드래그로 날짜/일수 변경 콜백 */
     onBarDrag?: (result: BarDragResult) => void;
+    /** 마일스톤 업데이트 콜백 */
+    onMilestoneUpdate?: (milestone: Milestone) => void;
+    /** 마일스톤 더블클릭 콜백 */
+    onMilestoneDoubleClick?: (milestone: Milestone) => void;
     /** 가상화된 행 목록 */
     virtualRows?: VirtualRow[];
     /** 전체 높이 */
@@ -715,7 +873,7 @@ interface GanttTimelineProps {
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
-    ({ tasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, virtualRows, totalHeight: virtualTotalHeight }, ref) => {
+    ({ tasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onMilestoneUpdate, onMilestoneDoubleClick, virtualRows, totalHeight: virtualTotalHeight }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
         
@@ -742,10 +900,31 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             currentIndirectWorkDaysPost: number;
         } | null>(null);
 
+        // ====================================
+        // 마일스톤 드래그 상태 관리
+        // ====================================
+        const [milestoneDragState, setMilestoneDragState] = useState<{
+            milestoneId: string;
+            startX: number;
+            originalDate: Date;
+            currentX: number;
+        } | null>(null);
+
+        const milestoneDragStateRef = useRef<typeof milestoneDragState>(null);
+        
+        useEffect(() => {
+            milestoneDragStateRef.current = milestoneDragState;
+        }, [milestoneDragState]);
+
         // Calculate date range
         const { minDate, totalDays } = useMemo(() => {
             return calculateDateRange(tasks, milestones, 60);
         }, [tasks, milestones]);
+
+        // 마일스톤 레이아웃 계산 (충돌 감지 적용)
+        const milestoneLayouts = useMemo(() => {
+            return calculateMilestoneLabels(milestones, minDate, pixelsPerDay);
+        }, [milestones, minDate, pixelsPerDay]);
 
         const chartWidth = totalDays * pixelsPerDay;
         const chartHeight = isVirtualized 
@@ -763,6 +942,81 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         useEffect(() => {
             dragStateRef.current = dragState;
         }, [dragState]);
+
+        // ====================================
+        // 마일스톤 드래그 핸들러
+        // ====================================
+        const handleMilestoneMouseDown = useCallback((e: React.MouseEvent, milestone: Milestone) => {
+            if (!onMilestoneUpdate) return;
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const milestoneX = dateToX(milestone.date, minDate, pixelsPerDay);
+            
+            const newState = {
+                milestoneId: milestone.id,
+                startX: e.clientX,
+                originalDate: milestone.date,
+                currentX: milestoneX,
+            };
+            
+            setMilestoneDragState(newState);
+        }, [onMilestoneUpdate, minDate, pixelsPerDay]);
+
+        const handleMilestoneMouseMove = useCallback((e: MouseEvent) => {
+            const state = milestoneDragStateRef.current;
+            if (!state) return;
+            
+            const deltaX = e.clientX - state.startX;
+            const originalX = dateToX(state.originalDate, minDate, pixelsPerDay);
+            const newX = Math.max(0, originalX + deltaX);
+            
+            setMilestoneDragState(prev => prev ? { ...prev, currentX: newX } : null);
+        }, [minDate, pixelsPerDay]);
+
+        const handleMilestoneMouseUp = useCallback((e: MouseEvent) => {
+            const state = milestoneDragStateRef.current;
+            if (!state || !onMilestoneUpdate) {
+                setMilestoneDragState(null);
+                return;
+            }
+            
+            const deltaX = e.clientX - state.startX;
+            const deltaDays = Math.round(deltaX / pixelsPerDay);
+            
+            if (deltaDays !== 0) {
+                const newDate = addDays(state.originalDate, deltaDays);
+                const updatedMilestone = milestones.find(m => m.id === state.milestoneId);
+                
+                if (updatedMilestone) {
+                    onMilestoneUpdate({
+                        ...updatedMilestone,
+                        date: newDate,
+                    });
+                }
+            }
+            
+            setMilestoneDragState(null);
+        }, [onMilestoneUpdate, pixelsPerDay, milestones]);
+
+        // 마일스톤 드래그 이벤트 리스너 등록
+        useEffect(() => {
+            if (milestoneDragState) {
+                window.addEventListener('mousemove', handleMilestoneMouseMove);
+                window.addEventListener('mouseup', handleMilestoneMouseUp);
+                
+                return () => {
+                    window.removeEventListener('mousemove', handleMilestoneMouseMove);
+                    window.removeEventListener('mouseup', handleMilestoneMouseUp);
+                };
+            }
+        }, [milestoneDragState, handleMilestoneMouseMove, handleMilestoneMouseUp]);
+
+        const handleMilestoneDoubleClick = useCallback((milestone: Milestone) => {
+            if (onMilestoneDoubleClick) {
+                onMilestoneDoubleClick(milestone);
+            }
+        }, [onMilestoneDoubleClick]);
         
         const handleBarMouseDown = useCallback((
             e: React.MouseEvent,
@@ -1022,13 +1276,21 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
                         {/* Milestone Lane */}
                         <rect x={0} y={0} width={chartWidth} height={MILESTONE_LANE_HEIGHT} fill="transparent" />
-                        {milestones.map((m) => (
-                            <MilestoneMarker
-                                key={m.id}
-                                milestone={m}
-                                x={dateToX(m.date, minDate, pixelsPerDay)}
-                            />
-                        ))}
+                        {milestoneLayouts.map((layout) => {
+                            const isDragging = milestoneDragState?.milestoneId === layout.milestone.id;
+                            return (
+                                <MilestoneMarker
+                                    key={layout.milestone.id}
+                                    milestone={layout.milestone}
+                                    x={layout.x}
+                                    labelLevel={layout.labelLevel}
+                                    isDragging={isDragging}
+                                    dragX={isDragging ? milestoneDragState?.currentX : undefined}
+                                    onMouseDown={onMilestoneUpdate ? handleMilestoneMouseDown : undefined}
+                                    onDoubleClick={onMilestoneDoubleClick ? handleMilestoneDoubleClick : undefined}
+                                />
+                            );
+                        })}
                         <line
                             x1={0}
                             y1={MILESTONE_LANE_HEIGHT}

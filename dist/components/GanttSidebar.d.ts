@@ -29,6 +29,10 @@ interface GanttSidebarProps {
     isAddingTask?: boolean;
     /** 새 Task 추가 취소 콜백 */
     onCancelAddTask?: () => void;
+    /** 새 CP 추가 모드 (Master View에서 사용) */
+    isAddingCP?: boolean;
+    /** 새 CP 추가 취소 콜백 */
+    onCancelAddCP?: () => void;
 }
 /**
  * 간트 차트 사이드바 (왼쪽 그리드)
