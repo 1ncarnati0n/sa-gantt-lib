@@ -123,9 +123,11 @@ export const addCalendarDays = (startDate: Date, days: number): Date => {
  * Level 2 태스크의 순작업/간접작업 날짜 계산
  * 
  * 건설 공정표의 핵심 로직:
+ * - 앞 간접작업일(indirectWorkDaysPre): 달력일 기준으로 계산
  * - 순작업일(netWorkDays): 휴일을 건너뛰고 계산
- * - 간접작업일(indirectWorkDays): 달력일 기준으로 계산
- * - placement에 따라 순서 결정 (PRE: 간접→순작업, POST: 순작업→간접)
+ * - 뒤 간접작업일(indirectWorkDaysPost): 달력일 기준으로 계산
+ * 
+ * 바 구조: [앞간접 Blue] - [순작업 Red] - [뒤간접 Blue]
  */
 export const calculateDualCalendarDates = (
     task: ConstructionTask,
@@ -142,72 +144,60 @@ export const calculateDualCalendarDates = (
         };
     }
 
-    const { netWorkDays, indirectWorkDays, placement } = task.task;
+    const { netWorkDays, indirectWorkDaysPre, indirectWorkDaysPost } = task.task;
     const baseStartDate = startOfDay(new Date(task.startDate));
 
-    let netStart: Date;
-    let netEnd: Date;
-    let indirectStart: Date;
-    let indirectEnd: Date;
-    let totalStart: Date;
-    let totalEnd: Date;
+    let currentDate = baseStartDate;
+    
+    // 1. 앞 간접작업 계산 (달력일 기준)
+    let indirectPreStart: Date | undefined;
+    let indirectPreEnd: Date | undefined;
+    
+    if (indirectWorkDaysPre > 0) {
+        indirectPreStart = currentDate;
+        indirectPreEnd = addCalendarDays(currentDate, indirectWorkDaysPre);
+        currentDate = addDays(indirectPreEnd, 1);
+    }
 
-    if (placement === 'PRE') {
-        // PRE: 간접작업(Blue) → 순작업(Red)
-
-        // 1. 간접작업 계산 (달력일 기준)
-        indirectStart = baseStartDate;
-        indirectEnd = addCalendarDays(indirectStart, indirectWorkDays);
-
-        // 2. 순작업 계산 (휴일 건너뛰기)
-        if (indirectWorkDays > 0) {
-            netStart = addDays(indirectEnd, 1);
-        } else {
-            netStart = baseStartDate;
-        }
-
+    // 2. 순작업 계산 (휴일 건너뛰기)
+    let netStart = currentDate;
+    let netEnd = netStart;
+    
+    if (netWorkDays > 0) {
         // 순작업 시작일이 휴일이면 다음 작업일로 이동
         while (isHoliday(netStart, holidays, settings)) {
             netStart = addDays(netStart, 1);
         }
-
         netEnd = addWorkingDays(netStart, netWorkDays, holidays, settings);
-
-        totalStart = indirectStart;
-        totalEnd = netEnd;
-    } else {
-        // POST: 순작업(Red) → 간접작업(Blue)
-
-        // 1. 순작업 계산 (휴일 건너뛰기)
+        currentDate = addDays(netEnd, 1);
+    } else if (indirectWorkDaysPre === 0) {
+        // 순작업이 0이고 앞간접도 0이면 기준일이 시작
         netStart = baseStartDate;
-
-        // 시작일이 휴일이면 다음 작업일로 이동
-        while (isHoliday(netStart, holidays, settings)) {
-            netStart = addDays(netStart, 1);
-        }
-
-        netEnd = addWorkingDays(netStart, netWorkDays, holidays, settings);
-
-        // 2. 간접작업 계산 (달력일 기준)
-        if (netWorkDays > 0) {
-            indirectStart = addDays(netEnd, 1);
-        } else {
-            indirectStart = baseStartDate;
-        }
-
-        indirectEnd = addCalendarDays(indirectStart, indirectWorkDays);
-
-        totalStart = netStart;
-        totalEnd = indirectEnd;
+        netEnd = baseStartDate;
     }
+
+    // 3. 뒤 간접작업 계산 (달력일 기준)
+    let indirectPostStart: Date | undefined;
+    let indirectPostEnd: Date | undefined;
+    
+    if (indirectWorkDaysPost > 0) {
+        indirectPostStart = currentDate;
+        indirectPostEnd = addCalendarDays(currentDate, indirectWorkDaysPost);
+    }
+
+    // 전체 시작일/종료일 계산
+    const totalStart = indirectPreStart || netStart;
+    const totalEnd = indirectPostEnd || netEnd;
 
     return {
         startDate: totalStart,
         endDate: totalEnd,
         netWorkStartDate: netStart,
         netWorkEndDate: netEnd,
-        indirectStartDate: indirectStart,
-        indirectEndDate: indirectEnd,
+        indirectPreStartDate: indirectPreStart,
+        indirectPreEndDate: indirectPreEnd,
+        indirectPostStartDate: indirectPostStart,
+        indirectPostEndDate: indirectPostEnd,
     };
 };
 

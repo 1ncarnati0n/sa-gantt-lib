@@ -1,7 +1,7 @@
 'use client';
 
-import React, { forwardRef, useMemo } from 'react';
-import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth } from 'date-fns';
+import React, { forwardRef, useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth, differenceInDays } from 'date-fns';
 import {
     ConstructionTask,
     Milestone,
@@ -104,12 +104,18 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                         if (isSaturday) textColor = 'text-blue-500';
                         if (isHol && !isSunday && !isSaturday) textColor = 'text-red-500';
 
+                        // 배경색 결정: 일요일/휴일=빨간색, 토요일=파란색
+                        let bgColor = '';
+                        if (isSunday || (isHol && !isSaturday)) {
+                            bgColor = 'bg-red-50/50';
+                        } else if (isSaturday) {
+                            bgColor = 'bg-blue-50/50';
+                        }
+
                         return (
                             <div
                                 key={index}
-                                className={`flex h-full shrink-0 flex-col items-center justify-center border-r border-gray-100 font-medium ${
-                                    isHol ? 'bg-red-50/30' : ''
-                                }`}
+                                className={`flex h-full shrink-0 flex-col items-center justify-center border-r border-gray-100 font-medium ${bgColor}`}
                                 style={{ width: pixelsPerDay, minWidth: pixelsPerDay }}
                             >
                                 <span className={`text-[10px] leading-none ${textColor}`}>
@@ -270,18 +276,31 @@ const WeekendGrid: React.FC<WeekendGridProps> = ({
         const rects: React.ReactNode[] = [];
         for (let i = 0; i < totalDays; i++) {
             const date = addDays(minDate, i);
+            const dayOfWeek = getDay(date);
+            const isSunday = dayOfWeek === 0;
+            const isSaturday = dayOfWeek === 6;
             const isHol = isHoliday(date, holidays, calendarSettings);
 
-            if (isHol) {
+            // 일요일/휴일 또는 토요일인 경우 배경색 적용
+            if (isHol || isSaturday) {
                 const x = i * pixelsPerDay;
+                // 일요일/휴일: 연한 빨간색, 토요일: 연한 파란색 (헤더와 동일한 농도)
+                let fillColor = 'rgba(254, 242, 242, 0.5)'; // 기본 휴일 색상 (red-50/50)
+                if (isSaturday && !isSunday) {
+                    fillColor = 'rgba(239, 246, 255, 0.5)'; // 토요일 색상 (blue-50/50)
+                }
+                if (isSunday) {
+                    fillColor = 'rgba(254, 242, 242, 0.5)'; // 일요일 색상 (red-50/50)
+                }
+                
                 rects.push(
                     <rect
-                        key={`holiday-${i}`}
+                        key={`weekend-${i}`}
                         x={x}
                         y={0}
                         width={pixelsPerDay}
                         height={chartHeight}
-                        fill={GANTT_COLORS.weekend}
+                        fill={fillColor}
                         className="pointer-events-none"
                     />
                 );
@@ -345,12 +364,40 @@ const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({ milestone, x }) => {
 // Task Bar (Level 1 & Level 2)
 // ============================================
 
+/** 드래그 타입 */
+type DragType = 'move' | 'resize-pre' | 'resize-post';
+
+/** 드래그 상태 정보 */
+interface DragInfo {
+    startDate: Date;
+    endDate: Date;
+    indirectWorkDaysPre: number;
+    indirectWorkDaysPost: number;
+}
+
 interface TaskBarProps {
     task: ConstructionTask;
     y: number;
     minDate: Date;
     pixelsPerDay: number;
     isMasterView: boolean;
+    /** 드래그 기능 활성화 여부 */
+    isDraggable?: boolean;
+    /** 드래그 중인 정보 (드래그 중일 때만 값이 있음) */
+    dragInfo?: DragInfo | null;
+    /** 드래그 시작 핸들러 */
+    onDragStart?: (
+        e: React.MouseEvent,
+        taskId: string,
+        dragType: DragType,
+        taskData: {
+            startDate: Date;
+            endDate: Date;
+            indirectWorkDaysPre: number;
+            netWorkDays: number;
+            indirectWorkDaysPost: number;
+        }
+    ) => void;
 }
 
 const TaskBar: React.FC<TaskBarProps> = ({
@@ -359,17 +406,25 @@ const TaskBar: React.FC<TaskBarProps> = ({
     minDate,
     pixelsPerDay,
     isMasterView,
+    isDraggable = false,
+    dragInfo,
+    onDragStart,
 }) => {
     // GROUP은 바를 렌더링하지 않음
     if (task.type === 'GROUP') return null;
 
     const radius = 4;
-    const startX = dateToX(task.startDate, minDate, pixelsPerDay);
+    const isDragging = !!dragInfo;
+    
+    // 드래그 중이면 드래그된 날짜 사용
+    const effectiveStartDate = dragInfo?.startDate || task.startDate;
+    const effectiveEndDate = dragInfo?.endDate || task.endDate;
+    const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
 
     if (isMasterView) {
         // Level 1: Aggregate Bar (Vermilion/Teal)
-        const workDays = task.summary?.workDaysTotal || 0;
-        const nonWorkDays = task.summary?.nonWorkDaysTotal || 0;
+        const workDays = task.cp?.workDaysTotal || 0;
+        const nonWorkDays = task.cp?.nonWorkDaysTotal || 0;
         const totalDays = workDays + nonWorkDays;
 
         if (totalDays === 0) return null;
@@ -414,41 +469,71 @@ const TaskBar: React.FC<TaskBarProps> = ({
             </g>
         );
     } else {
-        // Level 2: Detail Bar (Red/Blue)
+        // Level 2: Detail Bar (Blue Pre - Red - Blue Post)
         if (!task.task) return null;
 
-        const { netWorkDays, indirectWorkDays, placement } = task.task;
+        const { netWorkDays, indirectWorkDaysPre, indirectWorkDaysPost } = task.task;
+        
+        // 드래그 중이면 드래그된 값 사용
+        const effectivePreDays = dragInfo?.indirectWorkDaysPre ?? indirectWorkDaysPre;
+        const effectivePostDays = dragInfo?.indirectWorkDaysPost ?? indirectWorkDaysPost;
+        
+        // 너비 계산
+        const preWidth = effectivePreDays * pixelsPerDay;
         const netWidth = netWorkDays * pixelsPerDay;
-        const indirectWidth = indirectWorkDays * pixelsPerDay;
+        const postWidth = effectivePostDays * pixelsPerDay;
+        const barWidth = preWidth + netWidth + postWidth;
 
-        let netX = 0;
-        let indirectX = 0;
+        // X 위치 계산 (항상 Pre -> Net -> Post 순서)
+        const preX = 0;
+        const netX = preWidth;
+        const postX = preWidth + netWidth;
+        
+        const handleWidth = 8;
 
-        if (placement === 'PRE') {
-            indirectX = 0;
-            netX = indirectWidth;
-        } else {
-            netX = 0;
-            indirectX = netWidth;
-        }
+        // 드래그 시작 시 전달할 데이터
+        const taskData = {
+            startDate: effectiveStartDate,
+            endDate: effectiveEndDate,
+            indirectWorkDaysPre: effectivePreDays,
+            netWorkDays,
+            indirectWorkDaysPost: effectivePostDays,
+        };
 
         return (
-            <g transform={`translate(${startX}, ${y})`} className="group cursor-pointer">
-                {/* Indirect Work (Blue) */}
-                {indirectWorkDays > 0 && (
+            <g 
+                transform={`translate(${startX}, ${y})`} 
+                className={`group ${isDragging ? 'opacity-90' : ''}`}
+            >
+                {/* 투명한 드래그 영역 (전체 바 - 가운데 영역) */}
+                {isDraggable && (
                     <rect
-                        x={indirectX}
+                        x={preWidth}
                         y={0}
-                        width={indirectWidth}
+                        width={netWidth}
+                        height={BAR_HEIGHT}
+                        fill="transparent"
+                        className="cursor-grab active:cursor-grabbing"
+                        onMouseDown={(e) => onDragStart?.(e, task.id, 'move', taskData)}
+                    />
+                )}
+                
+                {/* Pre Indirect Work (Blue - 왼쪽) */}
+                {effectivePreDays > 0 && (
+                    <rect
+                        x={preX}
+                        y={0}
+                        width={preWidth}
                         height={BAR_HEIGHT}
                         fill={GANTT_COLORS.blue}
                         rx={radius}
                         ry={radius}
-                        className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
+                        className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                        style={{ pointerEvents: isDraggable ? 'none' : 'auto' }}
                     />
                 )}
 
-                {/* Net Work (Red) */}
+                {/* Net Work (Red - 가운데) */}
                 {netWorkDays > 0 && (
                     <rect
                         x={netX}
@@ -458,18 +543,110 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         fill={GANTT_COLORS.red}
                         rx={radius}
                         ry={radius}
-                        className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
+                        className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                        style={{ pointerEvents: isDraggable ? 'none' : 'auto' }}
                     />
+                )}
+                
+                {/* Post Indirect Work (Blue - 오른쪽) */}
+                {effectivePostDays > 0 && (
+                    <rect
+                        x={postX}
+                        y={0}
+                        width={postWidth}
+                        height={BAR_HEIGHT}
+                        fill={GANTT_COLORS.blue}
+                        rx={radius}
+                        ry={radius}
+                        className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                        style={{ pointerEvents: isDraggable ? 'none' : 'auto' }}
+                    />
+                )}
+                
+                {/* 왼쪽 리사이즈 핸들 (앞 간접작업일 조절) */}
+                {isDraggable && (
+                    <rect
+                        x={-handleWidth / 2}
+                        y={0}
+                        width={handleWidth}
+                        height={BAR_HEIGHT}
+                        fill="transparent"
+                        className="cursor-ew-resize"
+                        onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-pre', taskData)}
+                    >
+                        <title>앞 간접작업일 조절 (드래그)</title>
+                    </rect>
+                )}
+                
+                {/* 오른쪽 리사이즈 핸들 (뒤 간접작업일 조절) */}
+                {isDraggable && (
+                    <rect
+                        x={barWidth - handleWidth / 2}
+                        y={0}
+                        width={handleWidth}
+                        height={BAR_HEIGHT}
+                        fill="transparent"
+                        className="cursor-ew-resize"
+                        onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-post', taskData)}
+                    >
+                        <title>뒤 간접작업일 조절 (드래그)</title>
+                    </rect>
+                )}
+                
+                {/* 리사이즈 핸들 시각적 표시 (hover 시) */}
+                {isDraggable && (
+                    <>
+                        <rect
+                            x={1}
+                            y={BAR_HEIGHT / 2 - 6}
+                            width={3}
+                            height={12}
+                            rx={1}
+                            fill="white"
+                            className="pointer-events-none opacity-0 group-hover:opacity-80 transition-opacity"
+                        />
+                        <rect
+                            x={barWidth - 4}
+                            y={BAR_HEIGHT / 2 - 6}
+                            width={3}
+                            height={12}
+                            rx={1}
+                            fill="white"
+                            className="pointer-events-none opacity-0 group-hover:opacity-80 transition-opacity"
+                        />
+                    </>
                 )}
 
                 {/* Label */}
                 <text
-                    x={netWidth + indirectWidth + 8}
+                    x={barWidth + 8}
                     y={BAR_HEIGHT / 2 + 4}
                     className="pointer-events-none select-none text-[11px] font-medium fill-gray-700"
                 >
                     {task.name}
                 </text>
+                
+                {/* 드래그 중 정보 프리뷰 */}
+                {isDragging && (
+                    <g>
+                        <text
+                            x={barWidth / 2}
+                            y={-6}
+                            textAnchor="middle"
+                            className="pointer-events-none select-none text-[10px] font-bold fill-blue-600"
+                        >
+                            {format(effectiveStartDate, 'MM/dd')} ~ {format(effectiveEndDate, 'MM/dd')}
+                        </text>
+                        <text
+                            x={barWidth / 2}
+                            y={BAR_HEIGHT + 12}
+                            textAnchor="middle"
+                            className="pointer-events-none select-none text-[9px] fill-gray-500"
+                        >
+                            앞{effectivePreDays}일 + 순{netWorkDays}일 + 뒤{effectivePostDays}일
+                        </text>
+                    </g>
+                )}
             </g>
         );
     }
@@ -498,6 +675,16 @@ const SvgDefs: React.FC = () => (
 // Main Timeline Component
 // ============================================
 
+/** Bar 드래그 결과 콜백 파라미터 */
+export interface BarDragResult {
+    taskId: string;
+    dragType: DragType;
+    newStartDate: Date;
+    newEndDate: Date;
+    newIndirectWorkDaysPre: number;
+    newIndirectWorkDaysPost: number;
+}
+
 interface GanttTimelineProps {
     tasks: ConstructionTask[];
     milestones: Milestone[];
@@ -506,6 +693,8 @@ interface GanttTimelineProps {
     holidays: Date[];
     calendarSettings: CalendarSettings;
     onTaskUpdate?: (task: ConstructionTask) => void;
+    /** Bar 드래그로 날짜/일수 변경 콜백 */
+    onBarDrag?: (result: BarDragResult) => void;
     /** 가상화된 행 목록 */
     virtualRows?: VirtualRow[];
     /** 전체 높이 */
@@ -513,12 +702,34 @@ interface GanttTimelineProps {
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
-    ({ tasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, virtualRows, totalHeight: virtualTotalHeight }, ref) => {
+    ({ tasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, virtualRows, totalHeight: virtualTotalHeight }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
         
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
+        
+        // ====================================
+        // Bar 드래그 상태 관리
+        // ====================================
+        const [dragState, setDragState] = useState<{
+            taskId: string;
+            dragType: DragType;
+            startX: number;
+            // 원본 값
+            originalStartDate: Date;
+            originalEndDate: Date;
+            originalIndirectWorkDaysPre: number;
+            originalNetWorkDays: number;
+            originalIndirectWorkDaysPost: number;
+            // 현재 값
+            currentStartDate: Date;
+            currentEndDate: Date;
+            currentIndirectWorkDaysPre: number;
+            currentIndirectWorkDaysPost: number;
+        } | null>(null);
+        
+        const svgRef = useRef<SVGSVGElement>(null);
 
         // Calculate date range
         const { minDate, totalDays } = useMemo(() => {
@@ -529,6 +740,151 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         const chartHeight = isVirtualized 
             ? Math.max((virtualTotalHeight || 0) + MILESTONE_LANE_HEIGHT + 100, 500)
             : Math.max(tasks.length * ROW_HEIGHT + MILESTONE_LANE_HEIGHT + 100, 500);
+
+        // ====================================
+        // Bar 드래그 핸들러
+        // ====================================
+        
+        const handleBarMouseDown = useCallback((
+            e: React.MouseEvent,
+            taskId: string,
+            dragType: DragType,
+            taskData: {
+                startDate: Date;
+                endDate: Date;
+                indirectWorkDaysPre: number;
+                netWorkDays: number;
+                indirectWorkDaysPost: number;
+            }
+        ) => {
+            if (!onBarDrag) return;
+            e.preventDefault();
+            e.stopPropagation();
+            
+            setDragState({
+                taskId,
+                dragType,
+                startX: e.clientX,
+                originalStartDate: taskData.startDate,
+                originalEndDate: taskData.endDate,
+                originalIndirectWorkDaysPre: taskData.indirectWorkDaysPre,
+                originalNetWorkDays: taskData.netWorkDays,
+                originalIndirectWorkDaysPost: taskData.indirectWorkDaysPost,
+                currentStartDate: taskData.startDate,
+                currentEndDate: taskData.endDate,
+                currentIndirectWorkDaysPre: taskData.indirectWorkDaysPre,
+                currentIndirectWorkDaysPost: taskData.indirectWorkDaysPost,
+            });
+        }, [onBarDrag]);
+
+        const handleMouseMove = useCallback((e: MouseEvent) => {
+            if (!dragState || !onBarDrag) return;
+            
+            const deltaX = e.clientX - dragState.startX;
+            const deltaDays = Math.round(deltaX / pixelsPerDay);
+            
+            let newStartDate = dragState.originalStartDate;
+            let newEndDate = dragState.originalEndDate;
+            let newPreDays = dragState.originalIndirectWorkDaysPre;
+            let newPostDays = dragState.originalIndirectWorkDaysPost;
+            
+            if (dragState.dragType === 'move') {
+                // 전체 이동: 시작일과 종료일 동시 이동, 일수는 유지
+                newStartDate = addDays(dragState.originalStartDate, deltaDays);
+                newEndDate = addDays(dragState.originalEndDate, deltaDays);
+            } else if (dragState.dragType === 'resize-pre') {
+                // 왼쪽 끝 드래그: 앞 간접작업일 조절
+                // deltaDays가 음수면 바가 왼쪽으로 확장 (일수 증가)
+                // deltaDays가 양수면 바가 오른쪽으로 축소 (일수 감소)
+                newPreDays = Math.max(0, dragState.originalIndirectWorkDaysPre - deltaDays);
+                newStartDate = addDays(dragState.originalStartDate, -(-deltaDays + (newPreDays - dragState.originalIndirectWorkDaysPre)));
+                
+                // 시작일 재계산: 원래 순작업 시작일 - 새 앞간접일수
+                const netWorkStartDate = addDays(dragState.originalStartDate, dragState.originalIndirectWorkDaysPre);
+                newStartDate = addDays(netWorkStartDate, -newPreDays);
+                
+                // 종료일은 유지
+                newEndDate = dragState.originalEndDate;
+            } else if (dragState.dragType === 'resize-post') {
+                // 오른쪽 끝 드래그: 뒤 간접작업일 조절
+                // deltaDays가 양수면 바가 오른쪽으로 확장 (일수 증가)
+                // deltaDays가 음수면 바가 왼쪽으로 축소 (일수 감소)
+                newPostDays = Math.max(0, dragState.originalIndirectWorkDaysPost + deltaDays);
+                
+                // 종료일 재계산: 원래 순작업 종료일 + 새 뒤간접일수
+                const netWorkEndDate = addDays(dragState.originalEndDate, -dragState.originalIndirectWorkDaysPost);
+                newEndDate = addDays(netWorkEndDate, newPostDays);
+                
+                // 시작일은 유지
+                newStartDate = dragState.originalStartDate;
+            }
+            
+            setDragState(prev => prev ? {
+                ...prev,
+                currentStartDate: newStartDate,
+                currentEndDate: newEndDate,
+                currentIndirectWorkDaysPre: newPreDays,
+                currentIndirectWorkDaysPost: newPostDays,
+            } : null);
+        }, [dragState, onBarDrag, pixelsPerDay]);
+
+        const handleMouseUp = useCallback(() => {
+            if (!dragState || !onBarDrag) {
+                setDragState(null);
+                return;
+            }
+            
+            // 변경이 있을 때만 콜백 호출
+            const hasDateChange = 
+                dragState.currentStartDate.getTime() !== dragState.originalStartDate.getTime() ||
+                dragState.currentEndDate.getTime() !== dragState.originalEndDate.getTime();
+            const hasDaysChange =
+                dragState.currentIndirectWorkDaysPre !== dragState.originalIndirectWorkDaysPre ||
+                dragState.currentIndirectWorkDaysPost !== dragState.originalIndirectWorkDaysPost;
+            
+            if (hasDateChange || hasDaysChange) {
+                onBarDrag({
+                    taskId: dragState.taskId,
+                    dragType: dragState.dragType,
+                    newStartDate: dragState.currentStartDate,
+                    newEndDate: dragState.currentEndDate,
+                    newIndirectWorkDaysPre: dragState.currentIndirectWorkDaysPre,
+                    newIndirectWorkDaysPost: dragState.currentIndirectWorkDaysPost,
+                });
+            }
+            
+            setDragState(null);
+        }, [dragState, onBarDrag]);
+
+        // 전역 마우스 이벤트 리스너
+        useEffect(() => {
+            if (dragState) {
+                window.addEventListener('mousemove', handleMouseMove);
+                window.addEventListener('mouseup', handleMouseUp);
+                document.body.style.cursor = dragState.dragType === 'move' ? 'grabbing' : 'ew-resize';
+                document.body.style.userSelect = 'none';
+                
+                return () => {
+                    window.removeEventListener('mousemove', handleMouseMove);
+                    window.removeEventListener('mouseup', handleMouseUp);
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                };
+            }
+        }, [dragState, handleMouseMove, handleMouseUp]);
+
+        // 드래그 중인 task의 현재 정보 가져오기
+        const getDragInfo = useCallback((taskId: string): DragInfo | null => {
+            if (dragState && dragState.taskId === taskId) {
+                return {
+                    startDate: dragState.currentStartDate,
+                    endDate: dragState.currentEndDate,
+                    indirectWorkDaysPre: dragState.currentIndirectWorkDaysPre,
+                    indirectWorkDaysPost: dragState.currentIndirectWorkDaysPost,
+                };
+            }
+            return null;
+        }, [dragState]);
 
         return (
             <div className="flex h-full w-full flex-col overflow-hidden bg-white">
@@ -573,6 +929,45 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             stroke={GANTT_COLORS.grid}
                             strokeWidth={1}
                         />
+
+                        {/* Vertical Grid Lines (세로 그리드) */}
+                        {Array.from({ length: totalDays }, (_, i) => {
+                            const x = (i + 1) * pixelsPerDay;
+                            const date = addDays(minDate, i);
+                            const dayOfWeek = getDay(date);
+                            
+                            // 줌 레벨에 따라 다른 간격으로 라인 표시
+                            let showLine = false;
+                            let strokeColor = '#f0f0f0'; // 기본 연한 색상
+                            
+                            if (zoomLevel === 'DAY') {
+                                // 일 단위: 모든 날짜에 라인, 일요일은 진하게
+                                showLine = true;
+                                strokeColor = dayOfWeek === 0 ? '#e0e0e0' : '#f0f0f0';
+                            } else if (zoomLevel === 'WEEK') {
+                                // 주 단위: 일요일에만 진한 라인
+                                showLine = dayOfWeek === 0;
+                                strokeColor = '#e5e7eb';
+                            } else if (zoomLevel === 'MONTH') {
+                                // 월 단위: 매주 일요일에 연한 라인
+                                showLine = dayOfWeek === 0;
+                                strokeColor = '#f0f0f0';
+                            }
+                            
+                            if (!showLine) return null;
+                            
+                            return (
+                                <line
+                                    key={`vline-${i}`}
+                                    x1={x}
+                                    y1={0}
+                                    x2={x}
+                                    y2={chartHeight}
+                                    stroke={strokeColor}
+                                    strokeWidth={1}
+                                />
+                            );
+                        })}
 
                         {/* Horizontal Lines (가상화 적용) */}
                         {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => (
@@ -620,6 +1015,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
                                     isMasterView={isMasterView}
+                                    isDraggable={!isMasterView && !!onBarDrag}
+                                    dragInfo={getDragInfo(task.id)}
+                                    onDragStart={handleBarMouseDown}
                                 />
                             );
                         })}

@@ -16,7 +16,7 @@ export type ZoomLevel = 'DAY' | 'WEEK' | 'MONTH';
 /** 현재 활성화된 뷰 (Master: L1, Detail: L2) */
 export type ViewMode = 'MASTER' | 'DETAIL';
 
-/** 기간 배치 타입 (L2: 간접작업의 위치) */
+/** @deprecated 기존 배치 타입 - 하위 호환성을 위해 유지 */
 export type Placement = 'PRE' | 'POST';
 
 /** 유연한 연결을 위한 앵커 포인트 */
@@ -26,7 +26,7 @@ export type AnchorPoint = 'START' | 'NET_WORK_START' | 'NET_WORK_END' | 'END';
 export type DependencyType = 'FS' | 'SS' | 'FF' | 'SF';
 
 /** 태스크 타입 */
-export type TaskType = 'GROUP' | 'SUMMARY' | 'TASK';
+export type TaskType = 'GROUP' | 'CP' | 'TASK';
 
 // ============================================
 // 색상 상수
@@ -105,17 +105,17 @@ export interface Dependency {
 // 태스크 데이터 인터페이스
 // ============================================
 
-/** Level 1 전용 데이터 (공구 공정표 - Summary/Aggregate) */
-export interface SummaryData {
+/** Level 1 전용 데이터 (공구 공정표 - CP/Aggregate) */
+export interface CPData {
     workDaysTotal: number;            // 작업일수 (Vermilion)
     nonWorkDaysTotal: number;         // 비작업일수 (Teal)
 }
 
 /** Level 2 전용 데이터 (주공정표 - Task Detail) */
 export interface TaskData {
-    netWorkDays: number;              // 순작업일 (Red) - 휴일 제외
-    indirectWorkDays: number;         // 간접작업일 (Blue) - 휴일 포함
-    placement: Placement;             // 배치 순서 (PRE: 간접→순작업, POST: 순작업→간접)
+    netWorkDays: number;              // 순작업일 (Red) - 휴일 제외, 가운데 위치
+    indirectWorkDaysPre: number;      // 앞 간접작업일 (Blue) - 휴일 포함, 왼쪽 위치
+    indirectWorkDaysPost: number;     // 뒤 간접작업일 (Blue) - 휴일 포함, 오른쪽 위치
 
     // 산출 근거 (Phase 2: 자동 계산용)
     quantity?: number;                // 수량
@@ -141,7 +141,7 @@ export interface ConstructionTask {
     endDate: Date;
 
     // Level별 데이터 (Optional)
-    summary?: SummaryData;            // Level 1 전용
+    cp?: CPData;                      // Level 1 전용
     task?: TaskData;                  // Level 2 전용
 
     // 종속성
@@ -171,8 +171,10 @@ export interface TaskDates {
     endDate: Date;
     netWorkStartDate: Date;
     netWorkEndDate: Date;
-    indirectStartDate?: Date;
-    indirectEndDate?: Date;
+    indirectPreStartDate?: Date;      // 앞 간접작업 시작일
+    indirectPreEndDate?: Date;        // 앞 간접작업 종료일
+    indirectPostStartDate?: Date;     // 뒤 간접작업 시작일
+    indirectPostEndDate?: Date;       // 뒤 간접작업 종료일
 }
 
 // ============================================
@@ -198,9 +200,10 @@ export interface GanttChartProps {
     onTaskUpdate?: (task: ConstructionTask) => void | Promise<void>;
     onTaskCreate?: (task: Partial<ConstructionTask>) => void | Promise<void>;
     onTaskDelete?: (taskId: string) => void | Promise<void>;
+    onTaskReorder?: (taskId: string, newIndex: number) => void | Promise<void>;
     onDependencyCreate?: (taskId: string, dependency: Dependency) => void | Promise<void>;
     onDependencyDelete?: (taskId: string, dependencyId: string) => void | Promise<void>;
-    onViewChange?: (view: ViewMode, activeSummaryId?: string) => void;
+    onViewChange?: (view: ViewMode, activeCPId?: string) => void;
 
     // 스타일링
     className?: string;
@@ -234,7 +237,7 @@ export interface GanttTimelineProps {
 export interface GanttUIState {
     // View State
     viewMode: ViewMode;
-    activeSummaryId: string | null;   // Detail 뷰에서 선택된 CP ID
+    activeCPId: string | null;        // Detail 뷰에서 선택된 CP ID
     zoomLevel: ZoomLevel;
 
     // UI Interaction State
@@ -247,13 +250,13 @@ export interface GanttUIState {
 
     // Drag State
     isDragging: boolean;
-    dragType: 'MOVE' | 'RESIZE_NET' | 'RESIZE_INDIRECT' | 'LINK' | null;
+    dragType: 'MOVE' | 'RESIZE_PRE' | 'RESIZE_POST' | 'RESIZE_NET' | 'LINK' | null;
     dragTaskId: string | null;
 }
 
 export interface GanttUIActions {
     // View Actions
-    setViewMode: (mode: ViewMode, summaryId?: string | null) => void;
+    setViewMode: (mode: ViewMode, cpId?: string | null) => void;
     setZoomLevel: (level: ZoomLevel) => void;
 
     // Task UI Actions

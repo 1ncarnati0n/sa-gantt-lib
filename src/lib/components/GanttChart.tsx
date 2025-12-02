@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { GanttSidebar } from './GanttSidebar';
-import { GanttTimeline } from './GanttTimeline';
+import { GanttTimeline, BarDragResult } from './GanttTimeline';
 import { useGanttStore, useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion } from '../store/useGanttStore';
 import { useGanttVirtualization } from '../hooks/useGanttVirtualization';
 import {
@@ -13,6 +13,7 @@ import {
     ZOOM_CONFIG,
     CalendarSettings,
 } from '../types';
+import { calculateDateRange, dateToX } from '../utils/dateUtils';
 
 // 기본 캘린더 설정
 const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
@@ -50,6 +51,8 @@ export function GanttChart({
     initialZoomLevel = 'MONTH',  // Master View 기본: 월
     initialExpandedIds,
     onTaskUpdate,
+    onTaskCreate,
+    onTaskReorder,
     onViewChange,
     className,
     style,
@@ -57,7 +60,7 @@ export function GanttChart({
     // ====================================
     // Store State & Actions
     // ====================================
-    const { viewMode, activeSummaryId, zoomLevel } = useGanttViewState();
+    const { viewMode, activeCPId, zoomLevel } = useGanttViewState();
     const { setViewMode, setZoomLevel } = useGanttViewActions();
     const { sidebarWidth, setSidebarWidth } = useGanttSidebar();
     const { expandedTaskIds, toggleTask, expandAll } = useGanttExpansion();
@@ -119,9 +122,9 @@ export function GanttChart({
             return visible;
         } else {
             // Detail View: Level 2 Tasks of selected CP
-            return tasks.filter(t => t.wbsLevel === 2 && t.parentId === activeSummaryId);
+            return tasks.filter(t => t.wbsLevel === 2 && t.parentId === activeCPId);
         }
-    }, [tasks, viewMode, activeSummaryId, expandedTaskIds]);
+    }, [tasks, viewMode, activeCPId, expandedTaskIds]);
 
     // ====================================
     // 가상화 (대규모 공정표 성능 최적화)
@@ -202,16 +205,86 @@ export function GanttChart({
     // ====================================
     // 뷰 전환 핸들러
     // ====================================
-    const handleViewChange = useCallback((mode: 'MASTER' | 'DETAIL', summaryId?: string) => {
-        setViewMode(mode, summaryId);
-        onViewChange?.(mode, summaryId);
+    const handleViewChange = useCallback((mode: 'MASTER' | 'DETAIL', cpId?: string) => {
+        setViewMode(mode, cpId);
+        onViewChange?.(mode, cpId);
     }, [setViewMode, onViewChange]);
 
+    // ====================================
+    // 타임라인 스크롤 함수
+    // ====================================
+    
+    // 특정 날짜로 타임라인 스크롤
+    const scrollToDate = useCallback((targetDate: Date) => {
+        const timeline = timelineScrollRef.current;
+        if (!timeline) return;
+        
+        // 현재 줌 레벨의 pixelsPerDay 사용
+        const pxPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
+        
+        // minDate 계산 (calculateDateRange 사용)
+        const { minDate } = calculateDateRange(tasks, milestones, 60);
+        
+        // X 좌표 계산
+        const x = dateToX(targetDate, minDate, pxPerDay);
+        
+        // 약간의 여유를 두고 스크롤 (왼쪽 50px 마진)
+        timeline.scrollLeft = Math.max(0, x - 50);
+    }, [zoomLevel, tasks, milestones]);
+
+    // 첫 번째 Task로 스크롤 (버튼용)
+    const scrollToFirstTask = useCallback(() => {
+        if (viewMode !== 'DETAIL' || !activeCPId) return;
+        
+        const childTasks = tasks.filter(t => t.parentId === activeCPId);
+        if (childTasks.length > 0) {
+            // 가장 빠른 시작일의 task 찾기
+            const firstTask = childTasks.reduce((a, b) => 
+                a.startDate < b.startDate ? a : b
+            );
+            scrollToDate(firstTask.startDate);
+        }
+    }, [viewMode, activeCPId, tasks, scrollToDate]);
+
     const handleTaskClick = useCallback((task: ConstructionTask) => {
-        if (viewMode === 'MASTER' && task.type === 'SUMMARY') {
+        if (viewMode === 'MASTER' && task.type === 'CP') {
             handleViewChange('DETAIL', task.id);
         }
     }, [viewMode, handleViewChange]);
+
+    // ====================================
+    // Detail View 진입 시 자동 스크롤
+    // ====================================
+    useEffect(() => {
+        if (viewMode === 'DETAIL' && activeCPId) {
+            // 뷰 전환 후 렌더링이 완료되면 첫 번째 task로 스크롤
+            const timer = setTimeout(() => {
+                scrollToFirstTask();
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [viewMode, activeCPId]); // scrollToFirstTask는 의존성에서 제외 (무한 루프 방지)
+
+    // Bar 드래그로 날짜/일수 변경 핸들러
+    const handleBarDrag = useCallback((result: BarDragResult) => {
+        if (!onTaskUpdate) return;
+        
+        const task = tasks.find(t => t.id === result.taskId);
+        if (!task || !task.task) return;
+        
+        const updatedTask: ConstructionTask = {
+            ...task,
+            startDate: result.newStartDate,
+            endDate: result.newEndDate,
+            task: {
+                ...task.task,
+                indirectWorkDaysPre: result.newIndirectWorkDaysPre,
+                indirectWorkDaysPost: result.newIndirectWorkDaysPost,
+            },
+        };
+        
+        onTaskUpdate(updatedTask);
+    }, [tasks, onTaskUpdate]);
 
     // ====================================
     // 렌더링
@@ -276,6 +349,10 @@ export function GanttChart({
                         onTaskClick={handleTaskClick}
                         onBackToMaster={() => handleViewChange('MASTER')}
                         onTaskUpdate={onTaskUpdate}
+                        onTaskCreate={onTaskCreate}
+                        onTaskReorder={onTaskReorder}
+                        onScrollToFirstTask={scrollToFirstTask}
+                        activeCPId={activeCPId}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
                     />
@@ -304,6 +381,7 @@ export function GanttChart({
                         holidays={holidays}
                         calendarSettings={calendarSettings}
                         onTaskUpdate={onTaskUpdate}
+                        onBarDrag={handleBarDrag}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
                     />

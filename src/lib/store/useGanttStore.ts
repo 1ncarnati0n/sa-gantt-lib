@@ -24,7 +24,7 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
 
     // View State
     viewMode: 'MASTER',
-    activeSummaryId: null,
+    activeCPId: null,
     zoomLevel: 'MONTH',  // Master View 기본: 월
 
     // UI Interaction State
@@ -44,10 +44,10 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
     // View Actions
     // ====================================
 
-    setViewMode: (mode: ViewMode, summaryId?: string | null) => {
+    setViewMode: (mode: ViewMode, cpId?: string | null) => {
         set({
             viewMode: mode,
-            activeSummaryId: summaryId ?? null,
+            activeCPId: cpId ?? null,
             // 뷰 모드에 따른 기본 줌 레벨 설정
             // Master (Level 1): 월 / Detail (Level 2): 일
             zoomLevel: mode === 'DETAIL' ? 'DAY' : 'MONTH',
@@ -134,7 +134,7 @@ export const useGanttViewState = () =>
     useGanttStore(
         useShallow((state) => ({
             viewMode: state.viewMode,
-            activeSummaryId: state.activeSummaryId,
+            activeCPId: state.activeCPId,
             zoomLevel: state.zoomLevel,
         }))
     );

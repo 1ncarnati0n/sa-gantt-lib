@@ -32,6 +32,7 @@ import './style.css';
 export { GanttChart } from './components/GanttChart';
 export { GanttSidebar } from './components/GanttSidebar';
 export { GanttTimeline } from './components/GanttTimeline';
+export type { BarDragResult } from './components/GanttTimeline';
 
 // ============================================
 // Store (UI State Management)
@@ -62,7 +63,7 @@ export type {
     Dependency,
     
     // Data Types
-    SummaryData,
+    CPData,
     TaskData,
     TaskDates,
     

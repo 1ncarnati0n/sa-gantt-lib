@@ -42,11 +42,11 @@
             "id": "cp-prep",
             "parentId": null,
             "wbsLevel": 1,
-            "type": "SUMMARY",
+            "type": "CP",
             "name": "공사 준비기간 CP",
             "startDate": "2024-03-01",
             "endDate": "2024-04-15",
-            "summary": {
+            "cp": {
                 "workDaysTotal": 0,
                 "nonWorkDaysTotal": 45
             },
@@ -62,8 +62,8 @@
             "endDate": "2024-03-15",
             "task": {
                 "netWorkDays": 10,
-                "indirectWorkDays": 5,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 5
             },
             "dependencies": []
         },
@@ -77,8 +77,8 @@
             "endDate": "2024-03-20",
             "task": {
                 "netWorkDays": 10,
-                "indirectWorkDays": 5,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 5
             },
             "dependencies": []
         },
@@ -96,11 +96,11 @@
             "id": "cp-excavation",
             "parentId": "group-civil",
             "wbsLevel": 1,
-            "type": "SUMMARY",
+            "type": "CP",
             "name": "가시설 및 터파기 CP",
             "startDate": "2024-04-16",
             "endDate": "2024-06-15",
-            "summary": {
+            "cp": {
                 "workDaysTotal": 47,
                 "nonWorkDaysTotal": 15
             },
@@ -116,8 +116,8 @@
             "endDate": "2024-04-25",
             "task": {
                 "netWorkDays": 7,
-                "indirectWorkDays": 3,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 3
             },
             "dependencies": []
         },
@@ -131,8 +131,8 @@
             "endDate": "2024-06-15",
             "task": {
                 "netWorkDays": 40,
-                "indirectWorkDays": 10,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 10
             },
             "dependencies": [
                 {
@@ -149,11 +149,11 @@
             "id": "cp-foundation",
             "parentId": "group-civil",
             "wbsLevel": 1,
-            "type": "SUMMARY",
+            "type": "CP",
             "name": "기초공사 CP",
             "startDate": "2024-06-16",
             "endDate": "2024-07-10",
-            "summary": {
+            "cp": {
                 "workDaysTotal": 14,
                 "nonWorkDaysTotal": 11
             },
@@ -169,8 +169,8 @@
             "endDate": "2024-06-30",
             "task": {
                 "netWorkDays": 14,
-                "indirectWorkDays": 1,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 1
             },
             "dependencies": []
         },
@@ -184,8 +184,8 @@
             "endDate": "2024-07-10",
             "task": {
                 "netWorkDays": 0,
-                "indirectWorkDays": 10,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 10
             },
             "dependencies": [
                 {
@@ -212,11 +212,11 @@
             "id": "cp-basement",
             "parentId": "group-building",
             "wbsLevel": 1,
-            "type": "SUMMARY",
+            "type": "CP",
             "name": "지하골조공사 CP",
             "startDate": "2024-07-11",
             "endDate": "2024-08-10",
-            "summary": {
+            "cp": {
                 "workDaysTotal": 30,
                 "nonWorkDaysTotal": 0
             },
@@ -232,8 +232,8 @@
             "endDate": "2024-07-25",
             "task": {
                 "netWorkDays": 15,
-                "indirectWorkDays": 0,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
             },
             "dependencies": []
         },
@@ -247,8 +247,8 @@
             "endDate": "2024-08-10",
             "task": {
                 "netWorkDays": 15,
-                "indirectWorkDays": 0,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
             },
             "dependencies": [
                 {
@@ -265,11 +265,11 @@
             "id": "cp-structure",
             "parentId": "group-building",
             "wbsLevel": 1,
-            "type": "SUMMARY",
+            "type": "CP",
             "name": "지상골조공사 CP",
             "startDate": "2024-08-11",
             "endDate": "2025-05-30",
-            "summary": {
+            "cp": {
                 "workDaysTotal": 262,
                 "nonWorkDaysTotal": 30
             },
@@ -285,8 +285,8 @@
             "endDate": "2024-08-30",
             "task": {
                 "netWorkDays": 19,
-                "indirectWorkDays": 1,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 1
             },
             "dependencies": []
         },
@@ -300,8 +300,8 @@
             "endDate": "2025-05-30",
             "task": {
                 "netWorkDays": 243,
-                "indirectWorkDays": 29,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 29
             },
             "dependencies": [
                 {
@@ -318,11 +318,11 @@
             "id": "cp-finishing",
             "parentId": "group-building",
             "wbsLevel": 1,
-            "type": "SUMMARY",
+            "type": "CP",
             "name": "마감공사 CP",
             "startDate": "2025-03-01",
             "endDate": "2025-10-30",
-            "summary": {
+            "cp": {
                 "workDaysTotal": 110,
                 "nonWorkDaysTotal": 0
             },
@@ -338,8 +338,8 @@
             "endDate": "2025-04-30",
             "task": {
                 "netWorkDays": 60,
-                "indirectWorkDays": 2,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 2
             },
             "dependencies": []
         },
@@ -353,8 +353,8 @@
             "endDate": "2025-06-20",
             "task": {
                 "netWorkDays": 80,
-                "indirectWorkDays": 2,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 2
             },
             "dependencies": [
                 {
@@ -377,8 +377,8 @@
             "endDate": "2025-08-30",
             "task": {
                 "netWorkDays": 90,
-                "indirectWorkDays": 2,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 2
             },
             "dependencies": []
         },
@@ -392,8 +392,8 @@
             "endDate": "2025-10-30",
             "task": {
                 "netWorkDays": 90,
-                "indirectWorkDays": 2,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 2
             },
             "dependencies": [
                 {
@@ -410,11 +410,11 @@
             "id": "cp-cleanup",
             "parentId": null,
             "wbsLevel": 1,
-            "type": "SUMMARY",
+            "type": "CP",
             "name": "정리기간 CP",
             "startDate": "2025-11-01",
             "endDate": "2025-11-30",
-            "summary": {
+            "cp": {
                 "workDaysTotal": 0,
                 "nonWorkDaysTotal": 30
             },
@@ -430,8 +430,8 @@
             "endDate": "2025-11-15",
             "task": {
                 "netWorkDays": 15,
-                "indirectWorkDays": 0,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
             },
             "dependencies": []
         },
@@ -445,8 +445,8 @@
             "endDate": "2025-11-30",
             "task": {
                 "netWorkDays": 15,
-                "indirectWorkDays": 0,
-                "placement": "POST"
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
             },
             "dependencies": [
                 {
