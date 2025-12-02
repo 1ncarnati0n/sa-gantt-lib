@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import { format } from 'date-fns';
 import { GanttSidebar } from './GanttSidebar';
 import { GanttTimeline, BarDragResult } from './GanttTimeline';
-import { useGanttStore, useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion } from '../store/useGanttStore';
+import { useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion } from '../store/useGanttStore';
 import { useGanttVirtualization } from '../hooks/useGanttVirtualization';
 import {
     GanttChartProps,

@@ -74,7 +74,7 @@ export function useGanttVirtualization({
             index: item.index,
             start: item.start,
             size: item.size,
-            key: item.key,
+            key: item.index, // index는 항상 number이므로 타입 안전
         }));
     }, [rowVirtualizer.getVirtualItems()]);
 

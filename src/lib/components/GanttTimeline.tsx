@@ -1,7 +1,7 @@
 'use client';
 
-import React, { forwardRef, useMemo, useState, useCallback, useRef, useEffect } from 'react';
-import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth, differenceInDays } from 'date-fns';
+import React, { forwardRef, useMemo, useState, useCallback, useEffect } from 'react';
+import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth } from 'date-fns';
 import {
     ConstructionTask,
     Milestone,
@@ -728,8 +728,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             currentIndirectWorkDaysPre: number;
             currentIndirectWorkDaysPost: number;
         } | null>(null);
-        
-        const svgRef = useRef<SVGSVGElement>(null);
 
         // Calculate date range
         const { minDate, totalDays } = useMemo(() => {
