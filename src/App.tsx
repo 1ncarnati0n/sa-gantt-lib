@@ -1,11 +1,643 @@
-import { GanttChart } from './components/GanttChart'
+/**
+ * SA-Gantt-Lib Demo App
+ * 
+ * 이 앱은 라이브러리 테스트/개발용 데모입니다.
+ * 실제 사용 시에는 GanttChart 컴포넌트를 import해서 사용합니다.
+ * 
+ * 데이터 저장: localStorage 사용 (나중에 Supabase로 전환 예정)
+ */
+
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { parseISO, format } from 'date-fns';
+import { GanttChart, ConstructionTask, Milestone, CalendarSettings, calculateDualCalendarDates, AnchorPoint, DependencyType } from './lib';
+import mockData from './data/mock.json';
+
+// ============================================
+// localStorage 키
+// ============================================
+const STORAGE_KEYS = {
+    TASKS: 'sa-gantt-tasks',
+    MILESTONES: 'sa-gantt-milestones',
+};
+
+// ============================================
+// localStorage 유틸리티 함수
+// (나중에 Supabase로 전환 시 이 함수들만 수정)
+// ============================================
+
+// Task를 저장 가능한 형태로 직렬화
+const serializeTasks = (tasks: ConstructionTask[]): string => {
+    const serialized = tasks.map(t => ({
+        ...t,
+        startDate: format(t.startDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+        endDate: format(t.endDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+    }));
+    return JSON.stringify(serialized);
+};
+
+// Milestone을 저장 가능한 형태로 직렬화
+const serializeMilestones = (milestones: Milestone[]): string => {
+    const serialized = milestones.map(m => ({
+        ...m,
+        date: format(m.date, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+    }));
+    return JSON.stringify(serialized);
+};
+
+// 타입 가드: Task 데이터 검증
+const isValidTaskData = (data: unknown): data is Record<string, unknown> & { 
+    id: string; 
+    startDate: string; 
+    endDate: string;
+} => {
+    if (!data || typeof data !== 'object') return false;
+    const obj = data as Record<string, unknown>;
+    return (
+        typeof obj.id === 'string' &&
+        typeof obj.startDate === 'string' &&
+        typeof obj.endDate === 'string'
+    );
+};
+
+// localStorage에서 Tasks 로드
+const loadTasksFromStorage = (): ConstructionTask[] | null => {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.TASKS);
+        if (!stored) return null;
+        
+        const parsed = JSON.parse(stored);
+        if (!Array.isArray(parsed)) {
+            console.error('Invalid tasks data format: expected array');
+            return null;
+        }
+        
+        return parsed
+            .filter(isValidTaskData)
+            .map((t) => ({
+                ...t,
+                startDate: parseISO(t.startDate),
+                endDate: parseISO(t.endDate),
+            })) as ConstructionTask[];
+    } catch (error) {
+        console.error('Failed to load tasks from localStorage:', error);
+        return null;
+    }
+};
+
+// 타입 가드: Milestone 데이터 검증
+const isValidMilestoneData = (data: unknown): data is Record<string, unknown> & { 
+    id: string; 
+    date: string; 
+    name: string;
+} => {
+    if (!data || typeof data !== 'object') return false;
+    const obj = data as Record<string, unknown>;
+    return (
+        typeof obj.id === 'string' &&
+        typeof obj.date === 'string' &&
+        typeof obj.name === 'string'
+    );
+};
+
+// localStorage에서 Milestones 로드
+const loadMilestonesFromStorage = (): Milestone[] | null => {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.MILESTONES);
+        if (!stored) return null;
+        
+        const parsed = JSON.parse(stored);
+        if (!Array.isArray(parsed)) {
+            console.error('Invalid milestones data format: expected array');
+            return null;
+        }
+        
+        return parsed
+            .filter(isValidMilestoneData)
+            .map((m) => ({
+                ...m,
+                date: parseISO(m.date),
+            })) as Milestone[];
+    } catch (error) {
+        console.error('Failed to load milestones from localStorage:', error);
+        return null;
+    }
+};
+
+// localStorage에 Tasks 저장
+const saveTasksToStorage = (tasks: ConstructionTask[]): void => {
+    try {
+        localStorage.setItem(STORAGE_KEYS.TASKS, serializeTasks(tasks));
+        console.log('Tasks saved to localStorage');
+    } catch (error) {
+        console.error('Failed to save tasks to localStorage:', error);
+    }
+};
+
+// localStorage에 Milestones 저장
+const saveMilestonesToStorage = (milestones: Milestone[]): void => {
+    try {
+        localStorage.setItem(STORAGE_KEYS.MILESTONES, serializeMilestones(milestones));
+        console.log('Milestones saved to localStorage');
+    } catch (error) {
+        console.error('Failed to save milestones to localStorage:', error);
+    }
+};
+
+// localStorage 데이터 초기화 (mock.json으로 리셋)
+export const resetStorageToMock = (): void => {
+    localStorage.removeItem(STORAGE_KEYS.TASKS);
+    localStorage.removeItem(STORAGE_KEYS.MILESTONES);
+    console.log('Storage reset. Refresh to load mock data.');
+};
+
+// ============================================
+// Mock 데이터 파싱
+// ============================================
+const parseMockData = () => {
+    const milestones: Milestone[] = mockData.milestones.map(m => ({
+        ...m,
+        date: parseISO(m.date),
+    }));
+
+    const tasks: ConstructionTask[] = mockData.tasks.map(t => ({
+        ...t,
+        wbsLevel: t.wbsLevel as 1 | 2,
+        type: t.type as 'GROUP' | 'CP' | 'TASK',
+        startDate: parseISO(t.startDate),
+        endDate: parseISO(t.endDate),
+        cp: t.cp ? { ...t.cp } : undefined,
+        task: t.task ? {
+            netWorkDays: t.task.netWorkDays,
+            indirectWorkDaysPre: t.task.indirectWorkDaysPre,
+            indirectWorkDaysPost: t.task.indirectWorkDaysPost,
+        } : undefined,
+        dependencies: t.dependencies.map(d => ({
+            ...d,
+            type: d.type as DependencyType,
+            sourceAnchor: d.sourceAnchor as AnchorPoint | undefined,
+            targetAnchor: d.targetAnchor as AnchorPoint | undefined,
+        })),
+    }));
+
+    return { milestones, tasks };
+};
+
+// 휴일 목록
+const HOLIDAYS = [
+    parseISO('2024-05-05'),
+    parseISO('2024-06-06'),
+    parseISO('2024-08-15'),
+    parseISO('2024-10-03'),
+    parseISO('2024-12-25'),
+];
+
+// 캘린더 설정
+const CALENDAR_SETTINGS: CalendarSettings = {
+    workOnSaturdays: false,
+    workOnSundays: false,
+    workOnHolidays: false,
+};
 
 function App() {
+    const [tasks, setTasks] = useState<ConstructionTask[]>([]);
+    const [milestones, setMilestones] = useState<Milestone[]>([]);
+    const [isLoaded, setIsLoaded] = useState(false);
+    
+    // 변경사항 감지
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    
+    // 초기 로드 여부 추적
+    const isInitialLoad = useRef(true);
+
+    // 초기 데이터 로드 (localStorage 우선, 없으면 mock.json)
+    useEffect(() => {
+        // 1. localStorage에서 로드 시도
+        const storedTasks = loadTasksFromStorage();
+        const storedMilestones = loadMilestonesFromStorage();
+        
+        if (storedTasks && storedTasks.length > 0) {
+            // localStorage에 데이터가 있으면 사용
+            console.log('Loaded from localStorage');
+            setTasks(storedTasks);
+            setMilestones(storedMilestones || []);
+        } else {
+            // localStorage에 데이터가 없으면 mock.json에서 로드 후 저장
+            console.log('Loaded from mock.json (first time)');
+            const { tasks: parsedTasks, milestones: parsedMilestones } = parseMockData();
+            setTasks(parsedTasks);
+            setMilestones(parsedMilestones);
+            
+            // mock 데이터를 localStorage에 저장
+            saveTasksToStorage(parsedTasks);
+            saveMilestonesToStorage(parsedMilestones);
+        }
+        
+        setIsLoaded(true);
+        
+        // 초기 로드 완료 후 플래그 해제
+        setTimeout(() => {
+            isInitialLoad.current = false;
+        }, 100);
+    }, []);
+
+    // ====================================
+    // 변경사항 감지 (tasks 변경 시)
+    // ====================================
+    useEffect(() => {
+        // 초기 로드 시에는 변경사항으로 표시하지 않음
+        if (isInitialLoad.current || !isLoaded) return;
+        
+        setHasUnsavedChanges(true);
+        setSaveStatus('idle');
+    }, [tasks, isLoaded]);
+
+    // ====================================
+    // 수동 저장 핸들러
+    // ====================================
+    const handleSave = useCallback(() => {
+        if (!hasUnsavedChanges) return;
+        
+        setSaveStatus('saving');
+        
+        try {
+            // 저장 실행
+            saveTasksToStorage(tasks);
+            saveMilestonesToStorage(milestones);
+            
+            // 저장 완료 표시
+            setTimeout(() => {
+                setHasUnsavedChanges(false);
+                setSaveStatus('saved');
+                
+                // 3초 후 상태 초기화
+                setTimeout(() => {
+                    setSaveStatus('idle');
+                }, 3000);
+            }, 300);
+        } catch (error) {
+            console.error('Failed to save data:', error);
+            setSaveStatus('idle');
+            alert('저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+        }
+    }, [tasks, milestones, hasUnsavedChanges]);
+
+    // 초기화 핸들러 (mock.json으로 리셋)
+    const handleReset = useCallback(() => {
+        if (!confirm('모든 변경사항을 취소하고 초기 데이터로 되돌리시겠습니까?')) return;
+        
+        try {
+            resetStorageToMock();
+            
+            // mock.json에서 다시 로드
+            const { tasks: parsedTasks, milestones: parsedMilestones } = parseMockData();
+            setTasks(parsedTasks);
+            setMilestones(parsedMilestones);
+            
+            // localStorage에 저장
+            saveTasksToStorage(parsedTasks);
+            saveMilestonesToStorage(parsedMilestones);
+            
+            setHasUnsavedChanges(false);
+            setSaveStatus('idle');
+            
+            console.log('Reset to mock data');
+        } catch (error) {
+            console.error('Failed to reset data:', error);
+            alert('초기화 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
+        }
+    }, []);
+
+    // ====================================
+    // 태스크 업데이트 핸들러
+    // (나중에 Supabase 전환 시 이 핸들러들의 내용만 수정)
+    // ====================================
+    const handleTaskUpdate = useCallback(async (updatedTask: ConstructionTask) => {
+        try {
+            setTasks(prevTasks => {
+            // 1. 해당 태스크 업데이트
+            let newTasks = prevTasks.map(t =>
+                t.id === updatedTask.id ? updatedTask : t
+            );
+
+            // 2. Level 2 태스크의 날짜 재계산
+            newTasks = newTasks.map(t => {
+                if (t.wbsLevel === 2 && t.task) {
+                    const dates = calculateDualCalendarDates(t, HOLIDAYS, CALENDAR_SETTINGS);
+                    return { ...t, startDate: dates.startDate, endDate: dates.endDate };
+                }
+                return t;
+            });
+
+            // 3. Level 1 태스크의 cp 재계산
+            const cpMap = new Map<string, {
+                work: number;
+                nonWork: number;
+                minStart: Date;
+                maxEnd: Date;
+            }>();
+
+            newTasks.forEach(t => {
+                if (t.parentId && t.wbsLevel === 2 && t.task) {
+                    const current = cpMap.get(t.parentId) || {
+                        work: 0,
+                        nonWork: 0,
+                        minStart: new Date(8640000000000000),
+                        maxEnd: new Date(-8640000000000000),
+                    };
+
+                    current.work += t.task.netWorkDays;
+                    current.nonWork += t.task.indirectWorkDaysPre + t.task.indirectWorkDaysPost;
+                    if (t.startDate < current.minStart) current.minStart = t.startDate;
+                    if (t.endDate > current.maxEnd) current.maxEnd = t.endDate;
+
+                    cpMap.set(t.parentId, current);
+                }
+            });
+
+            // 4. Level 1 태스크 업데이트
+            newTasks = newTasks.map(t => {
+                if (t.wbsLevel === 1 && cpMap.has(t.id)) {
+                    const agg = cpMap.get(t.id)!;
+                    return {
+                        ...t,
+                        startDate: agg.minStart,
+                        endDate: agg.maxEnd,
+                        cp: {
+                            workDaysTotal: agg.work,
+                            nonWorkDaysTotal: agg.nonWork,
+                        },
+                    };
+                }
+                return t;
+            });
+
+            return newTasks;
+            });
+
+            console.log('Task updated:', updatedTask);
+        } catch (error) {
+            console.error('Failed to update task:', error);
+            alert('태스크 업데이트 중 오류가 발생했습니다.');
+        }
+    }, []);
+
+    // 새 태스크 생성 핸들러
+    const handleTaskCreate = useCallback(async (newTask: Partial<ConstructionTask>) => {
+        try {
+            setTasks(prevTasks => {
+            // 새 태스크 추가
+            const taskToAdd: ConstructionTask = {
+                id: newTask.id || `task-${Date.now()}`,
+                parentId: newTask.parentId || null,
+                wbsLevel: newTask.wbsLevel || 2,
+                type: newTask.type || 'TASK',
+                name: newTask.name || '새 공정',
+                startDate: newTask.startDate || new Date(),
+                endDate: newTask.endDate || new Date(),
+                task: newTask.task,
+                dependencies: newTask.dependencies || [],
+            };
+
+            let newTasks = [...prevTasks, taskToAdd];
+
+            // Level 2 태스크의 날짜 재계산
+            newTasks = newTasks.map(t => {
+                if (t.wbsLevel === 2 && t.task) {
+                    const dates = calculateDualCalendarDates(t, HOLIDAYS, CALENDAR_SETTINGS);
+                    return { ...t, startDate: dates.startDate, endDate: dates.endDate };
+                }
+                return t;
+            });
+
+            // Level 1 태스크의 cp 재계산
+            const cpMap2 = new Map<string, {
+                work: number;
+                nonWork: number;
+                minStart: Date;
+                maxEnd: Date;
+            }>();
+
+            newTasks.forEach(t => {
+                if (t.parentId && t.wbsLevel === 2 && t.task) {
+                    const current = cpMap2.get(t.parentId) || {
+                        work: 0,
+                        nonWork: 0,
+                        minStart: new Date(8640000000000000),
+                        maxEnd: new Date(-8640000000000000),
+                    };
+
+                    current.work += t.task.netWorkDays;
+                    current.nonWork += t.task.indirectWorkDaysPre + t.task.indirectWorkDaysPost;
+                    if (t.startDate < current.minStart) current.minStart = t.startDate;
+                    if (t.endDate > current.maxEnd) current.maxEnd = t.endDate;
+
+                    cpMap2.set(t.parentId, current);
+                }
+            });
+
+            // Level 1 태스크 업데이트
+            newTasks = newTasks.map(t => {
+                if (t.wbsLevel === 1 && cpMap2.has(t.id)) {
+                    const agg = cpMap2.get(t.id)!;
+                    return {
+                        ...t,
+                        startDate: agg.minStart,
+                        endDate: agg.maxEnd,
+                        cp: {
+                            workDaysTotal: agg.work,
+                            nonWorkDaysTotal: agg.nonWork,
+                        },
+                    };
+                }
+                return t;
+            });
+
+            console.log('Task created:', taskToAdd);
+            return newTasks;
+            });
+        } catch (error) {
+            console.error('Failed to create task:', error);
+            alert('태스크 생성 중 오류가 발생했습니다.');
+        }
+    }, []);
+
+    // 태스크 순서 변경 핸들러
+    const handleTaskReorder = useCallback(async (taskId: string, newIndex: number) => {
+        try {
+            setTasks(prevTasks => {
+                const taskIndex = prevTasks.findIndex(t => t.id === taskId);
+                if (taskIndex === -1) return prevTasks;
+                
+                const task = prevTasks[taskIndex];
+                const newTasks = [...prevTasks];
+                
+                // 기존 위치에서 제거
+                newTasks.splice(taskIndex, 1);
+                
+                // 새 위치에 삽입 (제거 후 인덱스 조정)
+                const adjustedIndex = taskIndex < newIndex ? newIndex - 1 : newIndex;
+                newTasks.splice(adjustedIndex, 0, task);
+                
+                console.log('Task reordered:', taskId, 'to index:', adjustedIndex);
+                return newTasks;
+            });
+        } catch (error) {
+            console.error('Failed to reorder task:', error);
+            alert('태스크 순서 변경 중 오류가 발생했습니다.');
+        }
+    }, []);
+
+    // 그룹화 핸들러 (선택된 태스크들을 새 GROUP으로 묶기)
+    const handleTaskGroup = useCallback(async (taskIds: string[]) => {
+        try {
+            setTasks(prevTasks => {
+            // 선택된 태스크들 찾기
+            const selectedTasks = prevTasks.filter(t => taskIds.includes(t.id));
+            if (selectedTasks.length < 2) return prevTasks;
+
+            // 선택된 태스크들이 같은 부모를 가지는지 확인
+            const parentIds = new Set(selectedTasks.map(t => t.parentId));
+            const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
+
+            // 기존 그룹 수 계산 (새 그룹 이름용)
+            const existingGroupCount = prevTasks.filter(t => t.type === 'GROUP').length;
+
+            // 새 GROUP 생성
+            const newGroupId = `group-${Date.now()}`;
+            const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
+            const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
+
+            const newGroup: ConstructionTask = {
+                id: newGroupId,
+                parentId: commonParentId,
+                wbsLevel: selectedTasks[0].wbsLevel,
+                type: 'GROUP',
+                name: `새 그룹 ${existingGroupCount + 1}`,
+                startDate: minStart,
+                endDate: maxEnd,
+                dependencies: [],
+            };
+
+            // 선택된 태스크들의 parentId를 새 GROUP으로 변경
+            let newTasks = prevTasks.map(t => {
+                if (taskIds.includes(t.id)) {
+                    return { ...t, parentId: newGroupId };
+                }
+                return t;
+            });
+
+            // 첫 번째 선택된 태스크 위치에 GROUP 삽입
+            const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
+            newTasks.splice(firstSelectedIndex, 0, newGroup);
+
+            console.log('Tasks grouped:', taskIds, 'into group:', newGroupId);
+            return newTasks;
+            });
+        } catch (error) {
+            console.error('Failed to group tasks:', error);
+            alert('태스크 그룹화 중 오류가 발생했습니다.');
+        }
+    }, []);
+
+    // 그룹 해제 핸들러 (GROUP을 해체하고 자식들을 상위로 이동)
+    const handleTaskUngroup = useCallback(async (groupId: string) => {
+        try {
+            setTasks(prevTasks => {
+            const group = prevTasks.find(t => t.id === groupId);
+            if (!group || group.type !== 'GROUP') return prevTasks;
+
+            // 그룹의 자식들 찾기
+            const children = prevTasks.filter(t => t.parentId === groupId);
+            if (children.length === 0) {
+                // 자식이 없으면 그룹만 삭제
+                return prevTasks.filter(t => t.id !== groupId);
+            }
+
+            // 자식들의 parentId를 그룹의 parentId로 변경
+            let newTasks = prevTasks.map(t => {
+                if (t.parentId === groupId) {
+                    return { ...t, parentId: group.parentId };
+                }
+                return t;
+            });
+
+            // GROUP 삭제
+            newTasks = newTasks.filter(t => t.id !== groupId);
+
+            console.log('Group ungrouped:', groupId);
+            return newTasks;
+            });
+        } catch (error) {
+            console.error('Failed to ungroup tasks:', error);
+            alert('태스크 그룹 해제 중 오류가 발생했습니다.');
+        }
+    }, []);
+
+    // 뷰 전환 핸들러
+    const handleViewChange = useCallback((view: 'MASTER' | 'DETAIL', activeCPId?: string) => {
+        console.log('View changed:', view, activeCPId);
+    }, []);
+
+    if (tasks.length === 0) {
+        return (
+            <div className="flex h-screen w-screen items-center justify-center bg-gray-100">
+                <div className="text-lg text-gray-500">Loading...</div>
+            </div>
+        );
+    }
+
     return (
-        <div className="h-screen w-screen overflow-hidden bg-gray-100">
-            <GanttChart />
+        <div className="flex h-screen w-screen flex-col overflow-hidden bg-gray-100">
+            {/* 상단 헤더 바 */}
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <h1 className="flex items-center gap-2 text-lg font-extrabold text-gray-800">
+                        <span>
+                            <span className="text-teal">건설</span>{' '}
+                            <span className="text-vermilion">표준공정표</span> 관리 시스템
+                        </span>
+                    </h1>
+                    
+                    {/* 변경사항 표시 */}
+                    {hasUnsavedChanges && (
+                        <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            변경사항 있음
+                        </span>
+                    )}
+                    
+                    {/* 저장 완료 표시 */}
+                    {saveStatus === 'saved' && !hasUnsavedChanges && (
+                        <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                            저장됨
+                        </span>
+                    )}
+                </div>
+            </div>
+            
+            {/* 간트 차트 영역 */}
+            <div className="flex-1 overflow-hidden">
+                <GanttChart
+                    tasks={tasks}
+                    milestones={milestones}
+                    holidays={HOLIDAYS}
+                    calendarSettings={CALENDAR_SETTINGS}
+                    onTaskUpdate={handleTaskUpdate}
+                    onTaskCreate={handleTaskCreate}
+                    onTaskReorder={handleTaskReorder}
+                    onTaskGroup={handleTaskGroup}
+                    onTaskUngroup={handleTaskUngroup}
+                    onViewChange={handleViewChange}
+                    onSave={handleSave}
+                    onReset={handleReset}
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    saveStatus={saveStatus}
+                />
+            </div>
         </div>
-    )
+    );
 }
 
-export default App
+export default App;

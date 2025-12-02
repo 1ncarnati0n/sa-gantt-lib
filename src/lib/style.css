@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+/* SA-Gantt-Lib 커스텀 색상 */
+@theme {
+  /* Level 1: 공구 공정표 색상 */
+  --color-vermilion: #E34234;  /* 작업일수 */
+  --color-teal: #008080;       /* 비작업일수 */
+  
+  /* Level 2: 주공정표 색상 */
+  --color-gantt-red: #FF5252;  /* 순작업일 */
+  --color-gantt-blue: #448AFF; /* 간접작업일 */
+}
