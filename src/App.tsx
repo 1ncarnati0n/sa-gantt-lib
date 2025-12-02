@@ -44,6 +44,21 @@ const serializeMilestones = (milestones: Milestone[]): string => {
     return JSON.stringify(serialized);
 };
 
+// 타입 가드: Task 데이터 검증
+const isValidTaskData = (data: unknown): data is Record<string, unknown> & { 
+    id: string; 
+    startDate: string; 
+    endDate: string;
+} => {
+    if (!data || typeof data !== 'object') return false;
+    const obj = data as Record<string, unknown>;
+    return (
+        typeof obj.id === 'string' &&
+        typeof obj.startDate === 'string' &&
+        typeof obj.endDate === 'string'
+    );
+};
+
 // localStorage에서 Tasks 로드
 const loadTasksFromStorage = (): ConstructionTask[] | null => {
     try {
@@ -51,15 +66,37 @@ const loadTasksFromStorage = (): ConstructionTask[] | null => {
         if (!stored) return null;
         
         const parsed = JSON.parse(stored);
-        return parsed.map((t: Record<string, unknown>) => ({
-            ...t,
-            startDate: parseISO(t.startDate as string),
-            endDate: parseISO(t.endDate as string),
-        }));
+        if (!Array.isArray(parsed)) {
+            console.error('Invalid tasks data format: expected array');
+            return null;
+        }
+        
+        return parsed
+            .filter(isValidTaskData)
+            .map((t) => ({
+                ...t,
+                startDate: parseISO(t.startDate),
+                endDate: parseISO(t.endDate),
+            })) as ConstructionTask[];
     } catch (error) {
         console.error('Failed to load tasks from localStorage:', error);
         return null;
     }
+};
+
+// 타입 가드: Milestone 데이터 검증
+const isValidMilestoneData = (data: unknown): data is Record<string, unknown> & { 
+    id: string; 
+    date: string; 
+    name: string;
+} => {
+    if (!data || typeof data !== 'object') return false;
+    const obj = data as Record<string, unknown>;
+    return (
+        typeof obj.id === 'string' &&
+        typeof obj.date === 'string' &&
+        typeof obj.name === 'string'
+    );
 };
 
 // localStorage에서 Milestones 로드
@@ -69,10 +106,17 @@ const loadMilestonesFromStorage = (): Milestone[] | null => {
         if (!stored) return null;
         
         const parsed = JSON.parse(stored);
-        return parsed.map((m: Record<string, unknown>) => ({
-            ...m,
-            date: parseISO(m.date as string),
-        }));
+        if (!Array.isArray(parsed)) {
+            console.error('Invalid milestones data format: expected array');
+            return null;
+        }
+        
+        return parsed
+            .filter(isValidMilestoneData)
+            .map((m) => ({
+                ...m,
+                date: parseISO(m.date),
+            })) as Milestone[];
     } catch (error) {
         console.error('Failed to load milestones from localStorage:', error);
         return null;
@@ -216,49 +260,61 @@ function App() {
         
         setSaveStatus('saving');
         
-        // 저장 실행
-        saveTasksToStorage(tasks);
-        saveMilestonesToStorage(milestones);
-        
-        // 저장 완료 표시
-        setTimeout(() => {
-            setHasUnsavedChanges(false);
-            setSaveStatus('saved');
+        try {
+            // 저장 실행
+            saveTasksToStorage(tasks);
+            saveMilestonesToStorage(milestones);
             
-            // 3초 후 상태 초기화
+            // 저장 완료 표시
             setTimeout(() => {
-                setSaveStatus('idle');
-            }, 3000);
-        }, 300);
+                setHasUnsavedChanges(false);
+                setSaveStatus('saved');
+                
+                // 3초 후 상태 초기화
+                setTimeout(() => {
+                    setSaveStatus('idle');
+                }, 3000);
+            }, 300);
+        } catch (error) {
+            console.error('Failed to save data:', error);
+            setSaveStatus('idle');
+            alert('저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+        }
     }, [tasks, milestones, hasUnsavedChanges]);
 
     // 초기화 핸들러 (mock.json으로 리셋)
     const handleReset = useCallback(() => {
         if (!confirm('모든 변경사항을 취소하고 초기 데이터로 되돌리시겠습니까?')) return;
         
-        resetStorageToMock();
-        
-        // mock.json에서 다시 로드
-        const { tasks: parsedTasks, milestones: parsedMilestones } = parseMockData();
-        setTasks(parsedTasks);
-        setMilestones(parsedMilestones);
-        
-        // localStorage에 저장
-        saveTasksToStorage(parsedTasks);
-        saveMilestonesToStorage(parsedMilestones);
-        
-        setHasUnsavedChanges(false);
-        setSaveStatus('idle');
-        
-        console.log('Reset to mock data');
+        try {
+            resetStorageToMock();
+            
+            // mock.json에서 다시 로드
+            const { tasks: parsedTasks, milestones: parsedMilestones } = parseMockData();
+            setTasks(parsedTasks);
+            setMilestones(parsedMilestones);
+            
+            // localStorage에 저장
+            saveTasksToStorage(parsedTasks);
+            saveMilestonesToStorage(parsedMilestones);
+            
+            setHasUnsavedChanges(false);
+            setSaveStatus('idle');
+            
+            console.log('Reset to mock data');
+        } catch (error) {
+            console.error('Failed to reset data:', error);
+            alert('초기화 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
+        }
     }, []);
 
     // ====================================
     // 태스크 업데이트 핸들러
     // (나중에 Supabase 전환 시 이 핸들러들의 내용만 수정)
     // ====================================
-    const handleTaskUpdate = useCallback((updatedTask: ConstructionTask) => {
-        setTasks(prevTasks => {
+    const handleTaskUpdate = useCallback(async (updatedTask: ConstructionTask) => {
+        try {
+            setTasks(prevTasks => {
             // 1. 해당 태스크 업데이트
             let newTasks = prevTasks.map(t =>
                 t.id === updatedTask.id ? updatedTask : t
@@ -317,14 +373,19 @@ function App() {
             });
 
             return newTasks;
-        });
+            });
 
-        console.log('Task updated:', updatedTask);
+            console.log('Task updated:', updatedTask);
+        } catch (error) {
+            console.error('Failed to update task:', error);
+            alert('태스크 업데이트 중 오류가 발생했습니다.');
+        }
     }, []);
 
     // 새 태스크 생성 핸들러
-    const handleTaskCreate = useCallback((newTask: Partial<ConstructionTask>) => {
-        setTasks(prevTasks => {
+    const handleTaskCreate = useCallback(async (newTask: Partial<ConstructionTask>) => {
+        try {
+            setTasks(prevTasks => {
             // 새 태스크 추가
             const taskToAdd: ConstructionTask = {
                 id: newTask.id || `task-${Date.now()}`,
@@ -394,33 +455,43 @@ function App() {
 
             console.log('Task created:', taskToAdd);
             return newTasks;
-        });
+            });
+        } catch (error) {
+            console.error('Failed to create task:', error);
+            alert('태스크 생성 중 오류가 발생했습니다.');
+        }
     }, []);
 
     // 태스크 순서 변경 핸들러
-    const handleTaskReorder = useCallback((taskId: string, newIndex: number) => {
-        setTasks(prevTasks => {
-            const taskIndex = prevTasks.findIndex(t => t.id === taskId);
-            if (taskIndex === -1) return prevTasks;
-            
-            const task = prevTasks[taskIndex];
-            const newTasks = [...prevTasks];
-            
-            // 기존 위치에서 제거
-            newTasks.splice(taskIndex, 1);
-            
-            // 새 위치에 삽입 (제거 후 인덱스 조정)
-            const adjustedIndex = taskIndex < newIndex ? newIndex - 1 : newIndex;
-            newTasks.splice(adjustedIndex, 0, task);
-            
-            console.log('Task reordered:', taskId, 'to index:', adjustedIndex);
-            return newTasks;
-        });
+    const handleTaskReorder = useCallback(async (taskId: string, newIndex: number) => {
+        try {
+            setTasks(prevTasks => {
+                const taskIndex = prevTasks.findIndex(t => t.id === taskId);
+                if (taskIndex === -1) return prevTasks;
+                
+                const task = prevTasks[taskIndex];
+                const newTasks = [...prevTasks];
+                
+                // 기존 위치에서 제거
+                newTasks.splice(taskIndex, 1);
+                
+                // 새 위치에 삽입 (제거 후 인덱스 조정)
+                const adjustedIndex = taskIndex < newIndex ? newIndex - 1 : newIndex;
+                newTasks.splice(adjustedIndex, 0, task);
+                
+                console.log('Task reordered:', taskId, 'to index:', adjustedIndex);
+                return newTasks;
+            });
+        } catch (error) {
+            console.error('Failed to reorder task:', error);
+            alert('태스크 순서 변경 중 오류가 발생했습니다.');
+        }
     }, []);
 
     // 그룹화 핸들러 (선택된 태스크들을 새 GROUP으로 묶기)
-    const handleTaskGroup = useCallback((taskIds: string[]) => {
-        setTasks(prevTasks => {
+    const handleTaskGroup = useCallback(async (taskIds: string[]) => {
+        try {
+            setTasks(prevTasks => {
             // 선택된 태스크들 찾기
             const selectedTasks = prevTasks.filter(t => taskIds.includes(t.id));
             if (selectedTasks.length < 2) return prevTasks;
@@ -462,12 +533,17 @@ function App() {
 
             console.log('Tasks grouped:', taskIds, 'into group:', newGroupId);
             return newTasks;
-        });
+            });
+        } catch (error) {
+            console.error('Failed to group tasks:', error);
+            alert('태스크 그룹화 중 오류가 발생했습니다.');
+        }
     }, []);
 
     // 그룹 해제 핸들러 (GROUP을 해체하고 자식들을 상위로 이동)
-    const handleTaskUngroup = useCallback((groupId: string) => {
-        setTasks(prevTasks => {
+    const handleTaskUngroup = useCallback(async (groupId: string) => {
+        try {
+            setTasks(prevTasks => {
             const group = prevTasks.find(t => t.id === groupId);
             if (!group || group.type !== 'GROUP') return prevTasks;
 
@@ -491,7 +567,11 @@ function App() {
 
             console.log('Group ungrouped:', groupId);
             return newTasks;
-        });
+            });
+        } catch (error) {
+            console.error('Failed to ungroup tasks:', error);
+            alert('태스크 그룹 해제 중 오류가 발생했습니다.');
+        }
     }, []);
 
     // 뷰 전환 핸들러

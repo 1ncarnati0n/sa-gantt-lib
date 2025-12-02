@@ -1,14 +1,16 @@
 'use client';
 
 import { forwardRef, useMemo, useCallback, useState, useRef, useEffect } from 'react';
-import { format, addDays } from 'date-fns';
-import { ChevronRight, ChevronDown, Check, X, GripVertical } from 'lucide-react';
+import { format } from 'date-fns';
+import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import {
     ConstructionTask,
     ViewMode,
     GANTT_LAYOUT,
 } from '../types';
 import type { VirtualRow } from '../hooks/useGanttVirtualization';
+import { GanttSidebarContextMenu } from './GanttSidebarContextMenu';
+import { GanttSidebarNewTaskForm } from './GanttSidebarNewTaskForm';
 
 const { ROW_HEIGHT, HEADER_HEIGHT, MILESTONE_LANE_HEIGHT } = GANTT_LAYOUT;
 
@@ -29,20 +31,6 @@ const DEFAULT_DETAIL_COLUMNS = [
     { id: 'endDate', label: '종료일', width: 90, minWidth: 70 },
 ];
 
-// 새 Task 입력 폼 초기값
-interface NewTaskForm {
-    name: string;
-    indirectWorkDaysPre: number;
-    netWorkDays: number;
-    indirectWorkDaysPost: number;
-}
-
-const INITIAL_NEW_TASK_FORM: NewTaskForm = {
-    name: '',
-    indirectWorkDaysPre: 0,
-    netWorkDays: 1,
-    indirectWorkDaysPost: 0,
-};
 
 interface GanttSidebarProps {
     tasks: ConstructionTask[];
@@ -85,10 +73,6 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
     ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, isAddingTask = false, onCancelAddTask }, ref) => {
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
-        
-        // 새 Task 추가 폼 상태
-        const [newTaskForm, setNewTaskForm] = useState<NewTaskForm>(INITIAL_NEW_TASK_FORM);
-        const newTaskNameInputRef = useRef<HTMLInputElement>(null);
         
         // 드래그&드롭 상태 (Task 순서 변경)
         const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
@@ -298,67 +282,6 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             onTaskUpdate(updatedTask);
         }, [onTaskUpdate]);
 
-        // ====================================
-        // 새 Task 추가 핸들러
-        // ====================================
-        
-        // isAddingTask가 true가 되면 input에 포커스
-        useEffect(() => {
-            if (isAddingTask) {
-                setNewTaskForm(INITIAL_NEW_TASK_FORM);
-                setTimeout(() => {
-                    newTaskNameInputRef.current?.focus();
-                }, 0);
-            }
-        }, [isAddingTask]);
-
-        // 새 Task 추가 취소
-        const handleCancelAddTask = useCallback(() => {
-            setNewTaskForm(INITIAL_NEW_TASK_FORM);
-            onCancelAddTask?.();
-        }, [onCancelAddTask]);
-
-        // 새 Task 저장
-        const handleSaveNewTask = useCallback(() => {
-            if (!newTaskForm.name.trim() || !onTaskCreate || !activeCPId) return;
-
-            // 마지막 task의 종료일을 기준으로 시작일 계산
-            const lastTask = tasks[tasks.length - 1];
-            const startDate = lastTask ? addDays(lastTask.endDate, 1) : new Date();
-            const totalDays = newTaskForm.indirectWorkDaysPre + newTaskForm.netWorkDays + newTaskForm.indirectWorkDaysPost;
-            const endDate = addDays(startDate, Math.max(totalDays - 1, 0));
-
-            const newTask: Partial<ConstructionTask> = {
-                id: `task-${Date.now()}`, // 임시 ID (서버에서 재할당 가능)
-                parentId: activeCPId,
-                wbsLevel: 2,
-                type: 'TASK',
-                name: newTaskForm.name.trim(),
-                startDate,
-                endDate,
-                task: {
-                    netWorkDays: newTaskForm.netWorkDays,
-                    indirectWorkDaysPre: newTaskForm.indirectWorkDaysPre,
-                    indirectWorkDaysPost: newTaskForm.indirectWorkDaysPost,
-                },
-                dependencies: [],
-            };
-
-            onTaskCreate(newTask);
-            setNewTaskForm(INITIAL_NEW_TASK_FORM);
-            onCancelAddTask?.();
-        }, [newTaskForm, onTaskCreate, activeCPId, tasks, onCancelAddTask]);
-
-        // Enter 키로 저장, Escape 키로 취소
-        const handleNewTaskKeyDown = useCallback((e: React.KeyboardEvent) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSaveNewTask();
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                handleCancelAddTask();
-            }
-        }, [handleSaveNewTask, handleCancelAddTask]);
 
         // ====================================
         // 드래그&드롭 핸들러 (Task 순서 변경)
@@ -499,28 +422,6 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             }
         }, [contextMenu]);
 
-        // 그룹화 핸들러
-        const handleGroup = useCallback(() => {
-            if (selectedTaskIds.size < 2 || !onTaskGroup) return;
-            
-            onTaskGroup(Array.from(selectedTaskIds));
-            setSelectedTaskIds(new Set());
-            setContextMenu(null);
-        }, [selectedTaskIds, onTaskGroup]);
-
-        // 그룹 해제 핸들러
-        const handleUngroup = useCallback(() => {
-            if (selectedTaskIds.size !== 1 || !onTaskUngroup) return;
-            
-            const taskId = Array.from(selectedTaskIds)[0];
-            const task = tasks.find(t => t.id === taskId);
-            
-            if (task?.type === 'GROUP') {
-                onTaskUngroup(taskId);
-                setSelectedTaskIds(new Set());
-                setContextMenu(null);
-            }
-        }, [selectedTaskIds, tasks, onTaskUngroup]);
 
         // 선택 해제 (ESC 키)
         useEffect(() => {
@@ -749,55 +650,17 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
 
                     {/* Context Menu */}
                     {contextMenu && (
-                        <div
-                            className="fixed z-[100] min-w-[160px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-                            style={{ left: contextMenu.x, top: contextMenu.y }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {/* 그룹화 (2개 이상 선택 시) */}
-                            {selectedTaskIds.size >= 2 && onTaskGroup && (
-                                <button
-                                    onClick={handleGroup}
-                                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                    </svg>
-                                    그룹화 ({selectedTaskIds.size}개 선택됨)
-                                </button>
-                            )}
-                            
-                            {/* 그룹 해제 (GROUP 1개 선택 시) */}
-                            {selectedTaskIds.size === 1 && onTaskUngroup && (() => {
-                                const taskId = Array.from(selectedTaskIds)[0];
-                                const task = tasks.find(t => t.id === taskId);
-                                return task?.type === 'GROUP';
-                            })() && (
-                                <button
-                                    onClick={handleUngroup}
-                                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
-                                    </svg>
-                                    그룹 해제
-                                </button>
-                            )}
-                            
-                            {/* 선택 해제 */}
-                            <button
-                                onClick={() => {
-                                    setSelectedTaskIds(new Set());
-                                    setContextMenu(null);
-                                }}
-                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-100"
-                            >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                선택 해제
-                            </button>
-                        </div>
+                        <GanttSidebarContextMenu
+                            x={contextMenu.x}
+                            y={contextMenu.y}
+                            taskId={contextMenu.taskId}
+                            selectedTaskIds={selectedTaskIds}
+                            tasks={tasks}
+                            onTaskGroup={onTaskGroup}
+                            onTaskUngroup={onTaskUngroup}
+                            onClose={() => setContextMenu(null)}
+                            onDeselect={() => setSelectedTaskIds(new Set())}
+                        />
                     )}
                 </div>
             );
@@ -1016,176 +879,33 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             })}
 
                             {/* 새 Task 입력 행 */}
-                            {isAddingTask && (
-                                <div
-                                    className="box-border flex items-center border-b-2 border-blue-300 bg-blue-50 transition-colors"
-                                    style={{ 
-                                        height: ROW_HEIGHT,
-                                        ...(isVirtualized ? {
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            width: '100%',
-                                            transform: `translateY(${tasks.length * ROW_HEIGHT}px)`,
-                                        } : {}),
-                                    }}
-                                >
-                                    {/* Task Name Input */}
-                                    <div
-                                        className="flex shrink-0 items-center overflow-hidden border-r border-blue-200 px-2"
-                                        style={{ width: columns[0].width }}
-                                    >
-                                        <input
-                                            ref={newTaskNameInputRef}
-                                            type="text"
-                                            placeholder="공정명..."
-                                            className="w-full rounded border border-blue-300 bg-white px-2 py-1 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={newTaskForm.name}
-                                            onChange={(e) => setNewTaskForm(prev => ({ ...prev, name: e.target.value }))}
-                                            onKeyDown={handleNewTaskKeyDown}
-                                        />
-                                    </div>
-
-                                    {/* Pre Indirect Work Days Input (선간접) */}
-                                    <div
-                                        className="flex shrink-0 items-center justify-center border-r border-blue-200 px-1"
-                                        style={{ width: columns[1].width }}
-                                    >
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            className="w-full max-w-[40px] rounded border border-blue-300 bg-white px-1 py-1 text-center text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={newTaskForm.indirectWorkDaysPre}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/[^0-9]/g, '');
-                                                const val = parseInt(value) || 0;
-                                                setNewTaskForm(prev => ({ ...prev, indirectWorkDaysPre: val }));
-                                            }}
-                                            onKeyDown={handleNewTaskKeyDown}
-                                            title="선 간접작업일"
-                                        />
-                                    </div>
-
-                                    {/* Net Work Days Input (순작업) */}
-                                    <div
-                                        className="flex shrink-0 items-center justify-center border-r border-blue-200 px-1"
-                                        style={{ width: columns[2].width }}
-                                    >
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            className="w-full max-w-[40px] rounded border border-blue-300 bg-white px-1 py-1 text-center text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={newTaskForm.netWorkDays}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/[^0-9]/g, '');
-                                                const val = parseInt(value) || 0;
-                                                setNewTaskForm(prev => ({ ...prev, netWorkDays: val }));
-                                            }}
-                                            onKeyDown={handleNewTaskKeyDown}
-                                            title="순작업일"
-                                        />
-                                    </div>
-
-                                    {/* Post Indirect Work Days Input (후간접) */}
-                                    <div
-                                        className="flex shrink-0 items-center justify-center border-r border-blue-200 px-1"
-                                        style={{ width: columns[3].width }}
-                                    >
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            className="w-full max-w-[40px] rounded border border-blue-300 bg-white px-1 py-1 text-center text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={newTaskForm.indirectWorkDaysPost}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/[^0-9]/g, '');
-                                                const val = parseInt(value) || 0;
-                                                setNewTaskForm(prev => ({ ...prev, indirectWorkDaysPost: val }));
-                                            }}
-                                            onKeyDown={handleNewTaskKeyDown}
-                                            title="후 간접작업일"
-                                        />
-                                    </div>
-
-                                    {/* Actions: 저장/취소 버튼 */}
-                                    <div
-                                        className="flex shrink-0 items-center justify-center gap-1 px-2"
-                                        style={{ width: columns[4].width + columns[5].width }}
-                                    >
-                                        <button
-                                            onClick={handleSaveNewTask}
-                                            disabled={!newTaskForm.name.trim()}
-                                            className="flex items-center justify-center rounded bg-blue-500 p-1.5 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                                            title="저장 (Enter)"
-                                        >
-                                            <Check size={14} />
-                                        </button>
-                                        <button
-                                            onClick={handleCancelAddTask}
-                                            className="flex items-center justify-center rounded bg-gray-400 p-1.5 text-white hover:bg-gray-500 transition-colors"
-                                            title="취소 (Esc)"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                    </div>
-                                </div>
+                            {isAddingTask && activeCPId && (
+                                <GanttSidebarNewTaskForm
+                                    columns={columns}
+                                    tasks={tasks}
+                                    activeCPId={activeCPId}
+                                    onTaskCreate={onTaskCreate}
+                                    onCancel={onCancelAddTask || (() => {})}
+                                    isVirtualized={isVirtualized}
+                                    virtualRowIndex={tasks.length}
+                                />
                             )}
                         </div>
                 </div>
 
                 {/* Context Menu */}
                 {contextMenu && (
-                    <div
-                        className="fixed z-[100] min-w-[160px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-                        style={{ left: contextMenu.x, top: contextMenu.y }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* 그룹화 (2개 이상 선택 시) */}
-                        {selectedTaskIds.size >= 2 && onTaskGroup && (
-                            <button
-                                onClick={handleGroup}
-                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                </svg>
-                                그룹화 ({selectedTaskIds.size}개 선택됨)
-                            </button>
-                        )}
-                        
-                        {/* 그룹 해제 (GROUP 1개 선택 시) */}
-                        {selectedTaskIds.size === 1 && onTaskUngroup && (() => {
-                            const taskId = Array.from(selectedTaskIds)[0];
-                            const task = tasks.find(t => t.id === taskId);
-                            return task?.type === 'GROUP';
-                        })() && (
-                            <button
-                                onClick={handleUngroup}
-                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
-                                </svg>
-                                그룹 해제
-                            </button>
-                        )}
-                        
-                        {/* 선택 해제 */}
-                        <button
-                            onClick={() => {
-                                setSelectedTaskIds(new Set());
-                                setContextMenu(null);
-                            }}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-100"
-                        >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            선택 해제
-                        </button>
-                    </div>
+                    <GanttSidebarContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        taskId={contextMenu.taskId}
+                        selectedTaskIds={selectedTaskIds}
+                        tasks={tasks}
+                        onTaskGroup={onTaskGroup}
+                        onTaskUngroup={onTaskUngroup}
+                        onClose={() => setContextMenu(null)}
+                        onDeselect={() => setSelectedTaskIds(new Set())}
+                    />
                 )}
             </div>
         );

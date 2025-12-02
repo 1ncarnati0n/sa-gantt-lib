@@ -99,6 +99,9 @@ export function GanttChart({
     // ====================================
     const isInitialized = useRef(false);
     
+    // tasks의 id 배열을 메모이제이션 (의존성 배열 최적화)
+    const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
+    
     useEffect(() => {
         if (isInitialized.current) return;
         isInitialized.current = true;
@@ -112,11 +115,11 @@ export function GanttChart({
         // 초기 확장 상태 설정
         if (initialExpandedIds && initialExpandedIds.length > 0) {
             expandAll(initialExpandedIds);
-        } else if (tasks.length > 0) {
+        } else if (taskIds.length > 0) {
             // 기본적으로 모든 태스크 확장
-            expandAll(tasks.map(t => t.id));
+            expandAll(taskIds);
         }
-    }, [tasks.length]); // tasks가 로드된 후 1회 실행
+    }, [taskIds, initialExpandedIds, initialView, initialZoomLevel, setViewMode, setZoomLevel, expandAll]);
 
     // ====================================
     // 뷰에 따른 태스크 필터링
@@ -308,27 +311,32 @@ export function GanttChart({
             }, 100);
             return () => clearTimeout(timer);
         }
-    }, [viewMode, activeCPId]); // scrollToFirstTask는 의존성에서 제외 (무한 루프 방지)
+    }, [viewMode, activeCPId, scrollToFirstTask]);
 
     // Bar 드래그로 날짜/일수 변경 핸들러
-    const handleBarDrag = useCallback((result: BarDragResult) => {
+    const handleBarDrag = useCallback(async (result: BarDragResult) => {
         if (!onTaskUpdate) return;
         
-        const task = tasks.find(t => t.id === result.taskId);
-        if (!task || !task.task) return;
-        
-        const updatedTask: ConstructionTask = {
-            ...task,
-            startDate: result.newStartDate,
-            endDate: result.newEndDate,
-            task: {
-                ...task.task,
-                indirectWorkDaysPre: result.newIndirectWorkDaysPre,
-                indirectWorkDaysPost: result.newIndirectWorkDaysPost,
-            },
-        };
-        
-        onTaskUpdate(updatedTask);
+        try {
+            const task = tasks.find(t => t.id === result.taskId);
+            if (!task || !task.task) return;
+            
+            const updatedTask: ConstructionTask = {
+                ...task,
+                startDate: result.newStartDate,
+                endDate: result.newEndDate,
+                task: {
+                    ...task.task,
+                    indirectWorkDaysPre: result.newIndirectWorkDaysPre,
+                    indirectWorkDaysPost: result.newIndirectWorkDaysPost,
+                },
+            };
+            
+            await onTaskUpdate(updatedTask);
+        } catch (error) {
+            console.error('Failed to update task:', error);
+            // TODO: 사용자에게 에러 알림 표시 (토스트 메시지 등)
+        }
     }, [tasks, onTaskUpdate]);
 
     // ====================================

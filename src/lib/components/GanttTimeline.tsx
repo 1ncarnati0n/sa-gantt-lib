@@ -1,6 +1,6 @@
 'use client';
 
-import React, { forwardRef, useMemo, useState, useCallback, useEffect } from 'react';
+import React, { forwardRef, useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth } from 'date-fns';
 import {
     ConstructionTask,
@@ -756,6 +756,14 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         // Bar 드래그 핸들러
         // ====================================
         
+        // dragState를 ref로 관리하여 handleMouseMove/handleMouseUp이 재생성되지 않도록 최적화
+        const dragStateRef = useRef<typeof dragState>(null);
+        
+        // dragState 변경 시 ref도 업데이트
+        useEffect(() => {
+            dragStateRef.current = dragState;
+        }, [dragState]);
+        
         const handleBarMouseDown = useCallback((
             e: React.MouseEvent,
             taskId: string,
@@ -772,7 +780,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             e.preventDefault();
             e.stopPropagation();
             
-            setDragState({
+            const newDragState = {
                 taskId,
                 dragType,
                 startX: e.clientX,
@@ -785,49 +793,52 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 currentEndDate: taskData.endDate,
                 currentIndirectWorkDaysPre: taskData.indirectWorkDaysPre,
                 currentIndirectWorkDaysPost: taskData.indirectWorkDaysPost,
-            });
+            };
+            
+            setDragState(newDragState);
+            dragStateRef.current = newDragState;
         }, [onBarDrag]);
 
         const handleMouseMove = useCallback((e: MouseEvent) => {
-            if (!dragState || !onBarDrag) return;
+            const currentDragState = dragStateRef.current;
+            if (!currentDragState || !onBarDrag) return;
             
-            const deltaX = e.clientX - dragState.startX;
+            const deltaX = e.clientX - currentDragState.startX;
             const deltaDays = Math.round(deltaX / pixelsPerDay);
             
-            let newStartDate = dragState.originalStartDate;
-            let newEndDate = dragState.originalEndDate;
-            let newPreDays = dragState.originalIndirectWorkDaysPre;
-            let newPostDays = dragState.originalIndirectWorkDaysPost;
+            let newStartDate = currentDragState.originalStartDate;
+            let newEndDate = currentDragState.originalEndDate;
+            let newPreDays = currentDragState.originalIndirectWorkDaysPre;
+            let newPostDays = currentDragState.originalIndirectWorkDaysPost;
             
-            if (dragState.dragType === 'move') {
+            if (currentDragState.dragType === 'move') {
                 // 전체 이동: 시작일과 종료일 동시 이동, 일수는 유지
-                newStartDate = addDays(dragState.originalStartDate, deltaDays);
-                newEndDate = addDays(dragState.originalEndDate, deltaDays);
-            } else if (dragState.dragType === 'resize-pre') {
+                newStartDate = addDays(currentDragState.originalStartDate, deltaDays);
+                newEndDate = addDays(currentDragState.originalEndDate, deltaDays);
+            } else if (currentDragState.dragType === 'resize-pre') {
                 // 왼쪽 끝 드래그: 앞 간접작업일 조절
                 // deltaDays가 음수면 바가 왼쪽으로 확장 (일수 증가)
                 // deltaDays가 양수면 바가 오른쪽으로 축소 (일수 감소)
-                newPreDays = Math.max(0, dragState.originalIndirectWorkDaysPre - deltaDays);
-                newStartDate = addDays(dragState.originalStartDate, -(-deltaDays + (newPreDays - dragState.originalIndirectWorkDaysPre)));
+                newPreDays = Math.max(0, currentDragState.originalIndirectWorkDaysPre - deltaDays);
                 
                 // 시작일 재계산: 원래 순작업 시작일 - 새 선간접일수
-                const netWorkStartDate = addDays(dragState.originalStartDate, dragState.originalIndirectWorkDaysPre);
+                const netWorkStartDate = addDays(currentDragState.originalStartDate, currentDragState.originalIndirectWorkDaysPre);
                 newStartDate = addDays(netWorkStartDate, -newPreDays);
                 
                 // 종료일은 유지
-                newEndDate = dragState.originalEndDate;
-            } else if (dragState.dragType === 'resize-post') {
+                newEndDate = currentDragState.originalEndDate;
+            } else if (currentDragState.dragType === 'resize-post') {
                 // 오른쪽 끝 드래그: 후 간접작업일 조절
                 // deltaDays가 양수면 바가 오른쪽으로 확장 (일수 증가)
                 // deltaDays가 음수면 바가 왼쪽으로 축소 (일수 감소)
-                newPostDays = Math.max(0, dragState.originalIndirectWorkDaysPost + deltaDays);
+                newPostDays = Math.max(0, currentDragState.originalIndirectWorkDaysPost + deltaDays);
                 
                 // 종료일 재계산: 원래 순작업 종료일 + 새 후간접일수
-                const netWorkEndDate = addDays(dragState.originalEndDate, -dragState.originalIndirectWorkDaysPost);
+                const netWorkEndDate = addDays(currentDragState.originalEndDate, -currentDragState.originalIndirectWorkDaysPost);
                 newEndDate = addDays(netWorkEndDate, newPostDays);
                 
                 // 시작일은 유지
-                newStartDate = dragState.originalStartDate;
+                newStartDate = currentDragState.originalStartDate;
             }
             
             setDragState(prev => prev ? {
@@ -837,35 +848,38 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 currentIndirectWorkDaysPre: newPreDays,
                 currentIndirectWorkDaysPost: newPostDays,
             } : null);
-        }, [dragState, onBarDrag, pixelsPerDay]);
+        }, [onBarDrag, pixelsPerDay]);
 
         const handleMouseUp = useCallback(() => {
-            if (!dragState || !onBarDrag) {
+            const currentDragState = dragStateRef.current;
+            if (!currentDragState || !onBarDrag) {
                 setDragState(null);
+                dragStateRef.current = null;
                 return;
             }
             
             // 변경이 있을 때만 콜백 호출
             const hasDateChange = 
-                dragState.currentStartDate.getTime() !== dragState.originalStartDate.getTime() ||
-                dragState.currentEndDate.getTime() !== dragState.originalEndDate.getTime();
+                currentDragState.currentStartDate.getTime() !== currentDragState.originalStartDate.getTime() ||
+                currentDragState.currentEndDate.getTime() !== currentDragState.originalEndDate.getTime();
             const hasDaysChange =
-                dragState.currentIndirectWorkDaysPre !== dragState.originalIndirectWorkDaysPre ||
-                dragState.currentIndirectWorkDaysPost !== dragState.originalIndirectWorkDaysPost;
+                currentDragState.currentIndirectWorkDaysPre !== currentDragState.originalIndirectWorkDaysPre ||
+                currentDragState.currentIndirectWorkDaysPost !== currentDragState.originalIndirectWorkDaysPost;
             
             if (hasDateChange || hasDaysChange) {
                 onBarDrag({
-                    taskId: dragState.taskId,
-                    dragType: dragState.dragType,
-                    newStartDate: dragState.currentStartDate,
-                    newEndDate: dragState.currentEndDate,
-                    newIndirectWorkDaysPre: dragState.currentIndirectWorkDaysPre,
-                    newIndirectWorkDaysPost: dragState.currentIndirectWorkDaysPost,
+                    taskId: currentDragState.taskId,
+                    dragType: currentDragState.dragType,
+                    newStartDate: currentDragState.currentStartDate,
+                    newEndDate: currentDragState.currentEndDate,
+                    newIndirectWorkDaysPre: currentDragState.currentIndirectWorkDaysPre,
+                    newIndirectWorkDaysPost: currentDragState.currentIndirectWorkDaysPost,
                 });
             }
             
             setDragState(null);
-        }, [dragState, onBarDrag]);
+            dragStateRef.current = null;
+        }, [onBarDrag]);
 
         // 전역 마우스 이벤트 리스너
         useEffect(() => {

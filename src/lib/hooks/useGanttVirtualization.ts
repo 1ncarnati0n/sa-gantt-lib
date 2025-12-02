@@ -69,14 +69,16 @@ export function useGanttVirtualization({
         overscan,
     });
 
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    
     const virtualRows = useMemo(() => {
-        return rowVirtualizer.getVirtualItems().map((item) => ({
+        return virtualItems.map((item) => ({
             index: item.index,
             start: item.start,
             size: item.size,
             key: item.index, // index는 항상 number이므로 타입 안전
         }));
-    }, [rowVirtualizer.getVirtualItems()]);
+    }, [virtualItems]);
 
     return {
         /** 가상화된 행 목록 */
