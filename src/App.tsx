@@ -418,6 +418,82 @@ function App() {
         });
     }, []);
 
+    // 그룹화 핸들러 (선택된 태스크들을 새 GROUP으로 묶기)
+    const handleTaskGroup = useCallback((taskIds: string[]) => {
+        setTasks(prevTasks => {
+            // 선택된 태스크들 찾기
+            const selectedTasks = prevTasks.filter(t => taskIds.includes(t.id));
+            if (selectedTasks.length < 2) return prevTasks;
+
+            // 선택된 태스크들이 같은 부모를 가지는지 확인
+            const parentIds = new Set(selectedTasks.map(t => t.parentId));
+            const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
+
+            // 기존 그룹 수 계산 (새 그룹 이름용)
+            const existingGroupCount = prevTasks.filter(t => t.type === 'GROUP').length;
+
+            // 새 GROUP 생성
+            const newGroupId = `group-${Date.now()}`;
+            const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
+            const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
+
+            const newGroup: ConstructionTask = {
+                id: newGroupId,
+                parentId: commonParentId,
+                wbsLevel: selectedTasks[0].wbsLevel,
+                type: 'GROUP',
+                name: `새 그룹 ${existingGroupCount + 1}`,
+                startDate: minStart,
+                endDate: maxEnd,
+                dependencies: [],
+            };
+
+            // 선택된 태스크들의 parentId를 새 GROUP으로 변경
+            let newTasks = prevTasks.map(t => {
+                if (taskIds.includes(t.id)) {
+                    return { ...t, parentId: newGroupId };
+                }
+                return t;
+            });
+
+            // 첫 번째 선택된 태스크 위치에 GROUP 삽입
+            const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
+            newTasks.splice(firstSelectedIndex, 0, newGroup);
+
+            console.log('Tasks grouped:', taskIds, 'into group:', newGroupId);
+            return newTasks;
+        });
+    }, []);
+
+    // 그룹 해제 핸들러 (GROUP을 해체하고 자식들을 상위로 이동)
+    const handleTaskUngroup = useCallback((groupId: string) => {
+        setTasks(prevTasks => {
+            const group = prevTasks.find(t => t.id === groupId);
+            if (!group || group.type !== 'GROUP') return prevTasks;
+
+            // 그룹의 자식들 찾기
+            const children = prevTasks.filter(t => t.parentId === groupId);
+            if (children.length === 0) {
+                // 자식이 없으면 그룹만 삭제
+                return prevTasks.filter(t => t.id !== groupId);
+            }
+
+            // 자식들의 parentId를 그룹의 parentId로 변경
+            let newTasks = prevTasks.map(t => {
+                if (t.parentId === groupId) {
+                    return { ...t, parentId: group.parentId };
+                }
+                return t;
+            });
+
+            // GROUP 삭제
+            newTasks = newTasks.filter(t => t.id !== groupId);
+
+            console.log('Group ungrouped:', groupId);
+            return newTasks;
+        });
+    }, []);
+
     // 뷰 전환 핸들러
     const handleViewChange = useCallback((view: 'MASTER' | 'DETAIL', activeCPId?: string) => {
         console.log('View changed:', view, activeCPId);
@@ -507,6 +583,8 @@ function App() {
                     onTaskUpdate={handleTaskUpdate}
                     onTaskCreate={handleTaskCreate}
                     onTaskReorder={handleTaskReorder}
+                    onTaskGroup={handleTaskGroup}
+                    onTaskUngroup={handleTaskUngroup}
                     onViewChange={handleViewChange}
                 />
             </div>

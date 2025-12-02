@@ -53,6 +53,8 @@ export function GanttChart({
     onTaskUpdate,
     onTaskCreate,
     onTaskReorder,
+    onTaskGroup,
+    onTaskUngroup,
     onViewChange,
     className,
     style,
@@ -362,6 +364,8 @@ export function GanttChart({
                         onTaskUpdate={onTaskUpdate}
                         onTaskCreate={onTaskCreate}
                         onTaskReorder={onTaskReorder}
+                        onTaskGroup={onTaskGroup}
+                        onTaskUngroup={onTaskUngroup}
                         onScrollToFirstTask={scrollToFirstTask}
                         activeCPId={activeCPId}
                         virtualRows={virtualRows}

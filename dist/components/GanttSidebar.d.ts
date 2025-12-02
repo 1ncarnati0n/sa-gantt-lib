@@ -24,6 +24,10 @@ interface GanttSidebarProps {
     totalHeight?: number;
     /** 사이드바 총 너비 변경 콜백 */
     onTotalWidthChange?: (width: number) => void;
+    /** 그룹화 콜백 (선택된 taskId 배열) */
+    onTaskGroup?: (taskIds: string[]) => void;
+    /** 그룹 해제 콜백 (GROUP taskId) */
+    onTaskUngroup?: (groupId: string) => void;
 }
 /**
  * 간트 차트 사이드바 (왼쪽 그리드)

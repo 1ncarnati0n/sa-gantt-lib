@@ -204,6 +204,8 @@ export interface GanttChartProps {
     onDependencyCreate?: (taskId: string, dependency: Dependency) => void | Promise<void>;
     onDependencyDelete?: (taskId: string, dependencyId: string) => void | Promise<void>;
     onViewChange?: (view: ViewMode, activeCPId?: string) => void;
+    onTaskGroup?: (taskIds: string[]) => void | Promise<void>;
+    onTaskUngroup?: (groupId: string) => void | Promise<void>;
 
     // 스타일링
     className?: string;

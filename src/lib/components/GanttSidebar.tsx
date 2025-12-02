@@ -17,6 +17,7 @@ const DEFAULT_MASTER_COLUMNS = [
     { id: 'name', label: 'CP명', width: 180, minWidth: 100 },
     { id: 'total', label: '총 공기', width: 80, minWidth: 50 },
     { id: 'workDays', label: '작업일수', width: 80, minWidth: 50 },
+    { id: 'nonWorkDays', label: '비작업일수', width: 80, minWidth: 50 },
 ];
 
 const DEFAULT_DETAIL_COLUMNS = [
@@ -66,6 +67,10 @@ interface GanttSidebarProps {
     totalHeight?: number;
     /** 사이드바 총 너비 변경 콜백 */
     onTotalWidthChange?: (width: number) => void;
+    /** 그룹화 콜백 (선택된 taskId 배열) */
+    onTaskGroup?: (taskIds: string[]) => void;
+    /** 그룹 해제 콜백 (GROUP taskId) */
+    onTaskUngroup?: (groupId: string) => void;
 }
 
 /**
@@ -76,7 +81,7 @@ interface GanttSidebarProps {
  * - 컬럼 너비 드래그로 조절 가능
  */
 export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
-    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onBackToMaster, onTaskUpdate, onTaskCreate, onTaskReorder, onScrollToFirstTask, activeCPId, virtualRows, totalHeight, onTotalWidthChange }, ref) => {
+    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onBackToMaster, onTaskUpdate, onTaskCreate, onTaskReorder, onScrollToFirstTask, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup }, ref) => {
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
         
@@ -89,6 +94,13 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
         const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
         const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after' | null>(null);
+        
+        // 멀티선택 상태
+        const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+        const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
+        
+        // 컨텍스트 메뉴 상태
+        const [contextMenu, setContextMenu] = useState<{ x: number; y: number; taskId: string } | null>(null);
         
         // 컬럼 너비 상태 관리
         const [masterColumnWidths, setMasterColumnWidths] = useState<number[]>(
@@ -114,8 +126,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             [baseColumns, columnWidths]
         );
 
-        // 드래그 핸들 너비 (Detail View에서 onTaskReorder가 있을 때만)
-        const dragHandleWidth = viewMode === 'DETAIL' && onTaskReorder ? 24 : 0;
+        // 드래그 핸들 너비 (onTaskReorder가 있을 때)
+        const dragHandleWidth = onTaskReorder ? 24 : 0;
         const totalWidth = columns.reduce((sum, col) => sum + col.width, 0) + dragHandleWidth;
 
         // totalWidth 변경 시 부모에게 알림
@@ -209,6 +221,11 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         case 2: // 작업일수
                             cellText = isGroup ? '-' : task.cp 
                                 ? `${task.cp.workDaysTotal}일` 
+                                : '-';
+                            break;
+                        case 3: // 비작업일수
+                            cellText = isGroup ? '-' : task.cp 
+                                ? `${task.cp.nonWorkDaysTotal}일` 
                                 : '-';
                             break;
                     }
@@ -407,6 +424,117 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             setDragOverPosition(null);
         }, []);
 
+        // ====================================
+        // 멀티선택 핸들러
+        // ====================================
+        
+        const handleRowClick = useCallback((e: React.MouseEvent, task: ConstructionTask, rowIndex: number) => {
+            // 드래그 중이면 무시
+            if (draggedTaskId) return;
+            
+            const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+            const isShift = e.shiftKey;
+            
+            if (isCtrlOrCmd) {
+                // Ctrl/Cmd + Click: 토글 선택
+                setSelectedTaskIds(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(task.id)) {
+                        newSet.delete(task.id);
+                    } else {
+                        newSet.add(task.id);
+                    }
+                    return newSet;
+                });
+                setLastClickedIndex(rowIndex);
+            } else if (isShift && lastClickedIndex !== null) {
+                // Shift + Click: 범위 선택
+                const start = Math.min(lastClickedIndex, rowIndex);
+                const end = Math.max(lastClickedIndex, rowIndex);
+                
+                setSelectedTaskIds(prev => {
+                    const newSet = new Set(prev);
+                    for (let i = start; i <= end; i++) {
+                        if (tasks[i]) {
+                            newSet.add(tasks[i].id);
+                        }
+                    }
+                    return newSet;
+                });
+            } else {
+                // 일반 Click: 단일 선택 (기존 선택 해제)
+                setSelectedTaskIds(new Set([task.id]));
+                setLastClickedIndex(rowIndex);
+            }
+        }, [draggedTaskId, lastClickedIndex, tasks]);
+
+        // ====================================
+        // 컨텍스트 메뉴 핸들러
+        // ====================================
+        
+        const handleContextMenu = useCallback((e: React.MouseEvent, task: ConstructionTask) => {
+            e.preventDefault();
+            
+            // 현재 태스크가 선택되지 않았으면 단일 선택
+            if (!selectedTaskIds.has(task.id)) {
+                setSelectedTaskIds(new Set([task.id]));
+            }
+            
+            setContextMenu({
+                x: e.clientX,
+                y: e.clientY,
+                taskId: task.id,
+            });
+        }, [selectedTaskIds]);
+
+        // 외부 클릭 시 컨텍스트 메뉴 닫기
+        useEffect(() => {
+            const handleClickOutside = () => {
+                setContextMenu(null);
+            };
+            
+            if (contextMenu) {
+                document.addEventListener('click', handleClickOutside);
+                return () => document.removeEventListener('click', handleClickOutside);
+            }
+        }, [contextMenu]);
+
+        // 그룹화 핸들러
+        const handleGroup = useCallback(() => {
+            if (selectedTaskIds.size < 2 || !onTaskGroup) return;
+            
+            onTaskGroup(Array.from(selectedTaskIds));
+            setSelectedTaskIds(new Set());
+            setContextMenu(null);
+        }, [selectedTaskIds, onTaskGroup]);
+
+        // 그룹 해제 핸들러
+        const handleUngroup = useCallback(() => {
+            if (selectedTaskIds.size !== 1 || !onTaskUngroup) return;
+            
+            const taskId = Array.from(selectedTaskIds)[0];
+            const task = tasks.find(t => t.id === taskId);
+            
+            if (task?.type === 'GROUP') {
+                onTaskUngroup(taskId);
+                setSelectedTaskIds(new Set());
+                setContextMenu(null);
+            }
+        }, [selectedTaskIds, tasks, onTaskUngroup]);
+
+        // 선택 해제 (ESC 키)
+        useEffect(() => {
+            const handleKeyDown = (e: KeyboardEvent) => {
+                if (e.key === 'Escape') {
+                    setSelectedTaskIds(new Set());
+                    setContextMenu(null);
+                }
+            };
+            
+            document.addEventListener('keydown', handleKeyDown);
+            return () => document.removeEventListener('keydown', handleKeyDown);
+        }, []);
+
         // 컬럼 헤더 렌더링 (리사이저 포함)
         const renderColumnHeaders = () => (
             <div className="flex h-[32px] border-t border-gray-200">
@@ -494,14 +622,33 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
                                 const isExpanded = expandedIds.has(task.id);
                                 const indent = task.parentId ? 20 : 0;
+                                const isDragging = draggedTaskId === task.id;
+                                const isDragOver = dragOverTaskId === task.id;
+                                const isSelected = selectedTaskIds.has(task.id);
 
                                 return (
                                     <div
                                         key={row.key}
-                                        className={`box-border flex items-center border-b border-gray-100 transition-all duration-150 ${
-                                            isGroup
-                                                ? 'bg-gray-50'
-                                                : 'cursor-pointer hover:bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)] hover:pl-1'
+                                        draggable={!!onTaskReorder}
+                                        onDragStart={(e) => handleDragStart(e, task.id)}
+                                        onDragOver={(e) => handleDragOver(e, task.id)}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={(e) => handleDrop(e, task.id)}
+                                        onDragEnd={handleDragEnd}
+                                        onClick={(e) => handleRowClick(e, task, row.index)}
+                                        onContextMenu={(e) => handleContextMenu(e, task)}
+                                        className={`box-border flex items-center border-b transition-all duration-150 ${
+                                            isDragging 
+                                                ? 'opacity-50 bg-blue-50' 
+                                                : isDragOver 
+                                                    ? dragOverPosition === 'before'
+                                                        ? 'border-t-2 border-t-blue-500 border-b-gray-100'
+                                                        : 'border-b-2 border-b-blue-500'
+                                                    : isSelected
+                                                        ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
+                                                        : isGroup
+                                                            ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
+                                                            : 'border-gray-100 cursor-pointer hover:bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
                                         }`}
                                         style={{ 
                                             height: ROW_HEIGHT,
@@ -516,10 +663,20 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         onDoubleClick={() => !isGroup && onTaskClick(task)}
                                         title={!isGroup ? '더블클릭하여 상세 공정표 보기' : undefined}
                                     >
+                                        {/* Drag Handle */}
+                                        {onTaskReorder && (
+                                            <div 
+                                                className="flex shrink-0 items-center justify-center cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                                style={{ width: 24 }}
+                                            >
+                                                <GripVertical size={14} />
+                                            </div>
+                                        )}
+                                        
                                         {/* CP Name */}
                                         <div
                                             className="flex shrink-0 items-center overflow-hidden border-r border-gray-100 px-2"
-                                            style={{ width: columns[0].width, paddingLeft: indent + 8 }}
+                                            style={{ width: onTaskReorder ? columns[0].width - 24 : columns[0].width, paddingLeft: indent + 8 }}
                                         >
                                             {canExpand ? (
                                                 <button
@@ -563,7 +720,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
 
                                         {/* Work Days */}
                                         <div
-                                            className="flex shrink-0 items-center justify-center text-xs text-vermilion"
+                                            className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-vermilion"
                                             style={{ width: columns[2].width }}
                                         >
                                             {isGroup
@@ -572,11 +729,76 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                     ? `${task.cp.workDaysTotal}일`
                                                     : '-'}
                                         </div>
+
+                                        {/* Non-Work Days (비작업일수) */}
+                                        <div
+                                            className="flex shrink-0 items-center justify-center text-xs text-teal"
+                                            style={{ width: columns[3].width }}
+                                        >
+                                            {isGroup
+                                                ? '-'
+                                                : task.cp
+                                                    ? `${task.cp.nonWorkDaysTotal}일`
+                                                    : '-'}
+                                        </div>
                                     </div>
                                 );
                             })}
                         </div>
                     </div>
+
+                    {/* Context Menu */}
+                    {contextMenu && (
+                        <div
+                            className="fixed z-[100] min-w-[160px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+                            style={{ left: contextMenu.x, top: contextMenu.y }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* 그룹화 (2개 이상 선택 시) */}
+                            {selectedTaskIds.size >= 2 && onTaskGroup && (
+                                <button
+                                    onClick={handleGroup}
+                                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                    </svg>
+                                    그룹화 ({selectedTaskIds.size}개 선택됨)
+                                </button>
+                            )}
+                            
+                            {/* 그룹 해제 (GROUP 1개 선택 시) */}
+                            {selectedTaskIds.size === 1 && onTaskUngroup && (() => {
+                                const taskId = Array.from(selectedTaskIds)[0];
+                                const task = tasks.find(t => t.id === taskId);
+                                return task?.type === 'GROUP';
+                            })() && (
+                                <button
+                                    onClick={handleUngroup}
+                                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
+                                    </svg>
+                                    그룹 해제
+                                </button>
+                            )}
+                            
+                            {/* 선택 해제 */}
+                            <button
+                                onClick={() => {
+                                    setSelectedTaskIds(new Set());
+                                    setContextMenu(null);
+                                }}
+                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-100"
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                선택 해제
+                            </button>
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -659,6 +881,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 
                                 const isDragging = draggedTaskId === task.id;
                                 const isDragOver = dragOverTaskId === task.id;
+                                const isSelected = selectedTaskIds.has(task.id);
                                 
                                 return (
                                     <div
@@ -669,6 +892,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         onDragLeave={handleDragLeave}
                                         onDrop={(e) => handleDrop(e, task.id)}
                                         onDragEnd={handleDragEnd}
+                                        onClick={(e) => handleRowClick(e, task, row.index)}
+                                        onContextMenu={(e) => handleContextMenu(e, task)}
                                         className={`box-border flex items-center border-b transition-colors ${
                                             isDragging 
                                                 ? 'opacity-50 bg-blue-50' 
@@ -676,7 +901,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                     ? dragOverPosition === 'before'
                                                         ? 'border-t-2 border-t-blue-500 border-b-gray-100'
                                                         : 'border-b-2 border-b-blue-500'
-                                                    : 'border-gray-100 hover:bg-gray-50'
+                                                    : isSelected
+                                                        ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
+                                                        : 'border-gray-100 hover:bg-gray-50'
                                         }`}
                                         style={{ 
                                             height: ROW_HEIGHT,
@@ -934,6 +1161,59 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             )}
                         </div>
                 </div>
+
+                {/* Context Menu */}
+                {contextMenu && (
+                    <div
+                        className="fixed z-[100] min-w-[160px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+                        style={{ left: contextMenu.x, top: contextMenu.y }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* 그룹화 (2개 이상 선택 시) */}
+                        {selectedTaskIds.size >= 2 && onTaskGroup && (
+                            <button
+                                onClick={handleGroup}
+                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                그룹화 ({selectedTaskIds.size}개 선택됨)
+                            </button>
+                        )}
+                        
+                        {/* 그룹 해제 (GROUP 1개 선택 시) */}
+                        {selectedTaskIds.size === 1 && onTaskUngroup && (() => {
+                            const taskId = Array.from(selectedTaskIds)[0];
+                            const task = tasks.find(t => t.id === taskId);
+                            return task?.type === 'GROUP';
+                        })() && (
+                            <button
+                                onClick={handleUngroup}
+                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
+                                </svg>
+                                그룹 해제
+                            </button>
+                        )}
+                        
+                        {/* 선택 해제 */}
+                        <button
+                            onClick={() => {
+                                setSelectedTaskIds(new Set());
+                                setContextMenu(null);
+                            }}
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-100"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            선택 해제
+                        </button>
+                    </div>
+                )}
             </div>
         );
     }
