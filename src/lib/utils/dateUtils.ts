@@ -123,11 +123,11 @@ export const addCalendarDays = (startDate: Date, days: number): Date => {
  * Level 2 태스크의 순작업/간접작업 날짜 계산
  * 
  * 건설 공정표의 핵심 로직:
- * - 앞 간접작업일(indirectWorkDaysPre): 달력일 기준으로 계산
+ * - 선 간접작업일(indirectWorkDaysPre): 달력일 기준으로 계산
  * - 순작업일(netWorkDays): 휴일을 건너뛰고 계산
- * - 뒤 간접작업일(indirectWorkDaysPost): 달력일 기준으로 계산
+ * - 후 간접작업일(indirectWorkDaysPost): 달력일 기준으로 계산
  * 
- * 바 구조: [앞간접 Blue] - [순작업 Red] - [뒤간접 Blue]
+ * 바 구조: [선간접 Blue] - [순작업 Red] - [후간접 Blue]
  */
 export const calculateDualCalendarDates = (
     task: ConstructionTask,
@@ -149,7 +149,7 @@ export const calculateDualCalendarDates = (
 
     let currentDate = baseStartDate;
     
-    // 1. 앞 간접작업 계산 (달력일 기준)
+    // 1. 선 간접작업 계산 (달력일 기준)
     let indirectPreStart: Date | undefined;
     let indirectPreEnd: Date | undefined;
     
@@ -171,12 +171,12 @@ export const calculateDualCalendarDates = (
         netEnd = addWorkingDays(netStart, netWorkDays, holidays, settings);
         currentDate = addDays(netEnd, 1);
     } else if (indirectWorkDaysPre === 0) {
-        // 순작업이 0이고 앞간접도 0이면 기준일이 시작
+        // 순작업이 0이고 선간접도 0이면 기준일이 시작
         netStart = baseStartDate;
         netEnd = baseStartDate;
     }
 
-    // 3. 뒤 간접작업 계산 (달력일 기준)
+    // 3. 후 간접작업 계산 (달력일 기준)
     let indirectPostStart: Date | undefined;
     let indirectPostEnd: Date | undefined;
     

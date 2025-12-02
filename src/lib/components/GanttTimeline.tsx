@@ -348,10 +348,11 @@ const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({ milestone, x }) => {
                 className="drop-shadow-sm transition-all duration-150 group-hover:scale-125 group-hover:fill-blue-600"
             />
 
-            {/* Label */}
+            {/* Label - 좌측에 우측 정렬 */}
             <text
-                x={8}
+                x={-8}
                 y={4}
+                textAnchor="end"
                 className="select-none text-[11px] font-bold fill-gray-600 transition-colors group-hover:fill-blue-700"
             >
                 {milestone.name}
@@ -431,7 +432,6 @@ const TaskBar: React.FC<TaskBarProps> = ({
 
         const workWidth = workDays * pixelsPerDay;
         const nonWorkWidth = nonWorkDays * pixelsPerDay;
-        const totalWidth = workWidth + nonWorkWidth;
 
         return (
             <g transform={`translate(${startX}, ${y})`} className="group cursor-pointer">
@@ -458,10 +458,11 @@ const TaskBar: React.FC<TaskBarProps> = ({
                     className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
                 />
 
-                {/* Label */}
+                {/* Label - 좌측에 우측 정렬 */}
                 <text
-                    x={totalWidth + 8}
+                    x={-8}
                     y={BAR_HEIGHT / 2 + 4}
+                    textAnchor="end"
                     className="pointer-events-none select-none text-[11px] font-bold fill-gray-700"
                 >
                     {task.name}
@@ -617,10 +618,11 @@ const TaskBar: React.FC<TaskBarProps> = ({
                     </>
                 )}
 
-                {/* Label */}
+                {/* Label - 좌측에 우측 정렬 */}
                 <text
-                    x={barWidth + 8}
+                    x={-8}
                     y={BAR_HEIGHT / 2 + 4}
+                    textAnchor="end"
                     className="pointer-events-none select-none text-[11px] font-medium fill-gray-700"
                 >
                     {task.name}
@@ -797,19 +799,19 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 newPreDays = Math.max(0, dragState.originalIndirectWorkDaysPre - deltaDays);
                 newStartDate = addDays(dragState.originalStartDate, -(-deltaDays + (newPreDays - dragState.originalIndirectWorkDaysPre)));
                 
-                // 시작일 재계산: 원래 순작업 시작일 - 새 앞간접일수
+                // 시작일 재계산: 원래 순작업 시작일 - 새 선간접일수
                 const netWorkStartDate = addDays(dragState.originalStartDate, dragState.originalIndirectWorkDaysPre);
                 newStartDate = addDays(netWorkStartDate, -newPreDays);
                 
                 // 종료일은 유지
                 newEndDate = dragState.originalEndDate;
             } else if (dragState.dragType === 'resize-post') {
-                // 오른쪽 끝 드래그: 뒤 간접작업일 조절
+                // 오른쪽 끝 드래그: 후 간접작업일 조절
                 // deltaDays가 양수면 바가 오른쪽으로 확장 (일수 증가)
                 // deltaDays가 음수면 바가 왼쪽으로 축소 (일수 감소)
                 newPostDays = Math.max(0, dragState.originalIndirectWorkDaysPost + deltaDays);
                 
-                // 종료일 재계산: 원래 순작업 종료일 + 새 뒤간접일수
+                // 종료일 재계산: 원래 순작업 종료일 + 새 후간접일수
                 const netWorkEndDate = addDays(dragState.originalEndDate, -dragState.originalIndirectWorkDaysPost);
                 newEndDate = addDays(netWorkEndDate, newPostDays);
                 
@@ -899,6 +901,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                     <svg width={chartWidth} height={chartHeight} className="block bg-white">
                         <SvgDefs />
 
+                        {/* ========================================
+                            Layer 1: 배경 (가장 뒤)
+                        ======================================== */}
+                        
                         {/* Weekend/Holiday Grid */}
                         <WeekendGrid
                             minDate={minDate}
@@ -910,23 +916,28 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             zoomLevel={zoomLevel}
                         />
 
-                        {/* Milestone Lane */}
-                        <rect x={0} y={0} width={chartWidth} height={MILESTONE_LANE_HEIGHT} fill="transparent" />
-                        {milestones.map((m) => (
-                            <MilestoneMarker
-                                key={m.id}
-                                milestone={m}
-                                x={dateToX(m.date, minDate, pixelsPerDay)}
-                            />
-                        ))}
-                        <line
-                            x1={0}
-                            y1={MILESTONE_LANE_HEIGHT}
-                            x2={chartWidth}
-                            y2={MILESTONE_LANE_HEIGHT}
-                            stroke={GANTT_COLORS.grid}
-                            strokeWidth={1}
-                        />
+                        {/* GROUP Row Background - 그리드보다 뒤, 투명도 적용 */}
+                        {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
+                            const task = tasks[row.index];
+                            if (!task || task.type !== 'GROUP') return null;
+                            
+                            const rowY = row.start + MILESTONE_LANE_HEIGHT;
+                            return (
+                                <rect
+                                    key={`group-bg-${row.key}`}
+                                    x={0}
+                                    y={rowY}
+                                    width={chartWidth}
+                                    height={ROW_HEIGHT}
+                                    fill="rgba(249, 250, 251, 0.6)"
+                                    className="pointer-events-none"
+                                />
+                            );
+                        })}
+
+                        {/* ========================================
+                            Layer 2: 그리드 라인
+                        ======================================== */}
 
                         {/* Vertical Grid Lines (세로 그리드) */}
                         {Array.from({ length: totalDays }, (_, i) => {
@@ -967,7 +978,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             );
                         })}
 
-                        {/* Horizontal Lines (가상화 적용) */}
+                        {/* Horizontal Lines (가로 그리드) */}
                         {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => (
                             <line
                                 key={`line-${row.key}`}
@@ -980,24 +991,31 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             />
                         ))}
 
-                        {/* GROUP Row Background (가상화 적용) */}
-                        {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
-                            const task = tasks[row.index];
-                            if (!task || task.type !== 'GROUP') return null;
-                            
-                            const rowY = row.start + MILESTONE_LANE_HEIGHT;
-                            return (
-                                <rect
-                                    key={`group-bg-${row.key}`}
-                                    x={0}
-                                    y={rowY}
-                                    width={chartWidth}
-                                    height={ROW_HEIGHT}
-                                    fill="#f9fafb"
-                                    className="pointer-events-none"
-                                />
-                            );
-                        })}
+                        {/* ========================================
+                            Layer 3: 마일스톤 (그리드 위)
+                        ======================================== */}
+
+                        {/* Milestone Lane */}
+                        <rect x={0} y={0} width={chartWidth} height={MILESTONE_LANE_HEIGHT} fill="transparent" />
+                        {milestones.map((m) => (
+                            <MilestoneMarker
+                                key={m.id}
+                                milestone={m}
+                                x={dateToX(m.date, minDate, pixelsPerDay)}
+                            />
+                        ))}
+                        <line
+                            x1={0}
+                            y1={MILESTONE_LANE_HEIGHT}
+                            x2={chartWidth}
+                            y2={MILESTONE_LANE_HEIGHT}
+                            stroke={GANTT_COLORS.grid}
+                            strokeWidth={1}
+                        />
+
+                        {/* ========================================
+                            Layer 4: 태스크 바 (가장 위)
+                        ======================================== */}
 
                         {/* Task Bars (가상화 적용) */}
                         {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {

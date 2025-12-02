@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useMemo, useCallback, useState, useRef } from 'react';
+import { forwardRef, useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { format, addDays } from 'date-fns';
 import { ChevronRight, ChevronDown, Plus, Check, X, GripVertical } from 'lucide-react';
 import {
@@ -21,9 +21,9 @@ const DEFAULT_MASTER_COLUMNS = [
 
 const DEFAULT_DETAIL_COLUMNS = [
     { id: 'name', label: '단위공정명', width: 150, minWidth: 80 },
-    { id: 'indirectPre', label: '앞간접', width: 60, minWidth: 45 },
+    { id: 'indirectPre', label: '선간접', width: 60, minWidth: 45 },
     { id: 'netWork', label: '순작업', width: 60, minWidth: 45 },
-    { id: 'indirectPost', label: '뒤간접', width: 60, minWidth: 45 },
+    { id: 'indirectPost', label: '후간접', width: 60, minWidth: 45 },
     { id: 'startDate', label: '시작일', width: 90, minWidth: 70 },
     { id: 'endDate', label: '종료일', width: 90, minWidth: 70 },
 ];
@@ -64,6 +64,8 @@ interface GanttSidebarProps {
     virtualRows?: VirtualRow[];
     /** 전체 높이 */
     totalHeight?: number;
+    /** 사이드바 총 너비 변경 콜백 */
+    onTotalWidthChange?: (width: number) => void;
 }
 
 /**
@@ -74,7 +76,7 @@ interface GanttSidebarProps {
  * - 컬럼 너비 드래그로 조절 가능
  */
 export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
-    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onBackToMaster, onTaskUpdate, onTaskCreate, onTaskReorder, onScrollToFirstTask, activeCPId, virtualRows, totalHeight }, ref) => {
+    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onBackToMaster, onTaskUpdate, onTaskCreate, onTaskReorder, onScrollToFirstTask, activeCPId, virtualRows, totalHeight, onTotalWidthChange }, ref) => {
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
         
@@ -112,7 +114,16 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             [baseColumns, columnWidths]
         );
 
-        const totalWidth = columns.reduce((sum, col) => sum + col.width, 0);
+        // 드래그 핸들 너비 (Detail View에서 onTaskReorder가 있을 때만)
+        const dragHandleWidth = viewMode === 'DETAIL' && onTaskReorder ? 24 : 0;
+        const totalWidth = columns.reduce((sum, col) => sum + col.width, 0) + dragHandleWidth;
+
+        // totalWidth 변경 시 부모에게 알림
+        useEffect(() => {
+            if (onTotalWidthChange) {
+                onTotalWidthChange(totalWidth);
+            }
+        }, [totalWidth, onTotalWidthChange]);
 
         // 컬럼 리사이즈 핸들러
         const handleColumnResizeStart = useCallback((e: React.MouseEvent, columnIndex: number) => {
@@ -207,13 +218,13 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         case 0: // 단위공정명
                             cellText = task.name;
                             break;
-                        case 1: // 앞간접
+                        case 1: // 선간접
                             cellText = task.task ? String(task.task.indirectWorkDaysPre) : '-';
                             break;
                         case 2: // 순작업일
                             cellText = task.task ? String(task.task.netWorkDays) : '-';
                             break;
-                        case 3: // 뒤간접
+                        case 3: // 후간접
                             cellText = task.task ? String(task.task.indirectWorkDaysPost) : '-';
                             break;
                         case 4: // 시작일
@@ -453,9 +464,19 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     <div ref={ref} className="relative flex-1 overflow-auto">
                         {/* Milestone Lane Spacer */}
                         <div
-                            className="border-b border-gray-200 bg-gray-50/50"
+                            className="flex items-center border-b border-gray-200 bg-gray-50/50"
                             style={{ height: MILESTONE_LANE_HEIGHT, minWidth: totalWidth }}
-                        />
+                        >
+                            {columns.map((col, idx) => (
+                                <div
+                                    key={col.id}
+                                    className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-gray-500"
+                                    style={{ width: col.width }}
+                                >
+                                    {idx === 0 && 'Milestone'}
+                                </div>
+                            ))}
+                        </div>
 
                         {/* Task Rows */}
                         <div 
@@ -610,9 +631,19 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 <div ref={ref} className="relative flex-1 overflow-auto">
                     {/* Milestone Lane Spacer */}
                     <div
-                        className="border-b border-gray-200 bg-gray-50/50"
+                        className="flex items-center border-b border-gray-200 bg-gray-50/50"
                         style={{ height: MILESTONE_LANE_HEIGHT, minWidth: totalWidth }}
-                    />
+                    >
+                        {columns.map((col, idx) => (
+                            <div
+                                key={col.id}
+                                className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-gray-500"
+                                style={{ width: col.width }}
+                            >
+                                {idx === 0 && 'Milestone'}
+                            </div>
+                        ))}
+                    </div>
 
                     {/* Task Rows */}
                         <div 
@@ -678,7 +709,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                             </span>
                                         </div>
 
-                                        {/* Pre Indirect Work Days Input (앞간접) */}
+                                        {/* Pre Indirect Work Days Input (선간접) */}
                                         <div
                                             className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
                                             style={{ width: columns[1].width }}
@@ -700,7 +731,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                             e.preventDefault();
                                                         }
                                                     }}
-                                                    title="앞 간접작업일 (바 드래그로도 조절 가능)"
+                                                    title="선 간접작업일 (바 드래그로도 조절 가능)"
                                                 />
                                             ) : (
                                                 <span className="text-xs text-gray-400">-</span>
@@ -736,7 +767,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                             )}
                                         </div>
 
-                                        {/* Post Indirect Work Days Input (뒤간접) */}
+                                        {/* Post Indirect Work Days Input (후간접) */}
                                         <div
                                             className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
                                             style={{ width: columns[3].width }}
@@ -758,7 +789,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                             e.preventDefault();
                                                         }
                                                     }}
-                                                    title="뒤 간접작업일 (바 드래그로도 조절 가능)"
+                                                    title="후 간접작업일 (바 드래그로도 조절 가능)"
                                                 />
                                             ) : (
                                                 <span className="text-xs text-gray-400">-</span>
@@ -815,7 +846,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         />
                                     </div>
 
-                                    {/* Pre Indirect Work Days Input (앞간접) */}
+                                    {/* Pre Indirect Work Days Input (선간접) */}
                                     <div
                                         className="flex shrink-0 items-center justify-center border-r border-blue-200 px-1"
                                         style={{ width: columns[1].width }}
@@ -832,7 +863,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 setNewTaskForm(prev => ({ ...prev, indirectWorkDaysPre: val }));
                                             }}
                                             onKeyDown={handleNewTaskKeyDown}
-                                            title="앞 간접작업일"
+                                            title="선 간접작업일"
                                         />
                                     </div>
 
@@ -857,7 +888,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         />
                                     </div>
 
-                                    {/* Post Indirect Work Days Input (뒤간접) */}
+                                    {/* Post Indirect Work Days Input (후간접) */}
                                     <div
                                         className="flex shrink-0 items-center justify-center border-r border-blue-200 px-1"
                                         style={{ width: columns[3].width }}
@@ -874,7 +905,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 setNewTaskForm(prev => ({ ...prev, indirectWorkDaysPost: val }));
                                             }}
                                             onKeyDown={handleNewTaskKeyDown}
-                                            title="뒤 간접작업일"
+                                            title="후 간접작업일"
                                         />
                                     </div>
 

@@ -22,6 +22,8 @@ interface GanttSidebarProps {
     virtualRows?: VirtualRow[];
     /** 전체 높이 */
     totalHeight?: number;
+    /** 사이드바 총 너비 변경 콜백 */
+    onTotalWidthChange?: (width: number) => void;
 }
 /**
  * 간트 차트 사이드바 (왼쪽 그리드)

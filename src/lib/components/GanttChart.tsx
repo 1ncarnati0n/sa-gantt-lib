@@ -173,7 +173,12 @@ export function GanttChart({
     // ====================================
     // 사이드바 리사이즈
     // ====================================
+    const [sidebarTotalWidth, setSidebarTotalWidth] = useState<number | null>(null);
+
     const handleResizeStart = useCallback((e: React.MouseEvent) => {
+        // 더블클릭 시 드래그 시작 방지
+        if (e.detail >= 2) return;
+        
         e.preventDefault();
         isResizingRef.current = true;
         setIsResizing(true);
@@ -199,8 +204,14 @@ export function GanttChart({
     }, [sidebarWidth, setSidebarWidth]);
 
     const handleResizeDoubleClick = useCallback(() => {
-        setSidebarWidth(GANTT_LAYOUT.SIDEBAR_WIDTH);
-    }, [setSidebarWidth]);
+        // 사이드바의 마지막 컬럼 끝에 맞추기
+        if (sidebarTotalWidth !== null) {
+            setSidebarWidth(sidebarTotalWidth);
+        } else {
+            // 폴백: 기본값 사용
+            setSidebarWidth(GANTT_LAYOUT.SIDEBAR_WIDTH);
+        }
+    }, [sidebarTotalWidth, setSidebarWidth]);
 
     // ====================================
     // 뷰 전환 핸들러
@@ -355,6 +366,7 @@ export function GanttChart({
                         activeCPId={activeCPId}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
+                        onTotalWidthChange={setSidebarTotalWidth}
                     />
                 </div>
 
