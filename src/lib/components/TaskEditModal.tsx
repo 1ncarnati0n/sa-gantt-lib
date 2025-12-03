@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Clock, Type, Trash2 } from 'lucide-react';
+import { X, Clock, Type, Trash2, Calendar } from 'lucide-react';
 import { ConstructionTask } from '../types';
 
 interface TaskEditModalProps {
@@ -97,6 +97,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const [indirectWorkNamePre, setIndirectWorkNamePre] = useState('');
     const [indirectWorkNamePost, setIndirectWorkNamePost] = useState('');
     
+    // 작업일 설정 상태 (기본값: 토요일 작업, 일요일/공휴일 휴무)
+    const [saturdayOff, setSaturdayOff] = useState(false);       // 토요일 휴무 (체크 시 휴무)
+    const [sundayWork, setSundayWork] = useState(false);         // 일요일 작업 (체크 시 작업)
+    const [holidayWork, setHolidayWork] = useState(false);       // 공휴일 작업 (체크 시 작업)
+    
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const preInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,6 +124,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             setIndirectWorkDaysPostStr(String(task.task.indirectWorkDaysPost));
             setIndirectWorkNamePre(task.task.indirectWorkNamePre || '');
             setIndirectWorkNamePost(task.task.indirectWorkNamePost || '');
+            
+            // 작업일 설정 초기화 (기본값: 토요일 작업(true), 일요일/공휴일 휴무(false))
+            // workOnSaturdays: true가 기본 → saturdayOff는 false가 기본
+            // workOnSundays: false가 기본 → sundayWork는 false가 기본
+            // workOnHolidays: false가 기본 → holidayWork는 false가 기본
+            setSaturdayOff(task.task.workOnSaturdays === false);
+            setSundayWork(task.task.workOnSundays === true);
+            setHolidayWork(task.task.workOnHolidays === true);
+            
             setShowDeleteConfirm(false);
             
             // 모달 열릴 때 첫 입력란에 포커스
@@ -156,6 +170,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 indirectWorkDaysPost,
                 indirectWorkNamePre: indirectWorkNamePre.trim() || undefined,
                 indirectWorkNamePost: indirectWorkNamePost.trim() || undefined,
+                // 작업일 설정 (기본값과 다를 때만 저장)
+                workOnSaturdays: saturdayOff ? false : undefined, // 기본 true이므로 false일 때만 저장
+                workOnSundays: sundayWork ? true : undefined,     // 기본 false이므로 true일 때만 저장
+                workOnHolidays: holidayWork ? true : undefined,   // 기본 false이므로 true일 때만 저장
             },
         };
 
@@ -281,7 +299,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                 <Clock size={14} />
                                 순작업
                             </h3>
-                            <div>
+                            <div className="mb-4">
                                 <label className="mb-1 block text-xs font-medium text-gray-600">
                                     일수
                                 </label>
@@ -294,6 +312,46 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     placeholder="0.1 단위"
                                     className="w-full max-w-[120px] rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                                 />
+                            </div>
+                            
+                            {/* 작업일 설정 */}
+                            <div className="border-t border-red-200 pt-3">
+                                <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                                    <Calendar size={12} />
+                                    작업일 설정
+                                </h4>
+                                <div className="space-y-2">
+                                    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={saturdayOff}
+                                            onChange={(e) => setSaturdayOff(e.target.checked)}
+                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span>토요일 휴무</span>
+                                        <span className="text-xs text-gray-400">(기본: 작업)</span>
+                                    </label>
+                                    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={sundayWork}
+                                            onChange={(e) => setSundayWork(e.target.checked)}
+                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span>일요일 작업</span>
+                                        <span className="text-xs text-gray-400">(기본: 휴무)</span>
+                                    </label>
+                                    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={holidayWork}
+                                            onChange={(e) => setHolidayWork(e.target.checked)}
+                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span>공휴일 작업</span>
+                                        <span className="text-xs text-gray-400">(기본: 휴무)</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { forwardRef, useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth } from 'date-fns';
+import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth, differenceInDays } from 'date-fns';
 import {
     ConstructionTask,
     Milestone,
@@ -16,6 +16,8 @@ import {
     isHoliday,
     calculateDateRange,
     dateToX,
+    getTaskCalendarSettings,
+    getHolidayOffsetsInDateRange,
 } from '../utils/dateUtils';
 import type { VirtualRow } from '../hooks/useGanttVirtualization';
 
@@ -554,6 +556,10 @@ interface TaskBarProps {
     minDate: Date;
     pixelsPerDay: number;
     isMasterView: boolean;
+    /** 휴일 목록 (순작업 바 내 휴일 표시용) */
+    holidays?: Date[];
+    /** 전역 캘린더 설정 */
+    calendarSettings?: CalendarSettings;
     /** 드래그 기능 활성화 여부 */
     isDraggable?: boolean;
     /** 드래그 중인 정보 (드래그 중일 때만 값이 있음) */
@@ -581,6 +587,8 @@ const TaskBar: React.FC<TaskBarProps> = ({
     minDate,
     pixelsPerDay,
     isMasterView,
+    holidays = [],
+    calendarSettings,
     isDraggable = false,
     dragInfo,
     onDragStart,
@@ -655,9 +663,31 @@ const TaskBar: React.FC<TaskBarProps> = ({
         const effectivePostDays = dragInfo?.indirectWorkDaysPost ?? indirectWorkDaysPost;
         const effectiveNetDays = dragInfo?.netWorkDays ?? netWorkDays;
         
-        // 너비 계산
+        // Task별 캘린더 설정 적용
+        const taskSettings = calendarSettings 
+            ? getTaskCalendarSettings(task.task, calendarSettings) 
+            : { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false };
+        
+        // 순작업의 실제 캘린더 날짜 계산 (간접작업일은 캘린더일 기준)
+        const netStartCalendarDate = addDays(effectiveStartDate, effectivePreDays);
+        const netEndCalendarDate = effectivePostDays > 0 
+            ? addDays(effectiveEndDate, -effectivePostDays)
+            : effectiveEndDate;
+        
+        // 순작업 구간 내 휴일 찾기
+        const holidayOffsetsInNet = calendarSettings && holidays 
+            ? getHolidayOffsetsInDateRange(netStartCalendarDate, netEndCalendarDate, holidays, taskSettings)
+            : [];
+        
+        
+        // 순작업 바의 실제 캘린더 일수 (휴일 포함)
+        const netCalendarDays = effectiveNetDays > 0 
+            ? Math.max(1, differenceInDays(netEndCalendarDate, netStartCalendarDate) + 1)
+            : 0;
+        
+        // 너비 계산 (순작업은 실제 캘린더 일수 사용)
         const preWidth = effectivePreDays * pixelsPerDay;
-        const netWidth = effectiveNetDays * pixelsPerDay;
+        const netWidth = netCalendarDays * pixelsPerDay;
         const postWidth = effectivePostDays * pixelsPerDay;
         const barWidth = preWidth + netWidth + postWidth;
 
@@ -714,17 +744,31 @@ const TaskBar: React.FC<TaskBarProps> = ({
 
                 {/* Net Work (Red - 가운데) */}
                 {effectiveNetDays > 0 && (
-                    <rect
-                        x={netX}
-                        y={0}
-                        width={netWidth}
-                        height={BAR_HEIGHT}
-                        fill={GANTT_COLORS.red}
-                        rx={radius}
-                        ry={radius}
-                        className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                        style={{ pointerEvents: 'none' }}
-                    />
+                    <>
+                        <rect
+                            x={netX}
+                            y={0}
+                            width={netWidth}
+                            height={BAR_HEIGHT}
+                            fill={GANTT_COLORS.red}
+                            rx={radius}
+                            ry={radius}
+                            className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                            style={{ pointerEvents: 'none' }}
+                        />
+                        {/* 순작업 바 내 휴일 빗금 오버레이 */}
+                        {holidayOffsetsInNet.map((holiday, idx) => (
+                            <rect
+                                key={`holiday-${idx}`}
+                                x={netX + holiday.offset * pixelsPerDay}
+                                y={0}
+                                width={pixelsPerDay}
+                                height={BAR_HEIGHT}
+                                fill="url(#holidayHatchPattern)"
+                                className="pointer-events-none"
+                            />
+                        ))}
+                    </>
                 )}
                 
                 {/* Post Indirect Work (Blue - 오른쪽) */}
@@ -936,6 +980,43 @@ const SvgDefs: React.FC = () => (
         >
             <polygon points="0 0, 10 3.5, 0 7" fill={GANTT_COLORS.dependency} />
         </marker>
+        
+        {/* 휴일 빗금 패턴 (45도 대각선) - 흰색 빗금 */}
+        <pattern
+            id="holidayHatchPattern"
+            patternUnits="userSpaceOnUse"
+            width="6"
+            height="6"
+            patternTransform="rotate(45)"
+        >
+            <rect width="6" height="6" fill="rgba(0, 0, 0, 0.2)" />
+            <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="6"
+                stroke="white"
+                strokeWidth="2"
+            />
+        </pattern>
+        
+        {/* 휴일 빗금 패턴 (더 진한 버전) */}
+        <pattern
+            id="holidayHatchPatternDark"
+            patternUnits="userSpaceOnUse"
+            width="8"
+            height="8"
+            patternTransform="rotate(45)"
+        >
+            <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="8"
+                stroke="rgba(0, 0, 0, 0.5)"
+                strokeWidth="3"
+            />
+        </pattern>
     </defs>
 );
 
@@ -1502,6 +1583,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
                                     isMasterView={isMasterView}
+                                    holidays={holidays}
+                                    calendarSettings={calendarSettings}
                                     isDraggable={!isMasterView && !!onBarDrag}
                                     dragInfo={getDragInfo(task.id)}
                                     onDragStart={handleBarMouseDown}

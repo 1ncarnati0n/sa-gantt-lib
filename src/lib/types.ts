@@ -122,6 +122,11 @@ export interface TaskData {
     indirectWorkNamePre?: string;     // 앞 간접작업명 (선택)
     indirectWorkNamePost?: string;    // 뒤 간접작업명 (선택)
 
+    // Task별 캘린더 설정 (Optional - 없으면 전역 설정 사용)
+    workOnSaturdays?: boolean;        // 기본 true (토요일 작업), false면 휴무
+    workOnSundays?: boolean;          // 기본 false (일요일 휴무), true면 작업
+    workOnHolidays?: boolean;         // 기본 false (공휴일 휴무), true면 작업
+
     // 산출 근거 (Phase 2: 자동 계산용)
     quantity?: number;                // 수량
     unit?: string;                    // 단위 (㎥, 본, ton, ㎡ 등)
@@ -223,6 +228,10 @@ export interface GanttChartProps {
     onReset?: () => void;
     hasUnsavedChanges?: boolean;
     saveStatus?: 'idle' | 'saving' | 'saved';
+
+    // 내보내기/가져오기 (mock.json 동기화용)
+    onExport?: () => void;
+    onImport?: (file: File) => void | Promise<void>;
 
     // 스타일링
     className?: string;

@@ -68,6 +68,8 @@ export function GanttChart({
     onReset,
     hasUnsavedChanges,
     saveStatus,
+    onExport,
+    onImport,
     className,
     style,
 }: GanttChartProps) {
@@ -630,6 +632,47 @@ export function GanttChart({
                             </svg>
                             초기화
                         </button>
+                    )}
+                    
+                    {/* 구분선 */}
+                    {(onExport || onImport) && (
+                        <div className="h-6 w-px bg-gray-300" />
+                    )}
+                    
+                    {/* 내보내기 버튼 */}
+                    {onExport && (
+                        <button
+                            onClick={onExport}
+                            className="flex items-center gap-1.5 rounded-md bg-green-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-600 active:bg-green-700"
+                            title="현재 데이터를 JSON 파일로 내보내기"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            내보내기
+                        </button>
+                    )}
+                    
+                    {/* 가져오기 버튼 */}
+                    {onImport && (
+                        <label className="flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-600 active:bg-amber-700">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            가져오기
+                            <input
+                                type="file"
+                                accept=".json"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        onImport(file);
+                                        e.target.value = ''; // 같은 파일 재선택 가능하도록
+                                    }
+                                }}
+                            />
+                        </label>
                     )}
                 </div>
             </header>
