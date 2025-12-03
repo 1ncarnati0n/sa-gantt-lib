@@ -2,6 +2,7 @@
 export { GanttChart } from './components/GanttChart';
 export { GanttSidebar } from './components/GanttSidebar';
 export { GanttTimeline } from './components/GanttTimeline';
+export { TaskEditModal } from './components/TaskEditModal';
 export type { BarDragResult } from './components/GanttTimeline';
 export { useGanttStore, useGanttViewState, useGanttViewActions, useGanttSelection, useGanttExpansion, useGanttSidebar, useGanttDrag, } from './store/useGanttStore';
 export { useGanttVirtualization } from './hooks/useGanttVirtualization';

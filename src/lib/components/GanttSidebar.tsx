@@ -70,6 +70,8 @@ interface GanttSidebarProps {
     isAddingCP?: boolean;
     /** 새 CP 추가 취소 콜백 */
     onCancelAddCP?: () => void;
+    /** Task 더블클릭 콜백 (설정 모달 열기) */
+    onTaskDoubleClick?: (task: ConstructionTask) => void;
 }
 
 /**
@@ -80,7 +82,7 @@ interface GanttSidebarProps {
  * - 컬럼 너비 드래그로 조절 가능
  */
 export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
-    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, onTaskDelete, onTaskMove, isAddingTask = false, onCancelAddTask, isAddingCP = false, onCancelAddCP }, ref) => {
+    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, onTaskDelete, onTaskMove, isAddingTask = false, onCancelAddTask, isAddingCP = false, onCancelAddCP, onTaskDoubleClick }, ref) => {
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
         
@@ -951,6 +953,11 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         onDrop={(e) => handleDrop(e, task.id)}
                                         onDragEnd={handleDragEnd}
                                         onClick={(e) => handleRowClick(e, task, row.index)}
+                                        onDoubleClick={() => {
+                                            if (!isGroup && task.type === 'TASK' && onTaskDoubleClick) {
+                                                onTaskDoubleClick(task);
+                                            }
+                                        }}
                                         onContextMenu={(e) => handleContextMenu(e, task)}
                                         className={`box-border flex items-center border-b transition-colors ${
                                             isDragging 
@@ -965,7 +972,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                         ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
                                                         : isGroup
                                                             ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
-                                                            : 'border-gray-100 hover:bg-gray-50'
+                                                            : 'border-gray-100 hover:bg-gray-50 cursor-pointer'
                                         }`}
                                         style={{ 
                                             height: ROW_HEIGHT,
@@ -977,6 +984,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 transform: `translateY(${row.start}px)`,
                                             } : {}),
                                         }}
+                                        title={!isGroup && task.type === 'TASK' ? '더블클릭하여 공정 설정' : undefined}
                                     >
                                         {/* Drag Handle */}
                                         {onTaskReorder && (

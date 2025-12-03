@@ -37,6 +37,8 @@ interface GanttSidebarProps {
     isAddingCP?: boolean;
     /** 새 CP 추가 취소 콜백 */
     onCancelAddCP?: () => void;
+    /** Task 더블클릭 콜백 (설정 모달 열기) */
+    onTaskDoubleClick?: (task: ConstructionTask) => void;
 }
 /**
  * 간트 차트 사이드바 (왼쪽 그리드)

@@ -571,6 +571,8 @@ interface TaskBarProps {
             indirectWorkDaysPost: number;
         }
     ) => void;
+    /** 더블클릭 핸들러 (설정 모달 열기) */
+    onDoubleClick?: () => void;
 }
 
 const TaskBar: React.FC<TaskBarProps> = ({
@@ -582,6 +584,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
     isDraggable = false,
     dragInfo,
     onDragStart,
+    onDoubleClick,
 }) => {
     // GROUP은 바를 렌더링하지 않음
     if (task.type === 'GROUP') return null;
@@ -645,7 +648,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
         // Level 2: Detail Bar (Blue Pre - Red - Blue Post)
         if (!task.task) return null;
 
-        const { netWorkDays, indirectWorkDaysPre, indirectWorkDaysPost } = task.task;
+        const { netWorkDays, indirectWorkDaysPre, indirectWorkDaysPost, indirectWorkNamePre, indirectWorkNamePost } = task.task;
         
         // 드래그 중이면 드래그된 값 사용
         const effectivePreDays = dragInfo?.indirectWorkDaysPre ?? indirectWorkDaysPre;
@@ -678,21 +681,35 @@ const TaskBar: React.FC<TaskBarProps> = ({
         return (
             <g 
                 transform={`translate(${startX}, ${y})`} 
-                className={`group ${isDragging ? 'opacity-90' : ''}`}
+                className={`group ${isDragging ? 'opacity-90' : ''} ${onDoubleClick ? 'cursor-pointer' : ''}`}
+                onDoubleClick={onDoubleClick}
             >
                 {/* Pre Indirect Work (Blue - 왼쪽) */}
                 {effectivePreDays > 0 && (
-                    <rect
-                        x={preX}
-                        y={0}
-                        width={preWidth}
-                        height={BAR_HEIGHT}
-                        fill={GANTT_COLORS.blue}
-                        rx={radius}
-                        ry={radius}
-                        className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                        style={{ pointerEvents: 'none' }}
-                    />
+                    <>
+                        <rect
+                            x={preX}
+                            y={0}
+                            width={preWidth}
+                            height={BAR_HEIGHT}
+                            fill={GANTT_COLORS.blue}
+                            rx={radius}
+                            ry={radius}
+                            className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                            style={{ pointerEvents: 'none' }}
+                        />
+                        {/* 앞 간접작업명 표시 */}
+                        {indirectWorkNamePre && (
+                            <text
+                                x={preX + preWidth / 2}
+                                y={BAR_HEIGHT + 11}
+                                textAnchor="middle"
+                                className="pointer-events-none select-none text-[9px] fill-blue-600 font-medium"
+                            >
+                                {indirectWorkNamePre}
+                            </text>
+                        )}
+                    </>
                 )}
 
                 {/* Net Work (Red - 가운데) */}
@@ -712,24 +729,37 @@ const TaskBar: React.FC<TaskBarProps> = ({
                 
                 {/* Post Indirect Work (Blue - 오른쪽) */}
                 {effectivePostDays > 0 && (
-                    <rect
-                        x={postX}
-                        y={0}
-                        width={postWidth}
-                        height={BAR_HEIGHT}
-                        fill={GANTT_COLORS.blue}
-                        rx={radius}
-                        ry={radius}
-                        className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                        style={{ pointerEvents: 'none' }}
-                    />
+                    <>
+                        <rect
+                            x={postX}
+                            y={0}
+                            width={postWidth}
+                            height={BAR_HEIGHT}
+                            fill={GANTT_COLORS.blue}
+                            rx={radius}
+                            ry={radius}
+                            className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                            style={{ pointerEvents: 'none' }}
+                        />
+                        {/* 뒤 간접작업명 표시 */}
+                        {indirectWorkNamePost && (
+                            <text
+                                x={postX + postWidth / 2}
+                                y={BAR_HEIGHT + 11}
+                                textAnchor="middle"
+                                className="pointer-events-none select-none text-[9px] fill-blue-600 font-medium"
+                            >
+                                {indirectWorkNamePost}
+                            </text>
+                        )}
+                    </>
                 )}
                 
                 {/* ========================================
                     드래그 핸들 영역
                 ======================================== */}
                 
-                {/* 순작업 영역 드래그 (move-net: 순작업만 이동) */}
+                {/* 순작업 영역 드래그 (move: 전체 바 이동, 간접작업 종속) */}
                 {isDraggable && effectiveNetDays > 0 && (
                     <rect
                         x={netX + boundaryHandleWidth}
@@ -738,9 +768,9 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         height={BAR_HEIGHT}
                         fill="transparent"
                         className="cursor-grab active:cursor-grabbing"
-                        onMouseDown={(e) => onDragStart?.(e, task.id, 'move-net', taskData)}
+                        onMouseDown={(e) => onDragStart?.(e, task.id, 'move', taskData)}
                     >
-                        <title>순작업 이동 (드래그)</title>
+                        <title>전체 이동 (드래그)</title>
                     </rect>
                 )}
                 
@@ -938,6 +968,8 @@ interface GanttTimelineProps {
     onMilestoneUpdate?: (milestone: Milestone) => void;
     /** 마일스톤 더블클릭 콜백 */
     onMilestoneDoubleClick?: (milestone: Milestone) => void;
+    /** Task 더블클릭 콜백 (설정 모달 열기) */
+    onTaskDoubleClick?: (task: ConstructionTask) => void;
     /** 가상화된 행 목록 */
     virtualRows?: VirtualRow[];
     /** 전체 높이 */
@@ -945,7 +977,7 @@ interface GanttTimelineProps {
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
-    ({ tasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onMilestoneUpdate, onMilestoneDoubleClick, virtualRows, totalHeight: virtualTotalHeight }, ref) => {
+    ({ tasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onMilestoneUpdate, onMilestoneDoubleClick, onTaskDoubleClick, virtualRows, totalHeight: virtualTotalHeight }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
         
@@ -1472,6 +1504,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     isDraggable={!isMasterView && !!onBarDrag}
                                     dragInfo={getDragInfo(task.id)}
                                     onDragStart={handleBarMouseDown}
+                                    onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick 
+                                        ? () => onTaskDoubleClick(task) 
+                                        : undefined}
                                 />
                             );
                         })}

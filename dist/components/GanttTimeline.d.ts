@@ -28,6 +28,8 @@ interface GanttTimelineProps {
     onMilestoneUpdate?: (milestone: Milestone) => void;
     /** 마일스톤 더블클릭 콜백 */
     onMilestoneDoubleClick?: (milestone: Milestone) => void;
+    /** Task 더블클릭 콜백 (설정 모달 열기) */
+    onTaskDoubleClick?: (task: ConstructionTask) => void;
     /** 가상화된 행 목록 */
     virtualRows?: VirtualRow[];
     /** 전체 높이 */

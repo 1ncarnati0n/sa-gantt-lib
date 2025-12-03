@@ -65,6 +65,8 @@ export interface TaskData {
     netWorkDays: number;
     indirectWorkDaysPre: number;
     indirectWorkDaysPost: number;
+    indirectWorkNamePre?: string;
+    indirectWorkNamePost?: string;
     quantity?: number;
     unit?: string;
     dailyOutput?: number;
