@@ -32,6 +32,7 @@ import './style.css';
 export { GanttChart } from './components/GanttChart';
 export { GanttSidebar } from './components/GanttSidebar';
 export { GanttTimeline } from './components/GanttTimeline';
+export { TaskEditModal } from './components/TaskEditModal';
 export type { BarDragResult } from './components/GanttTimeline';
 
 // ============================================
@@ -52,6 +53,8 @@ export {
 // ============================================
 export { useGanttVirtualization } from './hooks/useGanttVirtualization';
 export type { VirtualRow, UseGanttVirtualizationOptions } from './hooks/useGanttVirtualization';
+
+export { useHistory } from './hooks/useHistory';
 
 // ============================================
 // Types

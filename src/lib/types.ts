@@ -119,6 +119,8 @@ export interface TaskData {
     netWorkDays: number;              // 순작업일 (Red) - 휴일 제외, 가운데 위치
     indirectWorkDaysPre: number;      // 앞 간접작업일 (Blue) - 휴일 포함, 왼쪽 위치
     indirectWorkDaysPost: number;     // 뒤 간접작업일 (Blue) - 휴일 포함, 오른쪽 위치
+    indirectWorkNamePre?: string;     // 앞 간접작업명 (선택)
+    indirectWorkNamePost?: string;    // 뒤 간접작업명 (선택)
 
     // 산출 근거 (Phase 2: 자동 계산용)
     quantity?: number;                // 수량

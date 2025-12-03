@@ -3,7 +3,7 @@ import { ConstructionTask, Milestone, ViewMode, ZoomLevel, CalendarSettings } fr
 import { VirtualRow } from '../hooks/useGanttVirtualization';
 
 /** 드래그 타입 */
-type DragType = 'move' | 'resize-pre' | 'resize-post';
+type DragType = 'move' | 'resize-pre' | 'resize-post' | 'resize-pre-net' | 'resize-net-post' | 'move-net';
 /** Bar 드래그 결과 콜백 파라미터 */
 export interface BarDragResult {
     taskId: string;
@@ -12,6 +12,7 @@ export interface BarDragResult {
     newEndDate: Date;
     newIndirectWorkDaysPre: number;
     newIndirectWorkDaysPost: number;
+    newNetWorkDays: number;
 }
 interface GanttTimelineProps {
     tasks: ConstructionTask[];
@@ -27,6 +28,8 @@ interface GanttTimelineProps {
     onMilestoneUpdate?: (milestone: Milestone) => void;
     /** 마일스톤 더블클릭 콜백 */
     onMilestoneDoubleClick?: (milestone: Milestone) => void;
+    /** Task 더블클릭 콜백 (설정 모달 열기) */
+    onTaskDoubleClick?: (task: ConstructionTask) => void;
     /** 가상화된 행 목록 */
     virtualRows?: VirtualRow[];
     /** 전체 높이 */

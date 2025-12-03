@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { GanttSidebar } from './GanttSidebar';
 import { GanttTimeline, BarDragResult } from './GanttTimeline';
 import { MilestoneEditModal } from './MilestoneEditModal';
+import { TaskEditModal } from './TaskEditModal';
 import { useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion } from '../store/useGanttStore';
 import { useGanttVirtualization } from '../hooks/useGanttVirtualization';
 import {
@@ -122,6 +123,36 @@ export function GanttChart({
         setIsNewMilestone(false);
         setIsEditModalOpen(true);
     }, []);
+
+    // ====================================
+    // Task 편집 모달 상태
+    // ====================================
+    const [editingTask, setEditingTask] = useState<ConstructionTask | null>(null);
+    const [isTaskEditModalOpen, setIsTaskEditModalOpen] = useState(false);
+
+    const handleTaskDoubleClick = useCallback((task: ConstructionTask) => {
+        setEditingTask(task);
+        setIsTaskEditModalOpen(true);
+    }, []);
+
+    const handleCloseTaskEditModal = useCallback(() => {
+        setIsTaskEditModalOpen(false);
+        setEditingTask(null);
+    }, []);
+
+    const handleTaskEditSave = useCallback((updatedTask: ConstructionTask) => {
+        if (onTaskUpdate) {
+            onTaskUpdate(updatedTask);
+        }
+        handleCloseTaskEditModal();
+    }, [onTaskUpdate, handleCloseTaskEditModal]);
+
+    const handleTaskEditDelete = useCallback((taskId: string) => {
+        if (onTaskDelete) {
+            onTaskDelete(taskId);
+        }
+        handleCloseTaskEditModal();
+    }, [onTaskDelete, handleCloseTaskEditModal]);
 
     const handleStartAddMilestone = useCallback(() => {
         // 새 마일스톤 기본 데이터
@@ -449,6 +480,7 @@ export function GanttChart({
                     ...task.task,
                     indirectWorkDaysPre: result.newIndirectWorkDaysPre,
                     indirectWorkDaysPost: result.newIndirectWorkDaysPost,
+                    netWorkDays: result.newNetWorkDays,
                 },
             };
             
@@ -632,6 +664,7 @@ export function GanttChart({
                         onCancelAddTask={handleCancelAddTask}
                         isAddingCP={isAddingCP}
                         onCancelAddCP={handleCancelAddCP}
+                        onTaskDoubleClick={handleTaskDoubleClick}
                     />
                 </div>
 
@@ -661,6 +694,7 @@ export function GanttChart({
                         onBarDrag={handleBarDrag}
                         onMilestoneUpdate={onMilestoneUpdate}
                         onMilestoneDoubleClick={handleMilestoneDoubleClick}
+                        onTaskDoubleClick={handleTaskDoubleClick}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
                     />
@@ -680,6 +714,15 @@ export function GanttChart({
                 onClose={handleCloseEditModal}
                 onSave={handleMilestoneSave}
                 onDelete={handleMilestoneDelete}
+            />
+
+            {/* Task Edit Modal */}
+            <TaskEditModal
+                task={editingTask}
+                isOpen={isTaskEditModalOpen}
+                onClose={handleCloseTaskEditModal}
+                onSave={handleTaskEditSave}
+                onDelete={onTaskDelete ? handleTaskEditDelete : undefined}
             />
         </div>
     );

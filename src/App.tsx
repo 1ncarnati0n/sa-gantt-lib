@@ -10,7 +10,16 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { parseISO, format } from 'date-fns';
 import { GanttChart, ConstructionTask, Milestone, CalendarSettings, calculateDualCalendarDates, AnchorPoint, DependencyType, DropPosition } from './lib';
+import { useHistory } from './lib/hooks/useHistory';
 import mockData from './data/mock.json';
+
+// ============================================
+// 앱 상태 타입 (Undo/Redo 단위)
+// ============================================
+interface AppState {
+    tasks: ConstructionTask[];
+    milestones: Milestone[];
+}
 
 // ============================================
 // localStorage 키
@@ -153,7 +162,7 @@ export const resetStorageToMock = (): void => {
 // ============================================
 // Mock 데이터 파싱
 // ============================================
-const parseMockData = () => {
+const parseMockData = (): AppState => {
     const milestones: Milestone[] = mockData.milestones.map(m => ({
         ...m,
         date: parseISO(m.date),
@@ -182,6 +191,29 @@ const parseMockData = () => {
     return { milestones, tasks };
 };
 
+// 초기 상태 로드 함수
+const loadInitialState = (): AppState => {
+    const storedTasks = loadTasksFromStorage();
+    const storedMilestones = loadMilestonesFromStorage();
+    
+    if (storedTasks && storedTasks.length > 0) {
+        console.log('Loaded from localStorage');
+        return {
+            tasks: storedTasks,
+            milestones: storedMilestones || [],
+        };
+    }
+    
+    console.log('Loaded from mock.json (first time)');
+    const mockState = parseMockData();
+    
+    // mock 데이터를 localStorage에 저장
+    saveTasksToStorage(mockState.tasks);
+    saveMilestonesToStorage(mockState.milestones);
+    
+    return mockState;
+};
+
 // 휴일 목록
 const HOLIDAYS = [
     parseISO('2024-05-05'),
@@ -193,14 +225,28 @@ const HOLIDAYS = [
 
 // 캘린더 설정
 const CALENDAR_SETTINGS: CalendarSettings = {
-    workOnSaturdays: false,
-    workOnSundays: false,
+    workOnSaturdays: true,   // 토요일은 작업일로 허용
+    workOnSundays: false,    // 일요일은 휴일 유지
     workOnHolidays: false,
 };
 
 function App() {
-    const [tasks, setTasks] = useState<ConstructionTask[]>([]);
-    const [milestones, setMilestones] = useState<Milestone[]>([]);
+    // ====================================
+    // Undo/Redo 히스토리 관리
+    // ====================================
+    const {
+        present: appState,
+        set: setAppState,
+        undo,
+        redo,
+        canUndo,
+        canRedo,
+        reset: resetHistory,
+        historyLength,
+    } = useHistory<AppState>({ tasks: [], milestones: [] });
+
+    const { tasks, milestones } = appState;
+    
     const [isLoaded, setIsLoaded] = useState(false);
     
     // 변경사항 감지
@@ -210,36 +256,50 @@ function App() {
     // 초기 로드 여부 추적
     const isInitialLoad = useRef(true);
 
-    // 초기 데이터 로드 (localStorage 우선, 없으면 mock.json)
+    // 초기 데이터 로드
     useEffect(() => {
-        // 1. localStorage에서 로드 시도
-        const storedTasks = loadTasksFromStorage();
-        const storedMilestones = loadMilestonesFromStorage();
-        
-        if (storedTasks && storedTasks.length > 0) {
-            // localStorage에 데이터가 있으면 사용
-            console.log('Loaded from localStorage');
-            setTasks(storedTasks);
-            setMilestones(storedMilestones || []);
-        } else {
-            // localStorage에 데이터가 없으면 mock.json에서 로드 후 저장
-            console.log('Loaded from mock.json (first time)');
-            const { tasks: parsedTasks, milestones: parsedMilestones } = parseMockData();
-            setTasks(parsedTasks);
-            setMilestones(parsedMilestones);
-            
-            // mock 데이터를 localStorage에 저장
-            saveTasksToStorage(parsedTasks);
-            saveMilestonesToStorage(parsedMilestones);
-        }
-        
+        const initialState = loadInitialState();
+        setAppState(initialState);
         setIsLoaded(true);
         
         // 초기 로드 완료 후 플래그 해제
         setTimeout(() => {
             isInitialLoad.current = false;
         }, 100);
-    }, []);
+    }, [setAppState]);
+
+    // ====================================
+    // 키보드 단축키 (Undo/Redo)
+    // ====================================
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // input, textarea 등에서는 무시
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    // Cmd/Ctrl + Shift + Z → Redo
+                    if (canRedo) {
+                        redo();
+                        console.log('Redo executed');
+                    }
+                } else {
+                    // Cmd/Ctrl + Z → Undo
+                    if (canUndo) {
+                        undo();
+                        console.log('Undo executed');
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo, canUndo, canRedo]);
 
     // ====================================
     // 변경사항 감지 (tasks 또는 milestones 변경 시)
@@ -290,13 +350,14 @@ function App() {
             resetStorageToMock();
             
             // mock.json에서 다시 로드
-            const { tasks: parsedTasks, milestones: parsedMilestones } = parseMockData();
-            setTasks(parsedTasks);
-            setMilestones(parsedMilestones);
+            const mockState = parseMockData();
+            
+            // 히스토리 초기화와 함께 상태 리셋
+            resetHistory(mockState);
             
             // localStorage에 저장
-            saveTasksToStorage(parsedTasks);
-            saveMilestonesToStorage(parsedMilestones);
+            saveTasksToStorage(mockState.tasks);
+            saveMilestonesToStorage(mockState.milestones);
             
             setHasUnsavedChanges(false);
             setSaveStatus('idle');
@@ -306,172 +367,136 @@ function App() {
             console.error('Failed to reset data:', error);
             alert('초기화 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
         }
+    }, [resetHistory]);
+
+    // ====================================
+    // 헬퍼: Level 1 태스크 cp 재계산
+    // ====================================
+    const recalculateCPData = useCallback((taskList: ConstructionTask[]): ConstructionTask[] => {
+        const cpMap = new Map<string, {
+            work: number;
+            nonWork: number;
+            minStart: Date;
+            maxEnd: Date;
+        }>();
+
+        taskList.forEach(t => {
+            if (t.parentId && t.wbsLevel === 2 && t.task) {
+                const current = cpMap.get(t.parentId) || {
+                    work: 0,
+                    nonWork: 0,
+                    minStart: new Date(8640000000000000),
+                    maxEnd: new Date(-8640000000000000),
+                };
+
+                current.work += t.task.netWorkDays;
+                current.nonWork += t.task.indirectWorkDaysPre + t.task.indirectWorkDaysPost;
+                if (t.startDate < current.minStart) current.minStart = t.startDate;
+                if (t.endDate > current.maxEnd) current.maxEnd = t.endDate;
+
+                cpMap.set(t.parentId, current);
+            }
+        });
+
+        return taskList.map(t => {
+            if (t.wbsLevel === 1 && cpMap.has(t.id)) {
+                const agg = cpMap.get(t.id)!;
+                return {
+                    ...t,
+                    startDate: agg.minStart,
+                    endDate: agg.maxEnd,
+                    cp: {
+                        workDaysTotal: agg.work,
+                        nonWorkDaysTotal: agg.nonWork,
+                    },
+                };
+            }
+            return t;
+        });
     }, []);
 
     // ====================================
     // 태스크 업데이트 핸들러
-    // (나중에 Supabase 전환 시 이 핸들러들의 내용만 수정)
     // ====================================
     const handleTaskUpdate = useCallback(async (updatedTask: ConstructionTask) => {
         try {
-            setTasks(prevTasks => {
-            // 1. 해당 태스크 업데이트
-            let newTasks = prevTasks.map(t =>
-                t.id === updatedTask.id ? updatedTask : t
-            );
+            setAppState(prev => {
+                // 1. 해당 태스크 업데이트
+                let newTasks = prev.tasks.map(t =>
+                    t.id === updatedTask.id ? updatedTask : t
+                );
 
-            // 2. Level 2 태스크의 날짜 재계산
-            newTasks = newTasks.map(t => {
-                if (t.wbsLevel === 2 && t.task) {
-                    const dates = calculateDualCalendarDates(t, HOLIDAYS, CALENDAR_SETTINGS);
-                    return { ...t, startDate: dates.startDate, endDate: dates.endDate };
-                }
-                return t;
+                // 2. Level 2 태스크의 날짜 재계산
+                newTasks = newTasks.map(t => {
+                    if (t.wbsLevel === 2 && t.task) {
+                        const dates = calculateDualCalendarDates(t, HOLIDAYS, CALENDAR_SETTINGS);
+                        return { ...t, startDate: dates.startDate, endDate: dates.endDate };
+                    }
+                    return t;
+                });
+
+                // 3. Level 1 태스크의 cp 재계산
+                newTasks = recalculateCPData(newTasks);
+
+                console.log('Task updated:', updatedTask);
+                return { ...prev, tasks: newTasks };
             });
-
-            // 3. Level 1 태스크의 cp 재계산
-            const cpMap = new Map<string, {
-                work: number;
-                nonWork: number;
-                minStart: Date;
-                maxEnd: Date;
-            }>();
-
-            newTasks.forEach(t => {
-                if (t.parentId && t.wbsLevel === 2 && t.task) {
-                    const current = cpMap.get(t.parentId) || {
-                        work: 0,
-                        nonWork: 0,
-                        minStart: new Date(8640000000000000),
-                        maxEnd: new Date(-8640000000000000),
-                    };
-
-                    current.work += t.task.netWorkDays;
-                    current.nonWork += t.task.indirectWorkDaysPre + t.task.indirectWorkDaysPost;
-                    if (t.startDate < current.minStart) current.minStart = t.startDate;
-                    if (t.endDate > current.maxEnd) current.maxEnd = t.endDate;
-
-                    cpMap.set(t.parentId, current);
-                }
-            });
-
-            // 4. Level 1 태스크 업데이트
-            newTasks = newTasks.map(t => {
-                if (t.wbsLevel === 1 && cpMap.has(t.id)) {
-                    const agg = cpMap.get(t.id)!;
-                    return {
-                        ...t,
-                        startDate: agg.minStart,
-                        endDate: agg.maxEnd,
-                        cp: {
-                            workDaysTotal: agg.work,
-                            nonWorkDaysTotal: agg.nonWork,
-                        },
-                    };
-                }
-                return t;
-            });
-
-            return newTasks;
-            });
-
-            console.log('Task updated:', updatedTask);
         } catch (error) {
             console.error('Failed to update task:', error);
             alert('태스크 업데이트 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState, recalculateCPData]);
 
     // 새 태스크 생성 핸들러
     const handleTaskCreate = useCallback(async (newTask: Partial<ConstructionTask>) => {
         try {
-            setTasks(prevTasks => {
-            // 새 태스크 추가
-            const taskToAdd: ConstructionTask = {
-                id: newTask.id || `task-${Date.now()}`,
-                parentId: newTask.parentId ?? null,
-                wbsLevel: newTask.wbsLevel || 2,
-                type: newTask.type || 'TASK',
-                name: newTask.name || '새 공정',
-                startDate: newTask.startDate || new Date(),
-                endDate: newTask.endDate || new Date(),
-                cp: newTask.cp,
-                task: newTask.task,
-                dependencies: newTask.dependencies || [],
-            };
+            setAppState(prev => {
+                // 새 태스크 추가
+                const taskToAdd: ConstructionTask = {
+                    id: newTask.id || `task-${Date.now()}`,
+                    parentId: newTask.parentId ?? null,
+                    wbsLevel: newTask.wbsLevel || 2,
+                    type: newTask.type || 'TASK',
+                    name: newTask.name || '새 공정',
+                    startDate: newTask.startDate || new Date(),
+                    endDate: newTask.endDate || new Date(),
+                    cp: newTask.cp,
+                    task: newTask.task,
+                    dependencies: newTask.dependencies || [],
+                };
 
-            let newTasks = [...prevTasks, taskToAdd];
+                let newTasks = [...prev.tasks, taskToAdd];
 
-            // Level 2 태스크의 날짜 재계산
-            newTasks = newTasks.map(t => {
-                if (t.wbsLevel === 2 && t.task) {
-                    const dates = calculateDualCalendarDates(t, HOLIDAYS, CALENDAR_SETTINGS);
-                    return { ...t, startDate: dates.startDate, endDate: dates.endDate };
-                }
-                return t;
-            });
+                // Level 2 태스크의 날짜 재계산
+                newTasks = newTasks.map(t => {
+                    if (t.wbsLevel === 2 && t.task) {
+                        const dates = calculateDualCalendarDates(t, HOLIDAYS, CALENDAR_SETTINGS);
+                        return { ...t, startDate: dates.startDate, endDate: dates.endDate };
+                    }
+                    return t;
+                });
 
-            // Level 1 태스크의 cp 재계산
-            const cpMap2 = new Map<string, {
-                work: number;
-                nonWork: number;
-                minStart: Date;
-                maxEnd: Date;
-            }>();
+                // Level 1 태스크의 cp 재계산
+                newTasks = recalculateCPData(newTasks);
 
-            newTasks.forEach(t => {
-                if (t.parentId && t.wbsLevel === 2 && t.task) {
-                    const current = cpMap2.get(t.parentId) || {
-                        work: 0,
-                        nonWork: 0,
-                        minStart: new Date(8640000000000000),
-                        maxEnd: new Date(-8640000000000000),
-                    };
-
-                    current.work += t.task.netWorkDays;
-                    current.nonWork += t.task.indirectWorkDaysPre + t.task.indirectWorkDaysPost;
-                    if (t.startDate < current.minStart) current.minStart = t.startDate;
-                    if (t.endDate > current.maxEnd) current.maxEnd = t.endDate;
-
-                    cpMap2.set(t.parentId, current);
-                }
-            });
-
-            // Level 1 태스크 업데이트
-            newTasks = newTasks.map(t => {
-                if (t.wbsLevel === 1 && cpMap2.has(t.id)) {
-                    const agg = cpMap2.get(t.id)!;
-                    return {
-                        ...t,
-                        startDate: agg.minStart,
-                        endDate: agg.maxEnd,
-                        cp: {
-                            workDaysTotal: agg.work,
-                            nonWorkDaysTotal: agg.nonWork,
-                        },
-                    };
-                }
-                return t;
-            });
-
-            console.log('Task created:', taskToAdd);
-            return newTasks;
+                console.log('Task created:', taskToAdd);
+                return { ...prev, tasks: newTasks };
             });
         } catch (error) {
             console.error('Failed to create task:', error);
             alert('태스크 생성 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState, recalculateCPData]);
 
     // 태스크 순서 변경 핸들러
     const handleTaskReorder = useCallback(async (taskId: string, newIndex: number) => {
         try {
-            setTasks(prevTasks => {
-                const taskIndex = prevTasks.findIndex(t => t.id === taskId);
-                if (taskIndex === -1) return prevTasks;
+            setAppState(prev => {
+                const taskIndex = prev.tasks.findIndex(t => t.id === taskId);
+                if (taskIndex === -1) return prev;
                 
-                const task = prevTasks[taskIndex];
-                const newTasks = [...prevTasks];
+                const task = prev.tasks[taskIndex];
+                const newTasks = [...prev.tasks];
                 
                 // 기존 위치에서 제거
                 newTasks.splice(taskIndex, 1);
@@ -481,129 +506,129 @@ function App() {
                 newTasks.splice(adjustedIndex, 0, task);
                 
                 console.log('Task reordered:', taskId, 'to index:', adjustedIndex);
-                return newTasks;
+                return { ...prev, tasks: newTasks };
             });
         } catch (error) {
             console.error('Failed to reorder task:', error);
             alert('태스크 순서 변경 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState]);
 
     // 그룹화 핸들러 (선택된 태스크들을 새 GROUP으로 묶기)
     const handleTaskGroup = useCallback(async (taskIds: string[]) => {
         try {
-            setTasks(prevTasks => {
-            // 선택된 태스크들 찾기
-            const selectedTasks = prevTasks.filter(t => taskIds.includes(t.id));
-            // 1개 이상 선택 시 그룹화 가능
-            if (selectedTasks.length < 1) return prevTasks;
+            setAppState(prev => {
+                // 선택된 태스크들 찾기
+                const selectedTasks = prev.tasks.filter(t => taskIds.includes(t.id));
+                // 1개 이상 선택 시 그룹화 가능
+                if (selectedTasks.length < 1) return prev;
 
-            // 선택된 태스크들이 같은 부모를 가지는지 확인
-            const parentIds = new Set(selectedTasks.map(t => t.parentId));
-            const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
+                // 선택된 태스크들이 같은 부모를 가지는지 확인
+                const parentIds = new Set(selectedTasks.map(t => t.parentId));
+                const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
 
-            // 기존 그룹 수 계산 (새 그룹 이름용)
-            const existingGroupCount = prevTasks.filter(t => t.type === 'GROUP').length;
+                // 기존 그룹 수 계산 (새 그룹 이름용)
+                const existingGroupCount = prev.tasks.filter(t => t.type === 'GROUP').length;
 
-            // 새 GROUP 생성
-            const newGroupId = `group-${Date.now()}`;
-            const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
-            const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
+                // 새 GROUP 생성
+                const newGroupId = `group-${Date.now()}`;
+                const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
+                const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
 
-            const newGroup: ConstructionTask = {
-                id: newGroupId,
-                parentId: commonParentId,
-                wbsLevel: selectedTasks[0].wbsLevel,
-                type: 'GROUP',
-                name: `새 그룹 ${existingGroupCount + 1}`,
-                startDate: minStart,
-                endDate: maxEnd,
-                dependencies: [],
-            };
+                const newGroup: ConstructionTask = {
+                    id: newGroupId,
+                    parentId: commonParentId,
+                    wbsLevel: selectedTasks[0].wbsLevel,
+                    type: 'GROUP',
+                    name: `새 그룹 ${existingGroupCount + 1}`,
+                    startDate: minStart,
+                    endDate: maxEnd,
+                    dependencies: [],
+                };
 
-            // 선택된 태스크들의 parentId를 새 GROUP으로 변경
-            let newTasks = prevTasks.map(t => {
-                if (taskIds.includes(t.id)) {
-                    return { ...t, parentId: newGroupId };
-                }
-                return t;
-            });
+                // 선택된 태스크들의 parentId를 새 GROUP으로 변경
+                let newTasks = prev.tasks.map(t => {
+                    if (taskIds.includes(t.id)) {
+                        return { ...t, parentId: newGroupId };
+                    }
+                    return t;
+                });
 
-            // 첫 번째 선택된 태스크 위치에 GROUP 삽입
-            const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
-            newTasks.splice(firstSelectedIndex, 0, newGroup);
+                // 첫 번째 선택된 태스크 위치에 GROUP 삽입
+                const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
+                newTasks.splice(firstSelectedIndex, 0, newGroup);
 
-            console.log('Tasks grouped:', taskIds, 'into group:', newGroupId);
-            return newTasks;
+                console.log('Tasks grouped:', taskIds, 'into group:', newGroupId);
+                return { ...prev, tasks: newTasks };
             });
         } catch (error) {
             console.error('Failed to group tasks:', error);
             alert('태스크 그룹화 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState]);
 
     // 그룹 해제 핸들러 (GROUP을 해체하고 자식들을 상위로 이동)
     const handleTaskUngroup = useCallback(async (groupId: string) => {
         try {
-            setTasks(prevTasks => {
-            const group = prevTasks.find(t => t.id === groupId);
-            if (!group || group.type !== 'GROUP') return prevTasks;
+            setAppState(prev => {
+                const group = prev.tasks.find(t => t.id === groupId);
+                if (!group || group.type !== 'GROUP') return prev;
 
-            // 그룹의 자식들 찾기
-            const children = prevTasks.filter(t => t.parentId === groupId);
-            if (children.length === 0) {
-                // 자식이 없으면 그룹만 삭제
-                return prevTasks.filter(t => t.id !== groupId);
-            }
-
-            // 자식들의 parentId를 그룹의 parentId로 변경
-            let newTasks = prevTasks.map(t => {
-                if (t.parentId === groupId) {
-                    return { ...t, parentId: group.parentId };
+                // 그룹의 자식들 찾기
+                const children = prev.tasks.filter(t => t.parentId === groupId);
+                if (children.length === 0) {
+                    // 자식이 없으면 그룹만 삭제
+                    return { ...prev, tasks: prev.tasks.filter(t => t.id !== groupId) };
                 }
-                return t;
-            });
 
-            // GROUP 삭제
-            newTasks = newTasks.filter(t => t.id !== groupId);
+                // 자식들의 parentId를 그룹의 parentId로 변경
+                let newTasks = prev.tasks.map(t => {
+                    if (t.parentId === groupId) {
+                        return { ...t, parentId: group.parentId };
+                    }
+                    return t;
+                });
 
-            console.log('Group ungrouped:', groupId);
-            return newTasks;
+                // GROUP 삭제
+                newTasks = newTasks.filter(t => t.id !== groupId);
+
+                console.log('Group ungrouped:', groupId);
+                return { ...prev, tasks: newTasks };
             });
         } catch (error) {
             console.error('Failed to ungroup tasks:', error);
             alert('태스크 그룹 해제 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState]);
 
     // 태스크 이동 핸들러 (드래그 앤 드롭으로 그룹 간 이동)
     const handleTaskMove = useCallback(async (taskId: string, targetId: string, position: DropPosition) => {
         try {
-            setTasks(prevTasks => {
-                const taskToMove = prevTasks.find(t => t.id === taskId);
-                const targetTask = prevTasks.find(t => t.id === targetId);
+            setAppState(prev => {
+                const taskToMove = prev.tasks.find(t => t.id === taskId);
+                const targetTask = prev.tasks.find(t => t.id === targetId);
                 
-                if (!taskToMove || !targetTask) return prevTasks;
+                if (!taskToMove || !targetTask) return prev;
                 
                 // 자기 자신을 자기 안에 넣으려는 경우 방지
-                if (taskId === targetId) return prevTasks;
+                if (taskId === targetId) return prev;
                 
                 // 부모를 자식 안에 넣으려는 경우 방지 (순환 참조 방지)
                 const isDescendant = (parentId: string | null, childId: string): boolean => {
-                    let current = prevTasks.find(t => t.id === childId);
+                    let current = prev.tasks.find(t => t.id === childId);
                     while (current?.parentId) {
                         if (current.parentId === parentId) return true;
-                        current = prevTasks.find(t => t.id === current!.parentId);
+                        current = prev.tasks.find(t => t.id === current!.parentId);
                     }
                     return false;
                 };
                 
                 if (position === 'into' && isDescendant(taskId, targetId)) {
                     console.warn('Cannot move parent into its own descendant');
-                    return prevTasks;
+                    return prev;
                 }
                 
-                let newTasks = [...prevTasks];
+                let newTasks = [...prev.tasks];
                 
                 // 기존 위치에서 제거
                 const taskIndex = newTasks.findIndex(t => t.id === taskId);
@@ -628,25 +653,25 @@ function App() {
                 }
                 
                 console.log('Task moved:', taskId, 'to', targetId, 'position:', position);
-                return newTasks;
+                return { ...prev, tasks: newTasks };
             });
         } catch (error) {
             console.error('Failed to move task:', error);
             alert('태스크 이동 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState]);
 
     // 태스크 삭제 핸들러
     const handleTaskDelete = useCallback(async (taskId: string) => {
         try {
-            setTasks(prevTasks => {
+            setAppState(prev => {
                 // 삭제할 태스크 찾기
-                const taskToDelete = prevTasks.find(t => t.id === taskId);
-                if (!taskToDelete) return prevTasks;
+                const taskToDelete = prev.tasks.find(t => t.id === taskId);
+                if (!taskToDelete) return prev;
 
                 // 재귀적으로 자식 태스크들 수집
                 const collectChildIds = (parentId: string): string[] => {
-                    const children = prevTasks.filter(t => t.parentId === parentId);
+                    const children = prev.tasks.filter(t => t.parentId === parentId);
                     const childIds = children.map(c => c.id);
                     const grandChildIds = children.flatMap(c => collectChildIds(c.id));
                     return [...childIds, ...grandChildIds];
@@ -656,59 +681,19 @@ function App() {
                 const allIdsToDelete = [taskId, ...collectChildIds(taskId)];
 
                 // 삭제 실행
-                let newTasks = prevTasks.filter(t => !allIdsToDelete.includes(t.id));
+                let newTasks = prev.tasks.filter(t => !allIdsToDelete.includes(t.id));
 
                 // Level 1 태스크의 cp 재계산
-                const cpMap = new Map<string, {
-                    work: number;
-                    nonWork: number;
-                    minStart: Date;
-                    maxEnd: Date;
-                }>();
-
-                newTasks.forEach(t => {
-                    if (t.parentId && t.wbsLevel === 2 && t.task) {
-                        const current = cpMap.get(t.parentId) || {
-                            work: 0,
-                            nonWork: 0,
-                            minStart: new Date(8640000000000000),
-                            maxEnd: new Date(-8640000000000000),
-                        };
-
-                        current.work += t.task.netWorkDays;
-                        current.nonWork += t.task.indirectWorkDaysPre + t.task.indirectWorkDaysPost;
-                        if (t.startDate < current.minStart) current.minStart = t.startDate;
-                        if (t.endDate > current.maxEnd) current.maxEnd = t.endDate;
-
-                        cpMap.set(t.parentId, current);
-                    }
-                });
-
-                // Level 1 태스크 업데이트
-                newTasks = newTasks.map(t => {
-                    if (t.wbsLevel === 1 && cpMap.has(t.id)) {
-                        const agg = cpMap.get(t.id)!;
-                        return {
-                            ...t,
-                            startDate: agg.minStart,
-                            endDate: agg.maxEnd,
-                            cp: {
-                                workDaysTotal: agg.work,
-                                nonWorkDaysTotal: agg.nonWork,
-                            },
-                        };
-                    }
-                    return t;
-                });
+                newTasks = recalculateCPData(newTasks);
 
                 console.log('Task deleted:', taskId, '(total deleted:', allIdsToDelete.length, ')');
-                return newTasks;
+                return { ...prev, tasks: newTasks };
             });
         } catch (error) {
             console.error('Failed to delete task:', error);
             alert('태스크 삭제 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState, recalculateCPData]);
 
     // 뷰 전환 핸들러
     const handleViewChange = useCallback((view: 'MASTER' | 'DETAIL', activeCPId?: string) => {
@@ -727,43 +712,43 @@ function App() {
                 description: newMilestone.description,
             };
 
-            setMilestones(prevMilestones => {
+            setAppState(prev => {
                 console.log('Milestone created:', milestoneToAdd);
-                return [...prevMilestones, milestoneToAdd];
+                return { ...prev, milestones: [...prev.milestones, milestoneToAdd] };
             });
         } catch (error) {
             console.error('Failed to create milestone:', error);
             alert('마일스톤 생성 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState]);
 
     const handleMilestoneUpdate = useCallback(async (updatedMilestone: Milestone) => {
         try {
-            setMilestones(prevMilestones => {
-                const newMilestones = prevMilestones.map(m =>
+            setAppState(prev => {
+                const newMilestones = prev.milestones.map(m =>
                     m.id === updatedMilestone.id ? updatedMilestone : m
                 );
                 console.log('Milestone updated:', updatedMilestone);
-                return newMilestones;
+                return { ...prev, milestones: newMilestones };
             });
         } catch (error) {
             console.error('Failed to update milestone:', error);
             alert('마일스톤 업데이트 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState]);
 
     const handleMilestoneDelete = useCallback(async (milestoneId: string) => {
         try {
-            setMilestones(prevMilestones => {
-                const newMilestones = prevMilestones.filter(m => m.id !== milestoneId);
+            setAppState(prev => {
+                const newMilestones = prev.milestones.filter(m => m.id !== milestoneId);
                 console.log('Milestone deleted:', milestoneId);
-                return newMilestones;
+                return { ...prev, milestones: newMilestones };
             });
         } catch (error) {
             console.error('Failed to delete milestone:', error);
             alert('마일스톤 삭제 중 오류가 발생했습니다.');
         }
-    }, []);
+    }, [setAppState]);
 
     if (tasks.length === 0) {
         return (
@@ -784,6 +769,46 @@ function App() {
                             <span className="text-vermilion">표준공정표</span> 관리 시스템
                         </span>
                     </h1>
+                    
+                    {/* Undo/Redo 버튼 */}
+                    <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
+                        <button
+                            onClick={undo}
+                            disabled={!canUndo}
+                            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                                canUndo
+                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    : 'cursor-not-allowed bg-gray-50 text-gray-300'
+                            }`}
+                            title="실행 취소 (Ctrl+Z / Cmd+Z)"
+                        >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                            </svg>
+                            <span className="hidden sm:inline">실행취소</span>
+                            {historyLength.past > 0 && (
+                                <span className="ml-0.5 text-[10px] text-gray-400">({historyLength.past})</span>
+                            )}
+                        </button>
+                        <button
+                            onClick={redo}
+                            disabled={!canRedo}
+                            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                                canRedo
+                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    : 'cursor-not-allowed bg-gray-50 text-gray-300'
+                            }`}
+                            title="다시 실행 (Ctrl+Shift+Z / Cmd+Shift+Z)"
+                        >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+                            </svg>
+                            <span className="hidden sm:inline">다시실행</span>
+                            {historyLength.future > 0 && (
+                                <span className="ml-0.5 text-[10px] text-gray-400">({historyLength.future})</span>
+                            )}
+                        </button>
+                    </div>
                     
                     {/* 변경사항 표시 */}
                     {hasUnsavedChanges && (
