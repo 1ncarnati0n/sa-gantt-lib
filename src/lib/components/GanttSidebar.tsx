@@ -7,10 +7,12 @@ import {
     ConstructionTask,
     ViewMode,
     GANTT_LAYOUT,
+    DropPosition,
 } from '../types';
 import type { VirtualRow } from '../hooks/useGanttVirtualization';
 import { GanttSidebarContextMenu } from './GanttSidebarContextMenu';
 import { GanttSidebarNewTaskForm } from './GanttSidebarNewTaskForm';
+import { GanttSidebarNewCPForm } from './GanttSidebarNewCPForm';
 
 const { ROW_HEIGHT, HEADER_HEIGHT, MILESTONE_LANE_HEIGHT } = GANTT_LAYOUT;
 
@@ -56,10 +58,18 @@ interface GanttSidebarProps {
     onTaskGroup?: (taskIds: string[]) => void;
     /** 그룹 해제 콜백 (GROUP taskId) */
     onTaskUngroup?: (groupId: string) => void;
+    /** 태스크 삭제 콜백 */
+    onTaskDelete?: (taskId: string) => void;
+    /** 태스크 이동 콜백 (그룹 간 이동 지원) */
+    onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void;
     /** 새 Task 추가 모드 (GanttChart에서 제어) */
     isAddingTask?: boolean;
     /** 새 Task 추가 취소 콜백 */
     onCancelAddTask?: () => void;
+    /** 새 CP 추가 모드 (Master View에서 사용) */
+    isAddingCP?: boolean;
+    /** 새 CP 추가 취소 콜백 */
+    onCancelAddCP?: () => void;
 }
 
 /**
@@ -70,14 +80,14 @@ interface GanttSidebarProps {
  * - 컬럼 너비 드래그로 조절 가능
  */
 export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
-    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, isAddingTask = false, onCancelAddTask }, ref) => {
+    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, onTaskDelete, onTaskMove, isAddingTask = false, onCancelAddTask, isAddingCP = false, onCancelAddCP }, ref) => {
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
         
-        // 드래그&드롭 상태 (Task 순서 변경)
+        // 드래그&드롭 상태 (Task 순서 변경 + 그룹 간 이동)
         const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
         const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
-        const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after' | null>(null);
+        const [dragOverPosition, setDragOverPosition] = useState<DropPosition | null>(null);
         
         // 멀티선택 상태
         const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
@@ -85,6 +95,11 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         
         // 컨텍스트 메뉴 상태
         const [contextMenu, setContextMenu] = useState<{ x: number; y: number; taskId: string } | null>(null);
+        
+        // 인라인 편집 상태 (그룹 이름 편집)
+        const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+        const [editingName, setEditingName] = useState<string>('');
+        const editInputRef = useRef<HTMLInputElement>(null);
         
         // 컬럼 너비 상태 관리
         const [masterColumnWidths, setMasterColumnWidths] = useState<number[]>(
@@ -300,16 +315,32 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             setTimeout(() => document.body.removeChild(dragImage), 0);
         }, []);
 
-        const handleDragOver = useCallback((e: React.DragEvent, taskId: string) => {
+        const handleDragOver = useCallback((e: React.DragEvent, taskId: string, isTargetGroup: boolean) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             
             if (taskId === draggedTaskId) return;
             
-            // 마우스 위치에 따라 before/after 결정
+            // 마우스 위치에 따라 position 결정
             const rect = e.currentTarget.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            const position = e.clientY < midY ? 'before' : 'after';
+            const relativeY = e.clientY - rect.top;
+            const height = rect.height;
+            
+            let position: DropPosition;
+            
+            if (isTargetGroup) {
+                // 그룹 행: 상단 1/3 = before, 중앙 1/3 = into, 하단 1/3 = after
+                if (relativeY < height / 3) {
+                    position = 'before';
+                } else if (relativeY < (height * 2) / 3) {
+                    position = 'into';
+                } else {
+                    position = 'after';
+                }
+            } else {
+                // 일반 행: 상단 1/2 = before, 하단 1/2 = after
+                position = relativeY < height / 2 ? 'before' : 'after';
+            }
             
             setDragOverTaskId(taskId);
             setDragOverPosition(position);
@@ -323,23 +354,27 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         const handleDrop = useCallback((e: React.DragEvent, targetTaskId: string) => {
             e.preventDefault();
             
-            if (!draggedTaskId || !onTaskReorder || draggedTaskId === targetTaskId) {
+            if (!draggedTaskId || draggedTaskId === targetTaskId || !dragOverPosition) {
                 setDraggedTaskId(null);
                 setDragOverTaskId(null);
                 setDragOverPosition(null);
                 return;
             }
             
-            // 새 인덱스 계산
-            const targetIndex = tasks.findIndex(t => t.id === targetTaskId);
-            const newIndex = dragOverPosition === 'after' ? targetIndex + 1 : targetIndex;
-            
-            onTaskReorder(draggedTaskId, newIndex);
+            // onTaskMove가 있으면 사용 (그룹 간 이동 지원)
+            if (onTaskMove) {
+                onTaskMove(draggedTaskId, targetTaskId, dragOverPosition);
+            } else if (onTaskReorder && dragOverPosition !== 'into') {
+                // fallback: 기존 onTaskReorder 사용 (순서 변경만)
+                const targetIndex = tasks.findIndex(t => t.id === targetTaskId);
+                const newIndex = dragOverPosition === 'after' ? targetIndex + 1 : targetIndex;
+                onTaskReorder(draggedTaskId, newIndex);
+            }
             
             setDraggedTaskId(null);
             setDragOverTaskId(null);
             setDragOverPosition(null);
-        }, [draggedTaskId, dragOverPosition, onTaskReorder, tasks]);
+        }, [draggedTaskId, dragOverPosition, onTaskMove, onTaskReorder, tasks]);
 
         const handleDragEnd = useCallback(() => {
             setDraggedTaskId(null);
@@ -429,12 +464,99 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 if (e.key === 'Escape') {
                     setSelectedTaskIds(new Set());
                     setContextMenu(null);
+                    setEditingTaskId(null);
                 }
             };
             
             document.addEventListener('keydown', handleKeyDown);
             return () => document.removeEventListener('keydown', handleKeyDown);
         }, []);
+
+        // ====================================
+        // 인라인 편집 핸들러 (모든 태스크 이름 편집)
+        // ====================================
+        const handleStartEdit = useCallback((task: ConstructionTask) => {
+            setEditingTaskId(task.id);
+            setEditingName(task.name);
+            // 다음 렌더 후 input에 포커스
+            setTimeout(() => {
+                editInputRef.current?.focus();
+                editInputRef.current?.select();
+            }, 0);
+        }, []);
+        
+        // taskId로 이름 편집 시작 (컨텍스트 메뉴용)
+        const handleStartRename = useCallback((taskId: string) => {
+            const task = tasks.find(t => t.id === taskId);
+            if (task && onTaskUpdate) {
+                handleStartEdit(task);
+            }
+        }, [tasks, onTaskUpdate, handleStartEdit]);
+
+        const handleSaveEdit = useCallback(() => {
+            if (!editingTaskId || !onTaskUpdate) {
+                setEditingTaskId(null);
+                return;
+            }
+            
+            const task = tasks.find(t => t.id === editingTaskId);
+            if (task && editingName.trim() && editingName !== task.name) {
+                onTaskUpdate({
+                    ...task,
+                    name: editingName.trim(),
+                });
+            }
+            
+            setEditingTaskId(null);
+            setEditingName('');
+        }, [editingTaskId, editingName, tasks, onTaskUpdate]);
+
+        const handleCancelEdit = useCallback(() => {
+            setEditingTaskId(null);
+            setEditingName('');
+        }, []);
+
+        const handleEditKeyDown = useCallback((e: React.KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSaveEdit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                handleCancelEdit();
+            }
+        }, [handleSaveEdit, handleCancelEdit]);
+
+        // ====================================
+        // 그룹 깊이 계산 (Detail View용)
+        // ====================================
+        const getGroupDepth = useCallback((task: ConstructionTask): number => {
+            if (!activeCPId || task.parentId === activeCPId) return 0;
+            
+            let depth = 0;
+            let currentParentId = task.parentId;
+            
+            while (currentParentId && currentParentId !== activeCPId) {
+                const parent = allTasks.find(t => t.id === currentParentId);
+                if (parent?.type === 'GROUP') depth++;
+                currentParentId = parent?.parentId || null;
+            }
+            return depth;
+        }, [activeCPId, allTasks]);
+
+        // 그룹 깊이 계산 (Master View용 - 최상위부터 계산)
+        const getMasterGroupDepth = useCallback((task: ConstructionTask): number => {
+            if (!task.parentId) return 0;
+            
+            let depth = 0;
+            let currentParentId: string | null | undefined = task.parentId;
+            
+            while (currentParentId) {
+                const parent = allTasks.find(t => t.id === currentParentId);
+                if (parent?.type === 'GROUP') depth++;
+                currentParentId = parent?.parentId;
+            }
+            return depth;
+        }, [allTasks]);
 
         // 컬럼 헤더 렌더링 (리사이저 포함)
         const renderColumnHeaders = () => (
@@ -469,6 +591,60 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             </div>
         );
 
+        // 선택된 태스크 중 GROUP 타입 확인
+        const selectedGroupTask = selectedTaskIds.size === 1 
+            ? tasks.find(t => t.id === Array.from(selectedTaskIds)[0] && t.type === 'GROUP')
+            : null;
+        // 1개 이상 선택 시 그룹화 가능 (GROUP 타입만 선택된 경우는 그룹 해제만 가능)
+        const canGroup = selectedTaskIds.size >= 1 && onTaskGroup && !selectedGroupTask;
+        const canUngroup = selectedGroupTask && onTaskUngroup;
+
+        // 그룹화/해제 버튼 렌더링
+        const renderGroupButtons = () => {
+            if (!canGroup && !canUngroup && selectedTaskIds.size === 0) return null;
+            
+            return (
+                <div className="flex items-center gap-2">
+                    {/* 선택 개수 표시 */}
+                    {selectedTaskIds.size > 0 && (
+                        <span className="text-xs text-gray-500">
+                            {selectedTaskIds.size}개 선택
+                        </span>
+                    )}
+                    
+                    {/* 그룹 해제 버튼 */}
+                    {canUngroup && (
+                        <button
+                            onClick={() => {
+                                onTaskUngroup(selectedGroupTask!.id);
+                                setSelectedTaskIds(new Set());
+                            }}
+                            className="flex items-center gap-1 rounded bg-gray-500 px-2 py-1 text-xs font-medium text-white hover:bg-gray-600 transition-colors"
+                            title="그룹 해제"
+                        >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
+                            </svg>
+                            해제
+                        </button>
+                    )}
+                    
+                    {/* 선택 해제 버튼 */}
+                    {selectedTaskIds.size > 0 && (
+                        <button
+                            onClick={() => setSelectedTaskIds(new Set())}
+                            className="flex items-center justify-center rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                            title="선택 해제 (ESC)"
+                        >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    )}
+                </div>
+            );
+        };
+
         // Master View 렌더링
         if (viewMode === 'MASTER') {
             return (
@@ -478,8 +654,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         className="flex flex-col border-b border-gray-300 bg-gray-50"
                         style={{ height: HEADER_HEIGHT }}
                     >
-                        <div className="flex flex-1 items-center px-4 font-bold text-gray-700">
-                            공구 공정표 (Level 1)
+                        <div className="flex flex-1 items-center justify-between px-4">
+                            <span className="font-bold text-gray-700">공구 공정표 (Level 1)</span>
+                            {renderGroupButtons()}
                         </div>
                         {renderColumnHeaders()}
                     </div>
@@ -522,7 +699,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 const isGroup = task.type === 'GROUP';
                                 const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
                                 const isExpanded = expandedIds.has(task.id);
-                                const indent = task.parentId ? 20 : 0;
+                                const masterDepth = getMasterGroupDepth(task);
+                                const indent = masterDepth * 12;
                                 const isDragging = draggedTaskId === task.id;
                                 const isDragOver = dragOverTaskId === task.id;
                                 const isSelected = selectedTaskIds.has(task.id);
@@ -530,9 +708,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 return (
                                     <div
                                         key={row.key}
-                                        draggable={!!onTaskReorder}
+                                        draggable={!!(onTaskReorder || onTaskMove)}
                                         onDragStart={(e) => handleDragStart(e, task.id)}
-                                        onDragOver={(e) => handleDragOver(e, task.id)}
+                                        onDragOver={(e) => handleDragOver(e, task.id, isGroup)}
                                         onDragLeave={handleDragLeave}
                                         onDrop={(e) => handleDrop(e, task.id)}
                                         onDragEnd={handleDragEnd}
@@ -544,7 +722,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 : isDragOver 
                                                     ? dragOverPosition === 'before'
                                                         ? 'border-t-2 border-t-blue-500 border-b-gray-100'
-                                                        : 'border-b-2 border-b-blue-500'
+                                                        : dragOverPosition === 'into'
+                                                            ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
+                                                            : 'border-b-2 border-b-blue-500'
                                                     : isSelected
                                                         ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
                                                         : isGroup
@@ -596,15 +776,36 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                             ) : (
                                                 <div className="w-6 shrink-0" />
                                             )}
-                                            <span
-                                                className={`truncate text-sm ${
-                                                    isGroup
-                                                        ? 'font-bold text-gray-700'
-                                                        : 'font-medium text-gray-800'
-                                                }`}
-                                            >
-                                                {task.name}
-                                            </span>
+                                            {/* 인라인 편집 */}
+                                            {editingTaskId === task.id ? (
+                                                <input
+                                                    ref={editInputRef}
+                                                    type="text"
+                                                    value={editingName}
+                                                    onChange={(e) => setEditingName(e.target.value)}
+                                                    onKeyDown={handleEditKeyDown}
+                                                    onBlur={handleSaveEdit}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="w-full rounded border border-blue-400 bg-white px-1 py-0.5 text-sm font-normal text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                />
+                                            ) : (
+                                                <span
+                                                    className={`truncate text-sm ${
+                                                        isGroup
+                                                            ? 'font-normal text-gray-500 italic cursor-text'
+                                                            : 'font-medium text-gray-800'
+                                                    }`}
+                                                    onDoubleClick={(e) => {
+                                                        if (onTaskUpdate) {
+                                                            e.stopPropagation();
+                                                            handleStartEdit(task);
+                                                        }
+                                                    }}
+                                                    title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
+                                                >
+                                                    {task.name}
+                                                </span>
+                                            )}
                                         </div>
 
                                         {/* Total Duration */}
@@ -645,6 +846,19 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                     </div>
                                 );
                             })}
+
+                            {/* 새 CP 입력 행 */}
+                            {isAddingCP && (
+                                <GanttSidebarNewCPForm
+                                    columns={columns}
+                                    tasks={tasks}
+                                    onTaskCreate={onTaskCreate}
+                                    onCancel={onCancelAddCP || (() => {})}
+                                    isVirtualized={isVirtualized}
+                                    virtualRowIndex={tasks.length}
+                                    dragHandleWidth={dragHandleWidth}
+                                />
+                            )}
                         </div>
                     </div>
 
@@ -658,6 +872,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             tasks={tasks}
                             onTaskGroup={onTaskGroup}
                             onTaskUngroup={onTaskUngroup}
+                            onTaskDelete={onTaskDelete}
+                            onStartRename={handleStartRename}
                             onClose={() => setContextMenu(null)}
                             onDeselect={() => setSelectedTaskIds(new Set())}
                         />
@@ -674,8 +890,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     className="flex flex-col border-b border-gray-300 bg-gray-50"
                     style={{ height: HEADER_HEIGHT }}
                 >
-                    <div className="flex flex-1 items-center px-4">
+                    <div className="flex flex-1 items-center justify-between px-4">
                         <span className="font-bold text-gray-700">주공정표 (Level 2)</span>
+                        {renderGroupButtons()}
                     </div>
                     {renderColumnHeaders()}
                 </div>
@@ -715,6 +932,11 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 const task = tasks[row.index];
                                 if (!task) return null;
                                 
+                                const isGroup = task.type === 'GROUP';
+                                const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
+                                const isExpanded = expandedIds.has(task.id);
+                                const depth = getGroupDepth(task);
+                                const indent = depth * 12;
                                 const isDragging = draggedTaskId === task.id;
                                 const isDragOver = dragOverTaskId === task.id;
                                 const isSelected = selectedTaskIds.has(task.id);
@@ -722,9 +944,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 return (
                                     <div
                                         key={row.key}
-                                        draggable={!!onTaskReorder}
+                                        draggable={!!(onTaskReorder || onTaskMove)}
                                         onDragStart={(e) => handleDragStart(e, task.id)}
-                                        onDragOver={(e) => handleDragOver(e, task.id)}
+                                        onDragOver={(e) => handleDragOver(e, task.id, isGroup)}
                                         onDragLeave={handleDragLeave}
                                         onDrop={(e) => handleDrop(e, task.id)}
                                         onDragEnd={handleDragEnd}
@@ -736,10 +958,14 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 : isDragOver 
                                                     ? dragOverPosition === 'before'
                                                         ? 'border-t-2 border-t-blue-500 border-b-gray-100'
-                                                        : 'border-b-2 border-b-blue-500'
+                                                        : dragOverPosition === 'into'
+                                                            ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
+                                                            : 'border-b-2 border-b-blue-500'
                                                     : isSelected
                                                         ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
-                                                        : 'border-gray-100 hover:bg-gray-50'
+                                                        : isGroup
+                                                            ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
+                                                            : 'border-gray-100 hover:bg-gray-50'
                                         }`}
                                         style={{ 
                                             height: ROW_HEIGHT,
@@ -765,11 +991,55 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         {/* Task Name */}
                                         <div
                                             className="flex shrink-0 items-center overflow-hidden border-r border-gray-100 px-2"
-                                            style={{ width: onTaskReorder ? columns[0].width - 24 : columns[0].width }}
+                                            style={{ width: onTaskReorder ? columns[0].width - 24 : columns[0].width, paddingLeft: indent + 8 }}
                                         >
-                                            <span className="truncate text-sm text-gray-700">
-                                                {task.name}
-                                            </span>
+                                            {canExpand ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onToggle(task.id);
+                                                    }}
+                                                    className="mr-1 shrink-0 rounded p-1 text-gray-500 hover:bg-gray-200"
+                                                >
+                                                    {isExpanded ? (
+                                                        <ChevronDown size={14} />
+                                                    ) : (
+                                                        <ChevronRight size={14} />
+                                                    )}
+                                                </button>
+                                            ) : isGroup ? (
+                                                <div className="w-6 shrink-0" />
+                                            ) : null}
+                                            {/* 인라인 편집 */}
+                                            {editingTaskId === task.id ? (
+                                                <input
+                                                    ref={editInputRef}
+                                                    type="text"
+                                                    value={editingName}
+                                                    onChange={(e) => setEditingName(e.target.value)}
+                                                    onKeyDown={handleEditKeyDown}
+                                                    onBlur={handleSaveEdit}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="w-full rounded border border-blue-400 bg-white px-1 py-0.5 text-sm font-normal text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                />
+                                            ) : (
+                                                <span
+                                                    className={`truncate text-sm ${
+                                                        isGroup
+                                                            ? 'font-normal text-gray-500 italic cursor-text'
+                                                            : 'text-gray-700'
+                                                    }`}
+                                                    onDoubleClick={(e) => {
+                                                        if (onTaskUpdate) {
+                                                            e.stopPropagation();
+                                                            handleStartEdit(task);
+                                                        }
+                                                    }}
+                                                    title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
+                                                >
+                                                    {task.name}
+                                                </span>
+                                            )}
                                         </div>
 
                                         {/* Pre Indirect Work Days Input (선간접) */}
@@ -903,6 +1173,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         tasks={tasks}
                         onTaskGroup={onTaskGroup}
                         onTaskUngroup={onTaskUngroup}
+                        onTaskDelete={onTaskDelete}
+                        onStartRename={handleStartRename}
                         onClose={() => setContextMenu(null)}
                         onDeselect={() => setSelectedTaskIds(new Set())}
                     />

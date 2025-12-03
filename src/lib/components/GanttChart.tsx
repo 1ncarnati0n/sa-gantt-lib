@@ -4,11 +4,13 @@ import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import { format } from 'date-fns';
 import { GanttSidebar } from './GanttSidebar';
 import { GanttTimeline, BarDragResult } from './GanttTimeline';
+import { MilestoneEditModal } from './MilestoneEditModal';
 import { useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion } from '../store/useGanttStore';
 import { useGanttVirtualization } from '../hooks/useGanttVirtualization';
 import {
     GanttChartProps,
     ConstructionTask,
+    Milestone,
     GANTT_LAYOUT,
     ZOOM_CONFIG,
     CalendarSettings,
@@ -52,10 +54,15 @@ export function GanttChart({
     initialExpandedIds,
     onTaskUpdate,
     onTaskCreate,
+    onTaskDelete,
     onTaskReorder,
     onTaskGroup,
     onTaskUngroup,
+    onTaskMove,
     onViewChange,
+    onMilestoneCreate,
+    onMilestoneUpdate,
+    onMilestoneDelete,
     onSave,
     onReset,
     hasUnsavedChanges,
@@ -69,7 +76,7 @@ export function GanttChart({
     const { viewMode, activeCPId, zoomLevel } = useGanttViewState();
     const { setViewMode, setZoomLevel } = useGanttViewActions();
     const { sidebarWidth, setSidebarWidth } = useGanttSidebar();
-    const { expandedTaskIds, toggleTask, expandAll } = useGanttExpansion();
+    const { expandedTaskIds, toggleTask, expandAll, collapseAll } = useGanttExpansion();
 
     // ====================================
     // Refs
@@ -82,9 +89,10 @@ export function GanttChart({
     const [isResizing, setIsResizing] = useState(false);
 
     // ====================================
-    // 새 Task 추가 상태 (헤더에서 제어)
+    // 새 Task/CP 추가 상태 (헤더에서 제어)
     // ====================================
     const [isAddingTask, setIsAddingTask] = useState(false);
+    const [isAddingCP, setIsAddingCP] = useState(false);
 
     const handleStartAddTask = useCallback(() => {
         setIsAddingTask(true);
@@ -93,6 +101,62 @@ export function GanttChart({
     const handleCancelAddTask = useCallback(() => {
         setIsAddingTask(false);
     }, []);
+
+    const handleStartAddCP = useCallback(() => {
+        setIsAddingCP(true);
+    }, []);
+
+    const handleCancelAddCP = useCallback(() => {
+        setIsAddingCP(false);
+    }, []);
+
+    // ====================================
+    // 마일스톤 편집 모달 상태
+    // ====================================
+    const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isNewMilestone, setIsNewMilestone] = useState(false);
+
+    const handleMilestoneDoubleClick = useCallback((milestone: Milestone) => {
+        setEditingMilestone(milestone);
+        setIsNewMilestone(false);
+        setIsEditModalOpen(true);
+    }, []);
+
+    const handleStartAddMilestone = useCallback(() => {
+        // 새 마일스톤 기본 데이터
+        const newMilestone: Milestone = {
+            id: `milestone-${Date.now()}`,
+            name: '',
+            date: new Date(),
+            description: '',
+        };
+        setEditingMilestone(newMilestone);
+        setIsNewMilestone(true);
+        setIsEditModalOpen(true);
+    }, []);
+
+    const handleCloseEditModal = useCallback(() => {
+        setIsEditModalOpen(false);
+        setEditingMilestone(null);
+        setIsNewMilestone(false);
+    }, []);
+
+    const handleMilestoneSave = useCallback((updatedMilestone: Milestone) => {
+        if (isNewMilestone && onMilestoneCreate) {
+            onMilestoneCreate(updatedMilestone);
+        } else if (onMilestoneUpdate) {
+            onMilestoneUpdate(updatedMilestone);
+        }
+        handleCloseEditModal();
+    }, [isNewMilestone, onMilestoneCreate, onMilestoneUpdate, handleCloseEditModal]);
+
+    const handleMilestoneDelete = useCallback((milestoneId: string) => {
+        if (onMilestoneDelete) {
+            onMilestoneDelete(milestoneId);
+        }
+        handleCloseEditModal();
+    }, [onMilestoneDelete, handleCloseEditModal]);
 
     // ====================================
     // 초기화 (마운트 시 1회만)
@@ -112,14 +176,40 @@ export function GanttChart({
         // 초기 줌 레벨 설정
         setZoomLevel(initialZoomLevel);
 
-        // 초기 확장 상태 설정
+        // 초기 확장 상태 설정 (먼저 클리어 후 추가)
+        collapseAll();
         if (initialExpandedIds && initialExpandedIds.length > 0) {
             expandAll(initialExpandedIds);
         } else if (taskIds.length > 0) {
             // 기본적으로 모든 태스크 확장
             expandAll(taskIds);
         }
-    }, [taskIds, initialExpandedIds, initialView, initialZoomLevel, setViewMode, setZoomLevel, expandAll]);
+    }, [taskIds, initialExpandedIds, initialView, initialZoomLevel, setViewMode, setZoomLevel, expandAll, collapseAll]);
+
+    // ====================================
+    // 새로 생성된 GROUP 자동 확장
+    // ====================================
+    const prevTaskIdsRef = useRef<Set<string>>(new Set());
+    
+    useEffect(() => {
+        const currentIds = new Set(tasks.map(t => t.id));
+        const prevIds = prevTaskIdsRef.current;
+        
+        // 새로 추가된 GROUP 찾기
+        const newGroupIds: string[] = [];
+        tasks.forEach(task => {
+            if (task.type === 'GROUP' && !prevIds.has(task.id)) {
+                newGroupIds.push(task.id);
+            }
+        });
+        
+        // 새 GROUP이 있으면 확장
+        if (newGroupIds.length > 0) {
+            expandAll(newGroupIds);
+        }
+        
+        prevTaskIdsRef.current = currentIds;
+    }, [tasks, expandAll]);
 
     // ====================================
     // 뷰에 따른 태스크 필터링
@@ -129,22 +219,52 @@ export function GanttChart({
             // Master View: Level 1 (GROUP + CP)
             const visible: ConstructionTask[] = [];
 
-            tasks.forEach(task => {
-                if (task.wbsLevel === 1 && !task.parentId) {
-                    // 최상위 GROUP 또는 CP
-                    visible.push(task);
-                } else if (task.wbsLevel === 1 && task.parentId) {
-                    // GROUP에 속한 CP - 부모가 확장된 경우에만 표시
-                    if (expandedTaskIds.has(task.parentId)) {
-                        visible.push(task);
-                    }
-                }
-            });
+            // 재귀적으로 표시할 태스크 수집 (GROUP 계층 지원)
+            const collectVisible = (parentId: string | null, depth: number = 0) => {
+                tasks.forEach(task => {
+                    // 해당 부모에 속한 Level 1 태스크만 처리
+                    if (task.wbsLevel !== 1) return;
+                    if (task.parentId !== parentId) return;
 
+                    // 최상위(parentId === null) 또는 부모가 확장된 경우
+                    if (parentId === null || expandedTaskIds.has(parentId)) {
+                        visible.push(task);
+                        
+                        // GROUP인 경우 자식들도 재귀적으로 수집
+                        if (task.type === 'GROUP') {
+                            collectVisible(task.id, depth + 1);
+                        }
+                    }
+                });
+            };
+
+            collectVisible(null);
             return visible;
         } else {
             // Detail View: Level 2 Tasks of selected CP
-            return tasks.filter(t => t.wbsLevel === 2 && t.parentId === activeCPId);
+            const visible: ConstructionTask[] = [];
+
+            // 재귀적으로 표시할 태스크 수집 (GROUP 계층 지원)
+            const collectVisible = (parentId: string | null) => {
+                tasks.forEach(task => {
+                    if (task.wbsLevel !== 2) return;
+                    if (task.parentId !== parentId) return;
+
+                    // activeCPId의 자식이거나 부모가 확장된 경우
+                    if (parentId === activeCPId || expandedTaskIds.has(parentId!)) {
+                        visible.push(task);
+                        
+                        // GROUP인 경우 자식들도 재귀적으로 수집
+                        if (task.type === 'GROUP') {
+                            collectVisible(task.id);
+                        }
+                    }
+                });
+            };
+
+            // 먼저 activeCPId의 직접 자식들 수집
+            collectVisible(activeCPId!);
+            return visible;
         }
     }, [tasks, viewMode, activeCPId, expandedTaskIds]);
 
@@ -360,7 +480,7 @@ export function GanttChart({
                             >
                                 ← 상위 공정표로
                             </button>
-                            {/* 추가 버튼 */}
+                            {/* Task 추가 버튼 */}
                             {onTaskCreate && !isAddingTask && (
                                 <button
                                     onClick={handleStartAddTask}
@@ -372,7 +492,31 @@ export function GanttChart({
                             )}
                         </>
                     ) : (
-                        <div className="w-[180px]" />
+                        <>
+                            {/* CP 추가 버튼 (Master View) */}
+                            {onTaskCreate && !isAddingCP && (
+                                <button
+                                    onClick={handleStartAddCP}
+                                    className="flex items-center gap-1 rounded bg-blue-500 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-600 transition-colors"
+                                    title="새 CP 추가"
+                                >
+                                    + CP 추가
+                                </button>
+                            )}
+                            {/* 마일스톤 추가 버튼 (Master View) */}
+                            {onMilestoneCreate && (
+                                <button
+                                    onClick={handleStartAddMilestone}
+                                    className="flex items-center gap-1 rounded bg-purple-500 px-2 py-1.5 text-xs font-medium text-white hover:bg-purple-600 transition-colors"
+                                    title="새 마일스톤 추가"
+                                >
+                                    + 마일스톤
+                                </button>
+                            )}
+                            {isAddingCP && (
+                                <span className="text-xs text-gray-500 italic">CP 추가 중... (Enter 저장 / Esc 취소)</span>
+                            )}
+                        </>
                     )}
                 </div>
 
@@ -478,12 +622,16 @@ export function GanttChart({
                         onTaskReorder={onTaskReorder}
                         onTaskGroup={onTaskGroup}
                         onTaskUngroup={onTaskUngroup}
+                        onTaskDelete={onTaskDelete}
+                        onTaskMove={onTaskMove}
                         activeCPId={activeCPId}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
                         onTotalWidthChange={setSidebarTotalWidth}
                         isAddingTask={isAddingTask}
                         onCancelAddTask={handleCancelAddTask}
+                        isAddingCP={isAddingCP}
+                        onCancelAddCP={handleCancelAddCP}
                     />
                 </div>
 
@@ -511,6 +659,8 @@ export function GanttChart({
                         calendarSettings={calendarSettings}
                         onTaskUpdate={onTaskUpdate}
                         onBarDrag={handleBarDrag}
+                        onMilestoneUpdate={onMilestoneUpdate}
+                        onMilestoneDoubleClick={handleMilestoneDoubleClick}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
                     />
@@ -521,6 +671,16 @@ export function GanttChart({
                     <div className="fixed inset-0 z-50 cursor-col-resize" />
                 )}
             </div>
+
+            {/* Milestone Edit Modal */}
+            <MilestoneEditModal
+                milestone={editingMilestone}
+                isOpen={isEditModalOpen}
+                isNew={isNewMilestone}
+                onClose={handleCloseEditModal}
+                onSave={handleMilestoneSave}
+                onDelete={handleMilestoneDelete}
+            />
         </div>
     );
 }

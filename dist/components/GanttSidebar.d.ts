@@ -1,4 +1,4 @@
-import { ConstructionTask, ViewMode } from '../types';
+import { ConstructionTask, ViewMode, DropPosition } from '../types';
 import { VirtualRow } from '../hooks/useGanttVirtualization';
 
 interface GanttSidebarProps {
@@ -25,10 +25,18 @@ interface GanttSidebarProps {
     onTaskGroup?: (taskIds: string[]) => void;
     /** 그룹 해제 콜백 (GROUP taskId) */
     onTaskUngroup?: (groupId: string) => void;
+    /** 태스크 삭제 콜백 */
+    onTaskDelete?: (taskId: string) => void;
+    /** 태스크 이동 콜백 (그룹 간 이동 지원) */
+    onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void;
     /** 새 Task 추가 모드 (GanttChart에서 제어) */
     isAddingTask?: boolean;
     /** 새 Task 추가 취소 콜백 */
     onCancelAddTask?: () => void;
+    /** 새 CP 추가 모드 (Master View에서 사용) */
+    isAddingCP?: boolean;
+    /** 새 CP 추가 취소 콜백 */
+    onCancelAddCP?: () => void;
 }
 /**
  * 간트 차트 사이드바 (왼쪽 그리드)

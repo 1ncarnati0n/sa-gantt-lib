@@ -23,6 +23,10 @@ interface GanttTimelineProps {
     onTaskUpdate?: (task: ConstructionTask) => void;
     /** Bar 드래그로 날짜/일수 변경 콜백 */
     onBarDrag?: (result: BarDragResult) => void;
+    /** 마일스톤 업데이트 콜백 */
+    onMilestoneUpdate?: (milestone: Milestone) => void;
+    /** 마일스톤 더블클릭 콜백 */
+    onMilestoneDoubleClick?: (milestone: Milestone) => void;
     /** 가상화된 행 목록 */
     virtualRows?: VirtualRow[];
     /** 전체 높이 */
