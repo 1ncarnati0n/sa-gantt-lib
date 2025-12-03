@@ -71,9 +71,10 @@ export const isWeekend = (date: Date): boolean => {
 
 /**
  * 작업일 기준으로 날짜 추가 (휴일 건너뛰기)
+ * 소수점 일수는 올림 처리하여 날짜 계산 (예: 2.3일 → 3일)
  * 
  * @param startDate - 시작 날짜
- * @param days - 추가할 작업일 수
+ * @param days - 추가할 작업일 수 (소수점 허용)
  * @param holidays - 공휴일 목록
  * @param settings - 캘린더 설정
  * @returns 시작일로부터 지정된 작업일 수만큼 더한 날짜 (휴일 제외)
@@ -99,16 +100,19 @@ export const addWorkingDays = (
 
     if (days <= 0) return currentDate;
 
+    // 소수점이 있으면 올림 처리하여 날짜 계산
+    const wholeDays = Math.ceil(days);
+
     // 시작일이 휴일이면 다음 작업일로 이동
     while (isHoliday(currentDate, holidays, settings)) {
         currentDate = addDays(currentDate, 1);
     }
 
-    while (daysAdded < days) {
+    while (daysAdded < wholeDays) {
         if (!isHoliday(currentDate, holidays, settings)) {
             daysAdded++;
         }
-        if (daysAdded < days) {
+        if (daysAdded < wholeDays) {
             currentDate = addDays(currentDate, 1);
         }
     }
@@ -142,10 +146,13 @@ export const subtractWorkingDays = (
 
 /**
  * 달력일 기준으로 날짜 추가 (휴일 포함)
+ * 소수점 일수는 올림 처리 (예: 2.3일 → 3일)
  */
 export const addCalendarDays = (startDate: Date, days: number): Date => {
     if (days <= 0) return startDate;
-    return addDays(startDate, days - 1);
+    // 소수점이 있으면 올림 처리하여 날짜 계산
+    const wholeDays = Math.ceil(days);
+    return addDays(startDate, wholeDays - 1);
 };
 
 // ============================================

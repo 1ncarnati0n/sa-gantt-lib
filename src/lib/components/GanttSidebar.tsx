@@ -103,6 +103,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         const [editingName, setEditingName] = useState<string>('');
         const editInputRef = useRef<HTMLInputElement>(null);
         
+        // 일수 입력 필드 로컬 편집 상태 (소수점 입력 허용)
+        const [editingDays, setEditingDays] = useState<{taskId: string, field: string, value: string} | null>(null);
+        
         // 컬럼 너비 상태 관리
         const [masterColumnWidths, setMasterColumnWidths] = useState<number[]>(
             DEFAULT_MASTER_COLUMNS.map(col => col.width)
@@ -184,15 +187,45 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             return context.measureText(text).width;
         }, []);
 
-        // 컬럼 내용에 맞게 최적 너비 계산 (가장 긴 콘텐츠에 타이트하게 맞춤)
+        // 그룹 깊이 계산 (Detail View용)
+        const getGroupDepth = useCallback((task: ConstructionTask): number => {
+            if (!activeCPId || task.parentId === activeCPId) return 0;
+            
+            let depth = 0;
+            let currentParentId = task.parentId;
+            
+            while (currentParentId && currentParentId !== activeCPId) {
+                const parent = allTasks.find(t => t.id === currentParentId);
+                if (parent?.type === 'GROUP') depth++;
+                currentParentId = parent?.parentId || null;
+            }
+            return depth;
+        }, [activeCPId, allTasks]);
+
+        // 그룹 깊이 계산 (Master View용 - 최상위부터 계산)
+        const getMasterGroupDepth = useCallback((task: ConstructionTask): number => {
+            if (!task.parentId) return 0;
+            
+            let depth = 0;
+            let currentParentId: string | null | undefined = task.parentId;
+            
+            while (currentParentId) {
+                const parent = allTasks.find(t => t.id === currentParentId);
+                if (parent?.type === 'GROUP') depth++;
+                currentParentId = parent?.parentId;
+            }
+            return depth;
+        }, [allTasks]);
+
+        // 컬럼 내용에 맞게 최적 너비 계산 (가장 긴 콘텐츠에 맞춤, 트리 깊이 반영)
         const calculateOptimalWidth = useCallback((columnIndex: number) => {
             const minWidth = baseColumns[columnIndex].minWidth;
             
-            // 컬럼별 패딩 설정 (타이트하게)
-            // 첫 번째 컬럼: 확장 버튼(24px) + 좌우 여백(16px)
-            // 나머지 컬럼: 좌우 여백만 (12px)
+            // 컬럼별 패딩 설정
+            // 첫 번째 컬럼: 확장 버튼(24px) + 좌우 여백(16px) + 추가 여유(32px)
+            // 나머지 컬럼: 좌우 여백만 (20px)
             const isNameColumn = columnIndex === 0;
-            const basePadding = isNameColumn ? 48 : 20;
+            const basePadding = isNameColumn ? 72 : 20;
             
             // 헤더 텍스트 너비 (헤더는 중앙 정렬이므로 좌우 여백 8px씩)
             const headerText = baseColumns[columnIndex].label;
@@ -205,9 +238,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 
                 if (viewMode === 'MASTER') {
                     const isGroup = task.type === 'GROUP';
-                    // 들여쓰기 (parentId가 있으면 20px 추가)
-                    if (isNameColumn && task.parentId) {
-                        extraPadding = 20;
+                    // 트리 깊이에 따른 들여쓰기 (실제 렌더링과 동일하게 depth * 12px)
+                    if (isNameColumn) {
+                        const depth = getMasterGroupDepth(task);
+                        extraPadding = depth * 12;
                     }
                     
                     switch (columnIndex) {
@@ -231,7 +265,12 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             break;
                     }
                 } else {
-                    // Detail View
+                    // Detail View - 트리 깊이에 따른 들여쓰기
+                    if (isNameColumn) {
+                        const depth = getGroupDepth(task);
+                        extraPadding = depth * 12;
+                    }
+                    
                     switch (columnIndex) {
                         case 0: // 단위공정명
                             cellText = task.name;
@@ -262,7 +301,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
 
             // 최소 너비 적용, 최대 너비 제한 없음 (콘텐츠에 맞춤)
             return Math.max(minWidth, Math.ceil(maxWidth));
-        }, [tasks, viewMode, baseColumns, measureTextWidth]);
+        }, [tasks, viewMode, baseColumns, measureTextWidth, getMasterGroupDepth, getGroupDepth]);
 
         // 더블클릭으로 컬럼 너비 자동 최적화
         const handleColumnResizeDoubleClick = useCallback((e: React.MouseEvent, columnIndex: number) => {
@@ -527,38 +566,6 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 handleCancelEdit();
             }
         }, [handleSaveEdit, handleCancelEdit]);
-
-        // ====================================
-        // 그룹 깊이 계산 (Detail View용)
-        // ====================================
-        const getGroupDepth = useCallback((task: ConstructionTask): number => {
-            if (!activeCPId || task.parentId === activeCPId) return 0;
-            
-            let depth = 0;
-            let currentParentId = task.parentId;
-            
-            while (currentParentId && currentParentId !== activeCPId) {
-                const parent = allTasks.find(t => t.id === currentParentId);
-                if (parent?.type === 'GROUP') depth++;
-                currentParentId = parent?.parentId || null;
-            }
-            return depth;
-        }, [activeCPId, allTasks]);
-
-        // 그룹 깊이 계산 (Master View용 - 최상위부터 계산)
-        const getMasterGroupDepth = useCallback((task: ConstructionTask): number => {
-            if (!task.parentId) return 0;
-            
-            let depth = 0;
-            let currentParentId: string | null | undefined = task.parentId;
-            
-            while (currentParentId) {
-                const parent = allTasks.find(t => t.id === currentParentId);
-                if (parent?.type === 'GROUP') depth++;
-                currentParentId = parent?.parentId;
-            }
-            return depth;
-        }, [allTasks]);
 
         // 컬럼 헤더 렌더링 (리사이저 포함)
         const renderColumnHeaders = () => (
@@ -1058,21 +1065,34 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                             {task.task ? (
                                                 <input
                                                     type="text"
-                                                    inputMode="numeric"
-                                                    pattern="[0-9]*"
+                                                    inputMode="decimal"
+                                                    pattern="[0-9]*\.?[0-9]?"
                                                     className="w-full max-w-[45px] rounded border border-gray-300 bg-blue-50 px-1 py-1 text-center text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                    value={task.task.indirectWorkDaysPre}
+                                                    value={editingDays?.taskId === task.id && editingDays?.field === 'pre' 
+                                                        ? editingDays.value 
+                                                        : task.task.indirectWorkDaysPre}
+                                                    onFocus={() => setEditingDays({taskId: task.id, field: 'pre', value: String(task.task!.indirectWorkDaysPre)})}
                                                     onChange={(e) => {
-                                                        const value = e.target.value.replace(/[^0-9]/g, '');
-                                                        const val = parseInt(value) || 0;
-                                                        handleDurationChange(task, 'indirectWorkDaysPre', val);
+                                                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                                                        setEditingDays({taskId: task.id, field: 'pre', value});
                                                     }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === '-' || e.key === 'e' || e.key === '+' || e.key === '.') {
-                                                            e.preventDefault();
+                                                    onBlur={() => {
+                                                        if (editingDays && editingDays.taskId === task.id && editingDays.field === 'pre') {
+                                                            const parsed = parseFloat(editingDays.value) || 0;
+                                                            const val = Math.round(parsed * 10) / 10;
+                                                            handleDurationChange(task, 'indirectWorkDaysPre', val);
+                                                            setEditingDays(null);
                                                         }
                                                     }}
-                                                    title="선 간접작업일 (바 드래그로도 조절 가능)"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === 'e' || e.key === '+') {
+                                                            e.preventDefault();
+                                                        }
+                                                        if (e.key === 'Enter') {
+                                                            (e.target as HTMLInputElement).blur();
+                                                        }
+                                                    }}
+                                                    title="선 간접작업일 (바 드래그로도 조절 가능, 0.1 단위)"
                                                 />
                                             ) : (
                                                 <span className="text-xs text-gray-400">-</span>
@@ -1087,21 +1107,34 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                             {task.task ? (
                                                 <input
                                                     type="text"
-                                                    inputMode="numeric"
-                                                    pattern="[0-9]*"
+                                                    inputMode="decimal"
+                                                    pattern="[0-9]*\.?[0-9]?"
                                                     className="w-full max-w-[45px] rounded border border-gray-300 bg-red-50 px-1 py-1 text-center text-xs text-gray-800 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                                                    value={task.task.netWorkDays}
+                                                    value={editingDays?.taskId === task.id && editingDays?.field === 'net' 
+                                                        ? editingDays.value 
+                                                        : task.task.netWorkDays}
+                                                    onFocus={() => setEditingDays({taskId: task.id, field: 'net', value: String(task.task!.netWorkDays)})}
                                                     onChange={(e) => {
-                                                        const value = e.target.value.replace(/[^0-9]/g, '');
-                                                        const val = parseInt(value) || 0;
-                                                        handleDurationChange(task, 'netWorkDays', val);
+                                                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                                                        setEditingDays({taskId: task.id, field: 'net', value});
                                                     }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === '-' || e.key === 'e' || e.key === '+' || e.key === '.') {
-                                                            e.preventDefault();
+                                                    onBlur={() => {
+                                                        if (editingDays && editingDays.taskId === task.id && editingDays.field === 'net') {
+                                                            const parsed = parseFloat(editingDays.value) || 0;
+                                                            const val = Math.round(parsed * 10) / 10;
+                                                            handleDurationChange(task, 'netWorkDays', val);
+                                                            setEditingDays(null);
                                                         }
                                                     }}
-                                                    title="순작업일"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === 'e' || e.key === '+') {
+                                                            e.preventDefault();
+                                                        }
+                                                        if (e.key === 'Enter') {
+                                                            (e.target as HTMLInputElement).blur();
+                                                        }
+                                                    }}
+                                                    title="순작업일 (0.1 단위)"
                                                 />
                                             ) : (
                                                 <span className="text-xs text-gray-400">-</span>
@@ -1116,21 +1149,34 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                             {task.task ? (
                                                 <input
                                                     type="text"
-                                                    inputMode="numeric"
-                                                    pattern="[0-9]*"
+                                                    inputMode="decimal"
+                                                    pattern="[0-9]*\.?[0-9]?"
                                                     className="w-full max-w-[45px] rounded border border-gray-300 bg-blue-50 px-1 py-1 text-center text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                    value={task.task.indirectWorkDaysPost}
+                                                    value={editingDays?.taskId === task.id && editingDays?.field === 'post' 
+                                                        ? editingDays.value 
+                                                        : task.task.indirectWorkDaysPost}
+                                                    onFocus={() => setEditingDays({taskId: task.id, field: 'post', value: String(task.task!.indirectWorkDaysPost)})}
                                                     onChange={(e) => {
-                                                        const value = e.target.value.replace(/[^0-9]/g, '');
-                                                        const val = parseInt(value) || 0;
-                                                        handleDurationChange(task, 'indirectWorkDaysPost', val);
+                                                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                                                        setEditingDays({taskId: task.id, field: 'post', value});
                                                     }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === '-' || e.key === 'e' || e.key === '+' || e.key === '.') {
-                                                            e.preventDefault();
+                                                    onBlur={() => {
+                                                        if (editingDays && editingDays.taskId === task.id && editingDays.field === 'post') {
+                                                            const parsed = parseFloat(editingDays.value) || 0;
+                                                            const val = Math.round(parsed * 10) / 10;
+                                                            handleDurationChange(task, 'indirectWorkDaysPost', val);
+                                                            setEditingDays(null);
                                                         }
                                                     }}
-                                                    title="후 간접작업일 (바 드래그로도 조절 가능)"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === 'e' || e.key === '+') {
+                                                            e.preventDefault();
+                                                        }
+                                                        if (e.key === 'Enter') {
+                                                            (e.target as HTMLInputElement).blur();
+                                                        }
+                                                    }}
+                                                    title="후 간접작업일 (바 드래그로도 조절 가능, 0.1 단위)"
                                                 />
                                             ) : (
                                                 <span className="text-xs text-gray-400">-</span>

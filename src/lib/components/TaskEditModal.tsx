@@ -88,10 +88,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     onSave,
     onDelete,
 }) => {
-    // 일수 상태
-    const [indirectWorkDaysPre, setIndirectWorkDaysPre] = useState(0);
-    const [netWorkDays, setNetWorkDays] = useState(1);
-    const [indirectWorkDaysPost, setIndirectWorkDaysPost] = useState(0);
+    // 일수 상태 (문자열로 관리하여 소수점 입력 허용)
+    const [indirectWorkDaysPreStr, setIndirectWorkDaysPreStr] = useState('0');
+    const [netWorkDaysStr, setNetWorkDaysStr] = useState('1');
+    const [indirectWorkDaysPostStr, setIndirectWorkDaysPostStr] = useState('0');
     
     // 작업명 상태
     const [indirectWorkNamePre, setIndirectWorkNamePre] = useState('');
@@ -100,12 +100,23 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const preInputRef = useRef<HTMLInputElement>(null);
 
+    // 문자열을 숫자로 파싱 (소수점 첫째자리까지)
+    const parseToNumber = (str: string): number => {
+        const parsed = parseFloat(str) || 0;
+        return Math.round(parsed * 10) / 10;
+    };
+    
+    // 숫자 값 계산용
+    const indirectWorkDaysPre = parseToNumber(indirectWorkDaysPreStr);
+    const netWorkDays = parseToNumber(netWorkDaysStr);
+    const indirectWorkDaysPost = parseToNumber(indirectWorkDaysPostStr);
+
     // Task 데이터로 폼 초기화
     useEffect(() => {
         if (task && task.task && isOpen) {
-            setIndirectWorkDaysPre(task.task.indirectWorkDaysPre);
-            setNetWorkDays(task.task.netWorkDays);
-            setIndirectWorkDaysPost(task.task.indirectWorkDaysPost);
+            setIndirectWorkDaysPreStr(String(task.task.indirectWorkDaysPre));
+            setNetWorkDaysStr(String(task.task.netWorkDays));
+            setIndirectWorkDaysPostStr(String(task.task.indirectWorkDaysPost));
             setIndirectWorkNamePre(task.task.indirectWorkNamePre || '');
             setIndirectWorkNamePost(task.task.indirectWorkNamePost || '');
             setShowDeleteConfirm(false);
@@ -176,12 +187,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     };
 
     const handleNumberChange = (
-        setter: React.Dispatch<React.SetStateAction<number>>,
-        value: string,
-        min = 0
+        setter: React.Dispatch<React.SetStateAction<string>>,
+        value: string
     ) => {
-        const numValue = parseInt(value.replace(/[^0-9]/g, '')) || 0;
-        setter(Math.max(min, numValue));
+        // 소수점 입력 허용 (문자열로 유지)
+        const cleaned = value.replace(/[^0-9.]/g, '');
+        // 소수점이 여러 개인 경우 첫 번째만 유지
+        const parts = cleaned.split('.');
+        const sanitized = parts.length > 2 
+            ? parts[0] + '.' + parts.slice(1).join('')
+            : cleaned;
+        setter(sanitized);
     };
 
     if (!isOpen || !task || !task.task) return null;
@@ -234,10 +250,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     <input
                                         ref={preInputRef}
                                         type="text"
-                                        inputMode="numeric"
-                                        value={indirectWorkDaysPre}
-                                        onChange={(e) => handleNumberChange(setIndirectWorkDaysPre, e.target.value)}
+                                        inputMode="decimal"
+                                        value={indirectWorkDaysPreStr}
+                                        onChange={(e) => handleNumberChange(setIndirectWorkDaysPreStr, e.target.value)}
                                         onKeyDown={handleKeyDown}
+                                        placeholder="0.1 단위"
                                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>
@@ -270,10 +287,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                 </label>
                                 <input
                                     type="text"
-                                    inputMode="numeric"
-                                    value={netWorkDays}
-                                    onChange={(e) => handleNumberChange(setNetWorkDays, e.target.value, 0)}
+                                    inputMode="decimal"
+                                    value={netWorkDaysStr}
+                                    onChange={(e) => handleNumberChange(setNetWorkDaysStr, e.target.value)}
                                     onKeyDown={handleKeyDown}
+                                    placeholder="0.1 단위"
                                     className="w-full max-w-[120px] rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                                 />
                             </div>
@@ -292,10 +310,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     </label>
                                     <input
                                         type="text"
-                                        inputMode="numeric"
-                                        value={indirectWorkDaysPost}
-                                        onChange={(e) => handleNumberChange(setIndirectWorkDaysPost, e.target.value)}
+                                        inputMode="decimal"
+                                        value={indirectWorkDaysPostStr}
+                                        onChange={(e) => handleNumberChange(setIndirectWorkDaysPostStr, e.target.value)}
                                         onKeyDown={handleKeyDown}
+                                        placeholder="0.1 단위"
                                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>

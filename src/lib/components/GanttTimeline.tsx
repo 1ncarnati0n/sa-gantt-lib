@@ -1164,7 +1164,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             if (!currentDragState || !onBarDrag) return;
             
             const deltaX = e.clientX - currentDragState.startX;
-            const deltaDays = Math.round(deltaX / pixelsPerDay);
+            // 소수점 첫째 자리까지만 반영 (0.1 단위)
+            const deltaDays = Math.round((deltaX / pixelsPerDay) * 10) / 10;
             
             let newStartDate = currentDragState.originalStartDate;
             let newEndDate = currentDragState.originalEndDate;
