@@ -3,7 +3,7 @@ import { ConstructionTask, Milestone, ViewMode, ZoomLevel, CalendarSettings } fr
 import { VirtualRow } from '../hooks/useGanttVirtualization';
 
 /** 드래그 타입 */
-type DragType = 'move' | 'resize-pre' | 'resize-post';
+type DragType = 'move' | 'resize-pre' | 'resize-post' | 'resize-pre-net' | 'resize-net-post' | 'move-net';
 /** Bar 드래그 결과 콜백 파라미터 */
 export interface BarDragResult {
     taskId: string;
@@ -12,6 +12,7 @@ export interface BarDragResult {
     newEndDate: Date;
     newIndirectWorkDaysPre: number;
     newIndirectWorkDaysPost: number;
+    newNetWorkDays: number;
 }
 interface GanttTimelineProps {
     tasks: ConstructionTask[];

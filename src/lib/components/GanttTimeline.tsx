@@ -531,7 +531,13 @@ const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
 // ============================================
 
 /** 드래그 타입 */
-type DragType = 'move' | 'resize-pre' | 'resize-post';
+type DragType = 
+    | 'move'           // 전체 이동
+    | 'resize-pre'     // 왼쪽 끝 - 앞간접 또는 순작업 조절
+    | 'resize-post'    // 오른쪽 끝 - 뒤간접 또는 순작업 조절
+    | 'resize-pre-net' // 앞간접-순작업 경계
+    | 'resize-net-post' // 순작업-뒤간접 경계
+    | 'move-net';      // 순작업만 이동
 
 /** 드래그 상태 정보 */
 interface DragInfo {
@@ -539,6 +545,7 @@ interface DragInfo {
     endDate: Date;
     indirectWorkDaysPre: number;
     indirectWorkDaysPost: number;
+    netWorkDays: number;
 }
 
 interface TaskBarProps {
@@ -643,10 +650,11 @@ const TaskBar: React.FC<TaskBarProps> = ({
         // 드래그 중이면 드래그된 값 사용
         const effectivePreDays = dragInfo?.indirectWorkDaysPre ?? indirectWorkDaysPre;
         const effectivePostDays = dragInfo?.indirectWorkDaysPost ?? indirectWorkDaysPost;
+        const effectiveNetDays = dragInfo?.netWorkDays ?? netWorkDays;
         
         // 너비 계산
         const preWidth = effectivePreDays * pixelsPerDay;
-        const netWidth = netWorkDays * pixelsPerDay;
+        const netWidth = effectiveNetDays * pixelsPerDay;
         const postWidth = effectivePostDays * pixelsPerDay;
         const barWidth = preWidth + netWidth + postWidth;
 
@@ -656,13 +664,14 @@ const TaskBar: React.FC<TaskBarProps> = ({
         const postX = preWidth + netWidth;
         
         const handleWidth = 8;
+        const boundaryHandleWidth = 6;
 
         // 드래그 시작 시 전달할 데이터
         const taskData = {
             startDate: effectiveStartDate,
             endDate: effectiveEndDate,
             indirectWorkDaysPre: effectivePreDays,
-            netWorkDays,
+            netWorkDays: effectiveNetDays,
             indirectWorkDaysPost: effectivePostDays,
         };
 
@@ -671,19 +680,6 @@ const TaskBar: React.FC<TaskBarProps> = ({
                 transform={`translate(${startX}, ${y})`} 
                 className={`group ${isDragging ? 'opacity-90' : ''}`}
             >
-                {/* 투명한 드래그 영역 (전체 바 - 가운데 영역) */}
-                {isDraggable && (
-                    <rect
-                        x={preWidth}
-                        y={0}
-                        width={netWidth}
-                        height={BAR_HEIGHT}
-                        fill="transparent"
-                        className="cursor-grab active:cursor-grabbing"
-                        onMouseDown={(e) => onDragStart?.(e, task.id, 'move', taskData)}
-                    />
-                )}
-                
                 {/* Pre Indirect Work (Blue - 왼쪽) */}
                 {effectivePreDays > 0 && (
                     <rect
@@ -695,12 +691,12 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         rx={radius}
                         ry={radius}
                         className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                        style={{ pointerEvents: isDraggable ? 'none' : 'auto' }}
+                        style={{ pointerEvents: 'none' }}
                     />
                 )}
 
                 {/* Net Work (Red - 가운데) */}
-                {netWorkDays > 0 && (
+                {effectiveNetDays > 0 && (
                     <rect
                         x={netX}
                         y={0}
@@ -710,7 +706,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         rx={radius}
                         ry={radius}
                         className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                        style={{ pointerEvents: isDraggable ? 'none' : 'auto' }}
+                        style={{ pointerEvents: 'none' }}
                     />
                 )}
                 
@@ -725,11 +721,30 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         rx={radius}
                         ry={radius}
                         className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                        style={{ pointerEvents: isDraggable ? 'none' : 'auto' }}
+                        style={{ pointerEvents: 'none' }}
                     />
                 )}
                 
-                {/* 왼쪽 리사이즈 핸들 (앞 간접작업일 조절) */}
+                {/* ========================================
+                    드래그 핸들 영역
+                ======================================== */}
+                
+                {/* 순작업 영역 드래그 (move-net: 순작업만 이동) */}
+                {isDraggable && effectiveNetDays > 0 && (
+                    <rect
+                        x={netX + boundaryHandleWidth}
+                        y={0}
+                        width={Math.max(0, netWidth - boundaryHandleWidth * 2)}
+                        height={BAR_HEIGHT}
+                        fill="transparent"
+                        className="cursor-grab active:cursor-grabbing"
+                        onMouseDown={(e) => onDragStart?.(e, task.id, 'move-net', taskData)}
+                    >
+                        <title>순작업 이동 (드래그)</title>
+                    </rect>
+                )}
+                
+                {/* 왼쪽 끝 리사이즈 핸들 (resize-pre: 앞간접 또는 순작업 조절) */}
                 {isDraggable && (
                     <rect
                         x={-handleWidth / 2}
@@ -740,11 +755,41 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         className="cursor-ew-resize"
                         onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-pre', taskData)}
                     >
-                        <title>앞 간접작업일 조절 (드래그)</title>
+                        <title>{effectivePreDays > 0 ? '앞 간접작업일 조절' : '순작업일 조절'} (드래그)</title>
                     </rect>
                 )}
                 
-                {/* 오른쪽 리사이즈 핸들 (뒤 간접작업일 조절) */}
+                {/* 앞간접-순작업 경계 핸들 (resize-pre-net) */}
+                {isDraggable && effectivePreDays > 0 && effectiveNetDays > 0 && (
+                    <rect
+                        x={preWidth - boundaryHandleWidth / 2}
+                        y={0}
+                        width={boundaryHandleWidth}
+                        height={BAR_HEIGHT}
+                        fill="transparent"
+                        className="cursor-col-resize"
+                        onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-pre-net', taskData)}
+                    >
+                        <title>앞간접-순작업 경계 조절 (드래그)</title>
+                    </rect>
+                )}
+                
+                {/* 순작업-뒤간접 경계 핸들 (resize-net-post) */}
+                {isDraggable && effectivePostDays > 0 && effectiveNetDays > 0 && (
+                    <rect
+                        x={postX - boundaryHandleWidth / 2}
+                        y={0}
+                        width={boundaryHandleWidth}
+                        height={BAR_HEIGHT}
+                        fill="transparent"
+                        className="cursor-col-resize"
+                        onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-net-post', taskData)}
+                    >
+                        <title>순작업-뒤간접 경계 조절 (드래그)</title>
+                    </rect>
+                )}
+                
+                {/* 오른쪽 끝 리사이즈 핸들 (resize-post: 뒤간접 또는 순작업 조절) */}
                 {isDraggable && (
                     <rect
                         x={barWidth - handleWidth / 2}
@@ -755,13 +800,14 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         className="cursor-ew-resize"
                         onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-post', taskData)}
                     >
-                        <title>뒤 간접작업일 조절 (드래그)</title>
+                        <title>{effectivePostDays > 0 ? '뒤 간접작업일 조절' : '순작업일 조절'} (드래그)</title>
                     </rect>
                 )}
                 
                 {/* 리사이즈 핸들 시각적 표시 (hover 시) */}
                 {isDraggable && (
                     <>
+                        {/* 왼쪽 끝 핸들 표시 */}
                         <rect
                             x={1}
                             y={BAR_HEIGHT / 2 - 6}
@@ -771,6 +817,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                             fill="white"
                             className="pointer-events-none opacity-0 group-hover:opacity-80 transition-opacity"
                         />
+                        {/* 오른쪽 끝 핸들 표시 */}
                         <rect
                             x={barWidth - 4}
                             y={BAR_HEIGHT / 2 - 6}
@@ -780,6 +827,30 @@ const TaskBar: React.FC<TaskBarProps> = ({
                             fill="white"
                             className="pointer-events-none opacity-0 group-hover:opacity-80 transition-opacity"
                         />
+                        {/* 앞간접-순작업 경계 핸들 표시 */}
+                        {effectivePreDays > 0 && effectiveNetDays > 0 && (
+                            <rect
+                                x={preWidth - 1.5}
+                                y={BAR_HEIGHT / 2 - 4}
+                                width={3}
+                                height={8}
+                                rx={1}
+                                fill="white"
+                                className="pointer-events-none opacity-0 group-hover:opacity-60 transition-opacity"
+                            />
+                        )}
+                        {/* 순작업-뒤간접 경계 핸들 표시 */}
+                        {effectivePostDays > 0 && effectiveNetDays > 0 && (
+                            <rect
+                                x={postX - 1.5}
+                                y={BAR_HEIGHT / 2 - 4}
+                                width={3}
+                                height={8}
+                                rx={1}
+                                fill="white"
+                                className="pointer-events-none opacity-0 group-hover:opacity-60 transition-opacity"
+                            />
+                        )}
                     </>
                 )}
 
@@ -810,7 +881,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                             textAnchor="middle"
                             className="pointer-events-none select-none text-[9px] fill-gray-500"
                         >
-                            앞{effectivePreDays}일 + 순{netWorkDays}일 + 뒤{effectivePostDays}일
+                            앞{effectivePreDays}일 + 순{effectiveNetDays}일 + 뒤{effectivePostDays}일
                         </text>
                     </g>
                 )}
@@ -850,6 +921,7 @@ export interface BarDragResult {
     newEndDate: Date;
     newIndirectWorkDaysPre: number;
     newIndirectWorkDaysPost: number;
+    newNetWorkDays: number;
 }
 
 interface GanttTimelineProps {
@@ -897,6 +969,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             currentStartDate: Date;
             currentEndDate: Date;
             currentIndirectWorkDaysPre: number;
+            currentNetWorkDays: number;
             currentIndirectWorkDaysPost: number;
         } | null>(null);
 
@@ -1046,6 +1119,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 currentStartDate: taskData.startDate,
                 currentEndDate: taskData.endDate,
                 currentIndirectWorkDaysPre: taskData.indirectWorkDaysPre,
+                currentNetWorkDays: taskData.netWorkDays,
                 currentIndirectWorkDaysPost: taskData.indirectWorkDaysPost,
             };
             
@@ -1063,36 +1137,101 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             let newStartDate = currentDragState.originalStartDate;
             let newEndDate = currentDragState.originalEndDate;
             let newPreDays = currentDragState.originalIndirectWorkDaysPre;
+            let newNetDays = currentDragState.originalNetWorkDays;
             let newPostDays = currentDragState.originalIndirectWorkDaysPost;
             
             if (currentDragState.dragType === 'move') {
                 // 전체 이동: 시작일과 종료일 동시 이동, 일수는 유지
                 newStartDate = addDays(currentDragState.originalStartDate, deltaDays);
                 newEndDate = addDays(currentDragState.originalEndDate, deltaDays);
-            } else if (currentDragState.dragType === 'resize-pre') {
-                // 왼쪽 끝 드래그: 앞 간접작업일 조절
-                // deltaDays가 음수면 바가 왼쪽으로 확장 (일수 증가)
-                // deltaDays가 양수면 바가 오른쪽으로 축소 (일수 감소)
-                newPreDays = Math.max(0, currentDragState.originalIndirectWorkDaysPre - deltaDays);
+            } else if (currentDragState.dragType === 'move-net') {
+                // 순작업만 이동: 순작업 시작점을 이동하고, 간접작업일을 자동 재계산
+                // deltaDays 양수 = 순작업이 오른쪽으로 이동 = 앞간접 증가, 뒤간접 감소
+                // deltaDays 음수 = 순작업이 왼쪽으로 이동 = 앞간접 감소, 뒤간접 증가
                 
-                // 시작일 재계산: 원래 순작업 시작일 - 새 선간접일수
-                const netWorkStartDate = addDays(currentDragState.originalStartDate, currentDragState.originalIndirectWorkDaysPre);
-                newStartDate = addDays(netWorkStartDate, -newPreDays);
+                const maxPreIncrease = currentDragState.originalIndirectWorkDaysPost; // 뒤간접을 0까지만 줄일 수 있음
+                const maxPreDecrease = currentDragState.originalIndirectWorkDaysPre; // 앞간접을 0까지만 줄일 수 있음
                 
-                // 종료일은 유지
-                newEndDate = currentDragState.originalEndDate;
-            } else if (currentDragState.dragType === 'resize-post') {
-                // 오른쪽 끝 드래그: 후 간접작업일 조절
-                // deltaDays가 양수면 바가 오른쪽으로 확장 (일수 증가)
-                // deltaDays가 음수면 바가 왼쪽으로 축소 (일수 감소)
-                newPostDays = Math.max(0, currentDragState.originalIndirectWorkDaysPost + deltaDays);
+                const constrainedDelta = Math.max(-maxPreDecrease, Math.min(maxPreIncrease, deltaDays));
                 
-                // 종료일 재계산: 원래 순작업 종료일 + 새 후간접일수
-                const netWorkEndDate = addDays(currentDragState.originalEndDate, -currentDragState.originalIndirectWorkDaysPost);
-                newEndDate = addDays(netWorkEndDate, newPostDays);
+                newPreDays = currentDragState.originalIndirectWorkDaysPre + constrainedDelta;
+                newPostDays = currentDragState.originalIndirectWorkDaysPost - constrainedDelta;
                 
-                // 시작일은 유지
+                // 시작일/종료일은 유지 (총 기간 동일)
                 newStartDate = currentDragState.originalStartDate;
+                newEndDate = currentDragState.originalEndDate;
+            } else if (currentDragState.dragType === 'resize-pre') {
+                // 왼쪽 끝 드래그: 앞 간접작업일 또는 순작업일 조절
+                if (currentDragState.originalIndirectWorkDaysPre > 0) {
+                    // 앞간접이 있으면 앞간접 조절
+                    newPreDays = Math.max(0, currentDragState.originalIndirectWorkDaysPre - deltaDays);
+                    
+                    // 시작일 재계산: 원래 순작업 시작일 - 새 선간접일수
+                    const netWorkStartDate = addDays(currentDragState.originalStartDate, currentDragState.originalIndirectWorkDaysPre);
+                    newStartDate = addDays(netWorkStartDate, -newPreDays);
+                    newEndDate = currentDragState.originalEndDate;
+                } else {
+                    // 앞간접이 0이면 순작업일 조절
+                    newNetDays = Math.max(1, currentDragState.originalNetWorkDays - deltaDays);
+                    
+                    // 시작일 재계산
+                    const netWorkEndDate = addDays(
+                        currentDragState.originalStartDate, 
+                        currentDragState.originalNetWorkDays - 1
+                    );
+                    newStartDate = addDays(netWorkEndDate, -(newNetDays - 1));
+                    newEndDate = currentDragState.originalEndDate;
+                }
+            } else if (currentDragState.dragType === 'resize-post') {
+                // 오른쪽 끝 드래그: 후 간접작업일 또는 순작업일 조절
+                if (currentDragState.originalIndirectWorkDaysPost > 0) {
+                    // 뒤간접이 있으면 뒤간접 조절
+                    newPostDays = Math.max(0, currentDragState.originalIndirectWorkDaysPost + deltaDays);
+                    
+                    // 종료일 재계산: 원래 순작업 종료일 + 새 후간접일수
+                    const netWorkEndDate = addDays(currentDragState.originalEndDate, -currentDragState.originalIndirectWorkDaysPost);
+                    newEndDate = addDays(netWorkEndDate, newPostDays);
+                    newStartDate = currentDragState.originalStartDate;
+                } else {
+                    // 뒤간접이 0이면 순작업일 조절
+                    newNetDays = Math.max(1, currentDragState.originalNetWorkDays + deltaDays);
+                    
+                    // 종료일 재계산
+                    newEndDate = addDays(currentDragState.originalStartDate, newNetDays - 1);
+                    newStartDate = currentDragState.originalStartDate;
+                }
+            } else if (currentDragState.dragType === 'resize-pre-net') {
+                // 앞간접-순작업 경계 조절: 총 기간 유지, 앞간접과 순작업 사이에서 조절
+                // deltaDays 양수 = 경계가 오른쪽으로 = 앞간접 증가, 순작업 감소
+                // deltaDays 음수 = 경계가 왼쪽으로 = 앞간접 감소, 순작업 증가
+                
+                const maxPreIncrease = currentDragState.originalNetWorkDays - 1; // 순작업 최소 1일
+                const maxPreDecrease = currentDragState.originalIndirectWorkDaysPre; // 앞간접 0까지
+                
+                const constrainedDelta = Math.max(-maxPreDecrease, Math.min(maxPreIncrease, deltaDays));
+                
+                newPreDays = currentDragState.originalIndirectWorkDaysPre + constrainedDelta;
+                newNetDays = currentDragState.originalNetWorkDays - constrainedDelta;
+                
+                // 시작일/종료일은 유지
+                newStartDate = currentDragState.originalStartDate;
+                newEndDate = currentDragState.originalEndDate;
+            } else if (currentDragState.dragType === 'resize-net-post') {
+                // 순작업-뒤간접 경계 조절: 총 기간 유지, 순작업과 뒤간접 사이에서 조절
+                // deltaDays 양수 = 경계가 오른쪽으로 = 순작업 증가, 뒤간접 감소
+                // deltaDays 음수 = 경계가 왼쪽으로 = 순작업 감소, 뒤간접 증가
+                
+                const maxNetIncrease = currentDragState.originalIndirectWorkDaysPost; // 뒤간접 0까지
+                const maxNetDecrease = currentDragState.originalNetWorkDays - 1; // 순작업 최소 1일
+                
+                const constrainedDelta = Math.max(-maxNetDecrease, Math.min(maxNetIncrease, deltaDays));
+                
+                newNetDays = currentDragState.originalNetWorkDays + constrainedDelta;
+                newPostDays = currentDragState.originalIndirectWorkDaysPost - constrainedDelta;
+                
+                // 시작일/종료일은 유지
+                newStartDate = currentDragState.originalStartDate;
+                newEndDate = currentDragState.originalEndDate;
             }
             
             setDragState(prev => prev ? {
@@ -1100,6 +1239,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 currentStartDate: newStartDate,
                 currentEndDate: newEndDate,
                 currentIndirectWorkDaysPre: newPreDays,
+                currentNetWorkDays: newNetDays,
                 currentIndirectWorkDaysPost: newPostDays,
             } : null);
         }, [onBarDrag, pixelsPerDay]);
@@ -1118,6 +1258,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 currentDragState.currentEndDate.getTime() !== currentDragState.originalEndDate.getTime();
             const hasDaysChange =
                 currentDragState.currentIndirectWorkDaysPre !== currentDragState.originalIndirectWorkDaysPre ||
+                currentDragState.currentNetWorkDays !== currentDragState.originalNetWorkDays ||
                 currentDragState.currentIndirectWorkDaysPost !== currentDragState.originalIndirectWorkDaysPost;
             
             if (hasDateChange || hasDaysChange) {
@@ -1128,6 +1269,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                     newEndDate: currentDragState.currentEndDate,
                     newIndirectWorkDaysPre: currentDragState.currentIndirectWorkDaysPre,
                     newIndirectWorkDaysPost: currentDragState.currentIndirectWorkDaysPost,
+                    newNetWorkDays: currentDragState.currentNetWorkDays,
                 });
             }
             
@@ -1140,7 +1282,15 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             if (dragState) {
                 window.addEventListener('mousemove', handleMouseMove);
                 window.addEventListener('mouseup', handleMouseUp);
-                document.body.style.cursor = dragState.dragType === 'move' ? 'grabbing' : 'ew-resize';
+                
+                // 드래그 타입에 따른 커서 스타일
+                let cursor = 'ew-resize';
+                if (dragState.dragType === 'move' || dragState.dragType === 'move-net') {
+                    cursor = 'grabbing';
+                } else if (dragState.dragType === 'resize-pre-net' || dragState.dragType === 'resize-net-post') {
+                    cursor = 'col-resize';
+                }
+                document.body.style.cursor = cursor;
                 document.body.style.userSelect = 'none';
                 
                 return () => {
@@ -1160,6 +1310,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                     endDate: dragState.currentEndDate,
                     indirectWorkDaysPre: dragState.currentIndirectWorkDaysPre,
                     indirectWorkDaysPost: dragState.currentIndirectWorkDaysPost,
+                    netWorkDays: dragState.currentNetWorkDays,
                 };
             }
             return null;

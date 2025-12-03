@@ -225,8 +225,8 @@ const HOLIDAYS = [
 
 // 캘린더 설정
 const CALENDAR_SETTINGS: CalendarSettings = {
-    workOnSaturdays: false,
-    workOnSundays: false,
+    workOnSaturdays: true,   // 토요일은 작업일로 허용
+    workOnSundays: false,    // 일요일은 휴일 유지
     workOnHolidays: false,
 };
 

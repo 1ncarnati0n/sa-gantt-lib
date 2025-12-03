@@ -449,6 +449,7 @@ export function GanttChart({
                     ...task.task,
                     indirectWorkDaysPre: result.newIndirectWorkDaysPre,
                     indirectWorkDaysPost: result.newIndirectWorkDaysPost,
+                    netWorkDays: result.newNetWorkDays,
                 },
             };
             
