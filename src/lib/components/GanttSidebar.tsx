@@ -792,7 +792,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 <span
                                                     className={`truncate text-sm ${
                                                         isGroup
-                                                            ? 'font-normal text-gray-500 italic cursor-text'
+                                                            ? 'font-normal text-gray-500 cursor-text'
                                                             : 'font-medium text-gray-800'
                                                     }`}
                                                     onDoubleClick={(e) => {
@@ -1007,9 +1007,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                         <ChevronRight size={14} />
                                                     )}
                                                 </button>
-                                            ) : isGroup ? (
+                                            ) : (
                                                 <div className="w-6 shrink-0" />
-                                            ) : null}
+                                            )}
                                             {/* 인라인 편집 */}
                                             {editingTaskId === task.id ? (
                                                 <input
@@ -1026,8 +1026,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 <span
                                                     className={`truncate text-sm ${
                                                         isGroup
-                                                            ? 'font-normal text-gray-500 italic cursor-text'
-                                                            : 'text-gray-700'
+                                                            ? 'font-normal text-gray-500 cursor-text'
+                                                            : 'font-medium text-gray-800'
                                                     }`}
                                                     onDoubleClick={(e) => {
                                                         if (onTaskUpdate) {

@@ -53,6 +53,8 @@ export {
 export { useGanttVirtualization } from './hooks/useGanttVirtualization';
 export type { VirtualRow, UseGanttVirtualizationOptions } from './hooks/useGanttVirtualization';
 
+export { useHistory } from './hooks/useHistory';
+
 // ============================================
 // Types
 // ============================================
