@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { parseISO, format } from 'date-fns';
-import { GanttChart, ConstructionTask, Milestone, CalendarSettings, calculateDualCalendarDates, AnchorPoint, DependencyType } from './lib';
+import { GanttChart, ConstructionTask, Milestone, CalendarSettings, calculateDualCalendarDates, AnchorPoint, DependencyType, DropPosition } from './lib';
 import mockData from './data/mock.json';
 
 // ============================================
@@ -495,7 +495,8 @@ function App() {
             setTasks(prevTasks => {
             // 선택된 태스크들 찾기
             const selectedTasks = prevTasks.filter(t => taskIds.includes(t.id));
-            if (selectedTasks.length < 2) return prevTasks;
+            // 1개 이상 선택 시 그룹화 가능
+            if (selectedTasks.length < 1) return prevTasks;
 
             // 선택된 태스크들이 같은 부모를 가지는지 확인
             const parentIds = new Set(selectedTasks.map(t => t.parentId));
@@ -575,14 +576,167 @@ function App() {
         }
     }, []);
 
+    // 태스크 이동 핸들러 (드래그 앤 드롭으로 그룹 간 이동)
+    const handleTaskMove = useCallback(async (taskId: string, targetId: string, position: DropPosition) => {
+        try {
+            setTasks(prevTasks => {
+                const taskToMove = prevTasks.find(t => t.id === taskId);
+                const targetTask = prevTasks.find(t => t.id === targetId);
+                
+                if (!taskToMove || !targetTask) return prevTasks;
+                
+                // 자기 자신을 자기 안에 넣으려는 경우 방지
+                if (taskId === targetId) return prevTasks;
+                
+                // 부모를 자식 안에 넣으려는 경우 방지 (순환 참조 방지)
+                const isDescendant = (parentId: string | null, childId: string): boolean => {
+                    let current = prevTasks.find(t => t.id === childId);
+                    while (current?.parentId) {
+                        if (current.parentId === parentId) return true;
+                        current = prevTasks.find(t => t.id === current!.parentId);
+                    }
+                    return false;
+                };
+                
+                if (position === 'into' && isDescendant(taskId, targetId)) {
+                    console.warn('Cannot move parent into its own descendant');
+                    return prevTasks;
+                }
+                
+                let newTasks = [...prevTasks];
+                
+                // 기존 위치에서 제거
+                const taskIndex = newTasks.findIndex(t => t.id === taskId);
+                newTasks.splice(taskIndex, 1);
+                
+                if (position === 'into') {
+                    // 그룹 안으로 이동: parentId를 target으로 변경
+                    const updatedTask = { ...taskToMove, parentId: targetId };
+                    
+                    // target 바로 뒤에 삽입 (그룹의 첫 번째 자식으로)
+                    const targetIndex = newTasks.findIndex(t => t.id === targetId);
+                    newTasks.splice(targetIndex + 1, 0, updatedTask);
+                } else {
+                    // before/after: target의 parentId를 상속
+                    const updatedTask = { ...taskToMove, parentId: targetTask.parentId };
+                    
+                    // target 위치 찾기 (제거 후 인덱스)
+                    const targetIndex = newTasks.findIndex(t => t.id === targetId);
+                    const insertIndex = position === 'after' ? targetIndex + 1 : targetIndex;
+                    
+                    newTasks.splice(insertIndex, 0, updatedTask);
+                }
+                
+                console.log('Task moved:', taskId, 'to', targetId, 'position:', position);
+                return newTasks;
+            });
+        } catch (error) {
+            console.error('Failed to move task:', error);
+            alert('태스크 이동 중 오류가 발생했습니다.');
+        }
+    }, []);
+
+    // 태스크 삭제 핸들러
+    const handleTaskDelete = useCallback(async (taskId: string) => {
+        try {
+            setTasks(prevTasks => {
+                // 삭제할 태스크 찾기
+                const taskToDelete = prevTasks.find(t => t.id === taskId);
+                if (!taskToDelete) return prevTasks;
+
+                // 재귀적으로 자식 태스크들 수집
+                const collectChildIds = (parentId: string): string[] => {
+                    const children = prevTasks.filter(t => t.parentId === parentId);
+                    const childIds = children.map(c => c.id);
+                    const grandChildIds = children.flatMap(c => collectChildIds(c.id));
+                    return [...childIds, ...grandChildIds];
+                };
+
+                // 삭제할 모든 ID (자신 + 자식들)
+                const allIdsToDelete = [taskId, ...collectChildIds(taskId)];
+
+                // 삭제 실행
+                let newTasks = prevTasks.filter(t => !allIdsToDelete.includes(t.id));
+
+                // Level 1 태스크의 cp 재계산
+                const cpMap = new Map<string, {
+                    work: number;
+                    nonWork: number;
+                    minStart: Date;
+                    maxEnd: Date;
+                }>();
+
+                newTasks.forEach(t => {
+                    if (t.parentId && t.wbsLevel === 2 && t.task) {
+                        const current = cpMap.get(t.parentId) || {
+                            work: 0,
+                            nonWork: 0,
+                            minStart: new Date(8640000000000000),
+                            maxEnd: new Date(-8640000000000000),
+                        };
+
+                        current.work += t.task.netWorkDays;
+                        current.nonWork += t.task.indirectWorkDaysPre + t.task.indirectWorkDaysPost;
+                        if (t.startDate < current.minStart) current.minStart = t.startDate;
+                        if (t.endDate > current.maxEnd) current.maxEnd = t.endDate;
+
+                        cpMap.set(t.parentId, current);
+                    }
+                });
+
+                // Level 1 태스크 업데이트
+                newTasks = newTasks.map(t => {
+                    if (t.wbsLevel === 1 && cpMap.has(t.id)) {
+                        const agg = cpMap.get(t.id)!;
+                        return {
+                            ...t,
+                            startDate: agg.minStart,
+                            endDate: agg.maxEnd,
+                            cp: {
+                                workDaysTotal: agg.work,
+                                nonWorkDaysTotal: agg.nonWork,
+                            },
+                        };
+                    }
+                    return t;
+                });
+
+                console.log('Task deleted:', taskId, '(total deleted:', allIdsToDelete.length, ')');
+                return newTasks;
+            });
+        } catch (error) {
+            console.error('Failed to delete task:', error);
+            alert('태스크 삭제 중 오류가 발생했습니다.');
+        }
+    }, []);
+
     // 뷰 전환 핸들러
     const handleViewChange = useCallback((view: 'MASTER' | 'DETAIL', activeCPId?: string) => {
         console.log('View changed:', view, activeCPId);
     }, []);
 
     // ====================================
-    // 마일스톤 업데이트 핸들러
+    // 마일스톤 핸들러
     // ====================================
+    const handleMilestoneCreate = useCallback(async (newMilestone: Partial<Milestone>) => {
+        try {
+            const milestoneToAdd: Milestone = {
+                id: newMilestone.id || `milestone-${Date.now()}`,
+                name: newMilestone.name || '새 마일스톤',
+                date: newMilestone.date || new Date(),
+                description: newMilestone.description,
+            };
+
+            setMilestones(prevMilestones => {
+                console.log('Milestone created:', milestoneToAdd);
+                return [...prevMilestones, milestoneToAdd];
+            });
+        } catch (error) {
+            console.error('Failed to create milestone:', error);
+            alert('마일스톤 생성 중 오류가 발생했습니다.');
+        }
+    }, []);
+
     const handleMilestoneUpdate = useCallback(async (updatedMilestone: Milestone) => {
         try {
             setMilestones(prevMilestones => {
@@ -595,6 +749,19 @@ function App() {
         } catch (error) {
             console.error('Failed to update milestone:', error);
             alert('마일스톤 업데이트 중 오류가 발생했습니다.');
+        }
+    }, []);
+
+    const handleMilestoneDelete = useCallback(async (milestoneId: string) => {
+        try {
+            setMilestones(prevMilestones => {
+                const newMilestones = prevMilestones.filter(m => m.id !== milestoneId);
+                console.log('Milestone deleted:', milestoneId);
+                return newMilestones;
+            });
+        } catch (error) {
+            console.error('Failed to delete milestone:', error);
+            alert('마일스톤 삭제 중 오류가 발생했습니다.');
         }
     }, []);
 
@@ -645,11 +812,15 @@ function App() {
                     calendarSettings={CALENDAR_SETTINGS}
                     onTaskUpdate={handleTaskUpdate}
                     onTaskCreate={handleTaskCreate}
+                    onTaskDelete={handleTaskDelete}
                     onTaskReorder={handleTaskReorder}
                     onTaskGroup={handleTaskGroup}
                     onTaskUngroup={handleTaskUngroup}
+                    onTaskMove={handleTaskMove}
                     onViewChange={handleViewChange}
+                    onMilestoneCreate={handleMilestoneCreate}
                     onMilestoneUpdate={handleMilestoneUpdate}
+                    onMilestoneDelete={handleMilestoneDelete}
                     onSave={handleSave}
                     onReset={handleReset}
                     hasUnsavedChanges={hasUnsavedChanges}

@@ -7,6 +7,7 @@ import {
     ConstructionTask,
     ViewMode,
     GANTT_LAYOUT,
+    DropPosition,
 } from '../types';
 import type { VirtualRow } from '../hooks/useGanttVirtualization';
 import { GanttSidebarContextMenu } from './GanttSidebarContextMenu';
@@ -57,6 +58,10 @@ interface GanttSidebarProps {
     onTaskGroup?: (taskIds: string[]) => void;
     /** 그룹 해제 콜백 (GROUP taskId) */
     onTaskUngroup?: (groupId: string) => void;
+    /** 태스크 삭제 콜백 */
+    onTaskDelete?: (taskId: string) => void;
+    /** 태스크 이동 콜백 (그룹 간 이동 지원) */
+    onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void;
     /** 새 Task 추가 모드 (GanttChart에서 제어) */
     isAddingTask?: boolean;
     /** 새 Task 추가 취소 콜백 */
@@ -75,14 +80,14 @@ interface GanttSidebarProps {
  * - 컬럼 너비 드래그로 조절 가능
  */
 export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
-    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, isAddingTask = false, onCancelAddTask, isAddingCP = false, onCancelAddCP }, ref) => {
+    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, onTaskDelete, onTaskMove, isAddingTask = false, onCancelAddTask, isAddingCP = false, onCancelAddCP }, ref) => {
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
         
-        // 드래그&드롭 상태 (Task 순서 변경)
+        // 드래그&드롭 상태 (Task 순서 변경 + 그룹 간 이동)
         const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
         const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
-        const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after' | null>(null);
+        const [dragOverPosition, setDragOverPosition] = useState<DropPosition | null>(null);
         
         // 멀티선택 상태
         const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
@@ -310,16 +315,32 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             setTimeout(() => document.body.removeChild(dragImage), 0);
         }, []);
 
-        const handleDragOver = useCallback((e: React.DragEvent, taskId: string) => {
+        const handleDragOver = useCallback((e: React.DragEvent, taskId: string, isTargetGroup: boolean) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             
             if (taskId === draggedTaskId) return;
             
-            // 마우스 위치에 따라 before/after 결정
+            // 마우스 위치에 따라 position 결정
             const rect = e.currentTarget.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            const position = e.clientY < midY ? 'before' : 'after';
+            const relativeY = e.clientY - rect.top;
+            const height = rect.height;
+            
+            let position: DropPosition;
+            
+            if (isTargetGroup) {
+                // 그룹 행: 상단 1/3 = before, 중앙 1/3 = into, 하단 1/3 = after
+                if (relativeY < height / 3) {
+                    position = 'before';
+                } else if (relativeY < (height * 2) / 3) {
+                    position = 'into';
+                } else {
+                    position = 'after';
+                }
+            } else {
+                // 일반 행: 상단 1/2 = before, 하단 1/2 = after
+                position = relativeY < height / 2 ? 'before' : 'after';
+            }
             
             setDragOverTaskId(taskId);
             setDragOverPosition(position);
@@ -333,23 +354,27 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         const handleDrop = useCallback((e: React.DragEvent, targetTaskId: string) => {
             e.preventDefault();
             
-            if (!draggedTaskId || !onTaskReorder || draggedTaskId === targetTaskId) {
+            if (!draggedTaskId || draggedTaskId === targetTaskId || !dragOverPosition) {
                 setDraggedTaskId(null);
                 setDragOverTaskId(null);
                 setDragOverPosition(null);
                 return;
             }
             
-            // 새 인덱스 계산
-            const targetIndex = tasks.findIndex(t => t.id === targetTaskId);
-            const newIndex = dragOverPosition === 'after' ? targetIndex + 1 : targetIndex;
-            
-            onTaskReorder(draggedTaskId, newIndex);
+            // onTaskMove가 있으면 사용 (그룹 간 이동 지원)
+            if (onTaskMove) {
+                onTaskMove(draggedTaskId, targetTaskId, dragOverPosition);
+            } else if (onTaskReorder && dragOverPosition !== 'into') {
+                // fallback: 기존 onTaskReorder 사용 (순서 변경만)
+                const targetIndex = tasks.findIndex(t => t.id === targetTaskId);
+                const newIndex = dragOverPosition === 'after' ? targetIndex + 1 : targetIndex;
+                onTaskReorder(draggedTaskId, newIndex);
+            }
             
             setDraggedTaskId(null);
             setDragOverTaskId(null);
             setDragOverPosition(null);
-        }, [draggedTaskId, dragOverPosition, onTaskReorder, tasks]);
+        }, [draggedTaskId, dragOverPosition, onTaskMove, onTaskReorder, tasks]);
 
         const handleDragEnd = useCallback(() => {
             setDraggedTaskId(null);
@@ -448,10 +473,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         }, []);
 
         // ====================================
-        // 인라인 편집 핸들러 (그룹 이름)
+        // 인라인 편집 핸들러 (모든 태스크 이름 편집)
         // ====================================
         const handleStartEdit = useCallback((task: ConstructionTask) => {
-            if (task.type !== 'GROUP') return;
             setEditingTaskId(task.id);
             setEditingName(task.name);
             // 다음 렌더 후 input에 포커스
@@ -460,6 +484,14 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 editInputRef.current?.select();
             }, 0);
         }, []);
+        
+        // taskId로 이름 편집 시작 (컨텍스트 메뉴용)
+        const handleStartRename = useCallback((taskId: string) => {
+            const task = tasks.find(t => t.id === taskId);
+            if (task && onTaskUpdate) {
+                handleStartEdit(task);
+            }
+        }, [tasks, onTaskUpdate, handleStartEdit]);
 
         const handleSaveEdit = useCallback(() => {
             if (!editingTaskId || !onTaskUpdate) {
@@ -493,6 +525,38 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 handleCancelEdit();
             }
         }, [handleSaveEdit, handleCancelEdit]);
+
+        // ====================================
+        // 그룹 깊이 계산 (Detail View용)
+        // ====================================
+        const getGroupDepth = useCallback((task: ConstructionTask): number => {
+            if (!activeCPId || task.parentId === activeCPId) return 0;
+            
+            let depth = 0;
+            let currentParentId = task.parentId;
+            
+            while (currentParentId && currentParentId !== activeCPId) {
+                const parent = allTasks.find(t => t.id === currentParentId);
+                if (parent?.type === 'GROUP') depth++;
+                currentParentId = parent?.parentId || null;
+            }
+            return depth;
+        }, [activeCPId, allTasks]);
+
+        // 그룹 깊이 계산 (Master View용 - 최상위부터 계산)
+        const getMasterGroupDepth = useCallback((task: ConstructionTask): number => {
+            if (!task.parentId) return 0;
+            
+            let depth = 0;
+            let currentParentId = task.parentId;
+            
+            while (currentParentId) {
+                const parent = allTasks.find(t => t.id === currentParentId);
+                if (parent?.type === 'GROUP') depth++;
+                currentParentId = parent?.parentId || null;
+            }
+            return depth;
+        }, [allTasks]);
 
         // 컬럼 헤더 렌더링 (리사이저 포함)
         const renderColumnHeaders = () => (
@@ -531,7 +595,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         const selectedGroupTask = selectedTaskIds.size === 1 
             ? tasks.find(t => t.id === Array.from(selectedTaskIds)[0] && t.type === 'GROUP')
             : null;
-        const canGroup = selectedTaskIds.size >= 2 && onTaskGroup;
+        // 1개 이상 선택 시 그룹화 가능 (GROUP 타입만 선택된 경우는 그룹 해제만 가능)
+        const canGroup = selectedTaskIds.size >= 1 && onTaskGroup && !selectedGroupTask;
         const canUngroup = selectedGroupTask && onTaskUngroup;
 
         // 그룹화/해제 버튼 렌더링
@@ -651,7 +716,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 const isGroup = task.type === 'GROUP';
                                 const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
                                 const isExpanded = expandedIds.has(task.id);
-                                const indent = task.parentId ? 20 : 0;
+                                const masterDepth = getMasterGroupDepth(task);
+                                const indent = masterDepth * 12;
                                 const isDragging = draggedTaskId === task.id;
                                 const isDragOver = dragOverTaskId === task.id;
                                 const isSelected = selectedTaskIds.has(task.id);
@@ -659,9 +725,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 return (
                                     <div
                                         key={row.key}
-                                        draggable={!!onTaskReorder}
+                                        draggable={!!(onTaskReorder || onTaskMove)}
                                         onDragStart={(e) => handleDragStart(e, task.id)}
-                                        onDragOver={(e) => handleDragOver(e, task.id)}
+                                        onDragOver={(e) => handleDragOver(e, task.id, isGroup)}
                                         onDragLeave={handleDragLeave}
                                         onDrop={(e) => handleDrop(e, task.id)}
                                         onDragEnd={handleDragEnd}
@@ -673,7 +739,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 : isDragOver 
                                                     ? dragOverPosition === 'before'
                                                         ? 'border-t-2 border-t-blue-500 border-b-gray-100'
-                                                        : 'border-b-2 border-b-blue-500'
+                                                        : dragOverPosition === 'into'
+                                                            ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
+                                                            : 'border-b-2 border-b-blue-500'
                                                     : isSelected
                                                         ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
                                                         : isGroup
@@ -725,7 +793,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                             ) : (
                                                 <div className="w-6 shrink-0" />
                                             )}
-                                            {/* 인라인 편집 (GROUP만) */}
+                                            {/* 인라인 편집 */}
                                             {editingTaskId === task.id ? (
                                                 <input
                                                     ref={editInputRef}
@@ -735,22 +803,22 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                     onKeyDown={handleEditKeyDown}
                                                     onBlur={handleSaveEdit}
                                                     onClick={(e) => e.stopPropagation()}
-                                                    className="w-full rounded border border-blue-400 bg-white px-1 py-0.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                    className="w-full rounded border border-blue-400 bg-white px-1 py-0.5 text-sm font-normal text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                 />
                                             ) : (
                                                 <span
                                                     className={`truncate text-sm ${
                                                         isGroup
-                                                            ? 'font-bold text-gray-700 cursor-text'
+                                                            ? 'font-normal text-gray-500 italic cursor-text'
                                                             : 'font-medium text-gray-800'
                                                     }`}
                                                     onDoubleClick={(e) => {
-                                                        if (isGroup && onTaskUpdate) {
+                                                        if (onTaskUpdate) {
                                                             e.stopPropagation();
                                                             handleStartEdit(task);
                                                         }
                                                     }}
-                                                    title={isGroup && onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
+                                                    title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
                                                 >
                                                     {task.name}
                                                 </span>
@@ -821,6 +889,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             tasks={tasks}
                             onTaskGroup={onTaskGroup}
                             onTaskUngroup={onTaskUngroup}
+                            onTaskDelete={onTaskDelete}
+                            onStartRename={handleStartRename}
                             onClose={() => setContextMenu(null)}
                             onDeselect={() => setSelectedTaskIds(new Set())}
                         />
@@ -882,7 +952,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 const isGroup = task.type === 'GROUP';
                                 const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
                                 const isExpanded = expandedIds.has(task.id);
-                                const indent = task.parentId && task.parentId !== activeCPId ? 20 : 0;
+                                const depth = getGroupDepth(task);
+                                const indent = depth * 12;
                                 const isDragging = draggedTaskId === task.id;
                                 const isDragOver = dragOverTaskId === task.id;
                                 const isSelected = selectedTaskIds.has(task.id);
@@ -890,9 +961,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 return (
                                     <div
                                         key={row.key}
-                                        draggable={!!onTaskReorder}
+                                        draggable={!!(onTaskReorder || onTaskMove)}
                                         onDragStart={(e) => handleDragStart(e, task.id)}
-                                        onDragOver={(e) => handleDragOver(e, task.id)}
+                                        onDragOver={(e) => handleDragOver(e, task.id, isGroup)}
                                         onDragLeave={handleDragLeave}
                                         onDrop={(e) => handleDrop(e, task.id)}
                                         onDragEnd={handleDragEnd}
@@ -904,7 +975,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 : isDragOver 
                                                     ? dragOverPosition === 'before'
                                                         ? 'border-t-2 border-t-blue-500 border-b-gray-100'
-                                                        : 'border-b-2 border-b-blue-500'
+                                                        : dragOverPosition === 'into'
+                                                            ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
+                                                            : 'border-b-2 border-b-blue-500'
                                                     : isSelected
                                                         ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
                                                         : isGroup
@@ -954,7 +1027,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                             ) : isGroup ? (
                                                 <div className="w-6 shrink-0" />
                                             ) : null}
-                                            {/* 인라인 편집 (GROUP만) */}
+                                            {/* 인라인 편집 */}
                                             {editingTaskId === task.id ? (
                                                 <input
                                                     ref={editInputRef}
@@ -964,22 +1037,22 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                     onKeyDown={handleEditKeyDown}
                                                     onBlur={handleSaveEdit}
                                                     onClick={(e) => e.stopPropagation()}
-                                                    className="w-full rounded border border-blue-400 bg-white px-1 py-0.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                    className="w-full rounded border border-blue-400 bg-white px-1 py-0.5 text-sm font-normal text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                 />
                                             ) : (
                                                 <span
                                                     className={`truncate text-sm ${
                                                         isGroup
-                                                            ? 'font-bold text-gray-700 cursor-text'
+                                                            ? 'font-normal text-gray-500 italic cursor-text'
                                                             : 'text-gray-700'
                                                     }`}
                                                     onDoubleClick={(e) => {
-                                                        if (isGroup && onTaskUpdate) {
+                                                        if (onTaskUpdate) {
                                                             e.stopPropagation();
                                                             handleStartEdit(task);
                                                         }
                                                     }}
-                                                    title={isGroup && onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
+                                                    title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
                                                 >
                                                     {task.name}
                                                 </span>
@@ -1117,6 +1190,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         tasks={tasks}
                         onTaskGroup={onTaskGroup}
                         onTaskUngroup={onTaskUngroup}
+                        onTaskDelete={onTaskDelete}
+                        onStartRename={handleStartRename}
                         onClose={() => setContextMenu(null)}
                         onDeselect={() => setSelectedTaskIds(new Set())}
                     />

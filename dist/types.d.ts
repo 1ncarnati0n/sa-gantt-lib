@@ -12,6 +12,8 @@ export type AnchorPoint = 'START' | 'NET_WORK_START' | 'NET_WORK_END' | 'END';
 export type DependencyType = 'FS' | 'SS' | 'FF' | 'SF';
 /** 태스크 타입 */
 export type TaskType = 'GROUP' | 'CP' | 'TASK';
+/** 드래그 앤 드롭 위치 타입 */
+export type DropPosition = 'before' | 'after' | 'into';
 export declare const GANTT_COLORS: {
     readonly vermilion: "#E34234";
     readonly teal: "#008080";
@@ -115,7 +117,10 @@ export interface GanttChartProps {
     onViewChange?: (view: ViewMode, activeCPId?: string) => void;
     onTaskGroup?: (taskIds: string[]) => void | Promise<void>;
     onTaskUngroup?: (groupId: string) => void | Promise<void>;
+    onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void | Promise<void>;
+    onMilestoneCreate?: (milestone: Partial<Milestone>) => void | Promise<void>;
     onMilestoneUpdate?: (milestone: Milestone) => void | Promise<void>;
+    onMilestoneDelete?: (milestoneId: string) => void | Promise<void>;
     onSave?: () => void;
     onReset?: () => void;
     hasUnsavedChanges?: boolean;

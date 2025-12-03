@@ -28,6 +28,9 @@ export type DependencyType = 'FS' | 'SS' | 'FF' | 'SF';
 /** 태스크 타입 */
 export type TaskType = 'GROUP' | 'CP' | 'TASK';
 
+/** 드래그 앤 드롭 위치 타입 */
+export type DropPosition = 'before' | 'after' | 'into';
+
 // ============================================
 // 색상 상수
 // ============================================
@@ -206,9 +209,12 @@ export interface GanttChartProps {
     onViewChange?: (view: ViewMode, activeCPId?: string) => void;
     onTaskGroup?: (taskIds: string[]) => void | Promise<void>;
     onTaskUngroup?: (groupId: string) => void | Promise<void>;
+    onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void | Promise<void>;
     
     // 마일스톤 이벤트 핸들러
+    onMilestoneCreate?: (milestone: Partial<Milestone>) => void | Promise<void>;
     onMilestoneUpdate?: (milestone: Milestone) => void | Promise<void>;
+    onMilestoneDelete?: (milestoneId: string) => void | Promise<void>;
 
     // 저장/초기화 (외부에서 제어)
     onSave?: () => void;

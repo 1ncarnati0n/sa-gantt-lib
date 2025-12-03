@@ -54,11 +54,15 @@ export function GanttChart({
     initialExpandedIds,
     onTaskUpdate,
     onTaskCreate,
+    onTaskDelete,
     onTaskReorder,
     onTaskGroup,
     onTaskUngroup,
+    onTaskMove,
     onViewChange,
+    onMilestoneCreate,
     onMilestoneUpdate,
+    onMilestoneDelete,
     onSave,
     onReset,
     hasUnsavedChanges,
@@ -72,7 +76,7 @@ export function GanttChart({
     const { viewMode, activeCPId, zoomLevel } = useGanttViewState();
     const { setViewMode, setZoomLevel } = useGanttViewActions();
     const { sidebarWidth, setSidebarWidth } = useGanttSidebar();
-    const { expandedTaskIds, toggleTask, expandAll } = useGanttExpansion();
+    const { expandedTaskIds, toggleTask, expandAll, collapseAll } = useGanttExpansion();
 
     // ====================================
     // Refs
@@ -111,23 +115,48 @@ export function GanttChart({
     // ====================================
     const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isNewMilestone, setIsNewMilestone] = useState(false);
 
     const handleMilestoneDoubleClick = useCallback((milestone: Milestone) => {
         setEditingMilestone(milestone);
+        setIsNewMilestone(false);
+        setIsEditModalOpen(true);
+    }, []);
+
+    const handleStartAddMilestone = useCallback(() => {
+        // 새 마일스톤 기본 데이터
+        const newMilestone: Milestone = {
+            id: `milestone-${Date.now()}`,
+            name: '',
+            date: new Date(),
+            description: '',
+        };
+        setEditingMilestone(newMilestone);
+        setIsNewMilestone(true);
         setIsEditModalOpen(true);
     }, []);
 
     const handleCloseEditModal = useCallback(() => {
         setIsEditModalOpen(false);
         setEditingMilestone(null);
+        setIsNewMilestone(false);
     }, []);
 
     const handleMilestoneSave = useCallback((updatedMilestone: Milestone) => {
-        if (onMilestoneUpdate) {
+        if (isNewMilestone && onMilestoneCreate) {
+            onMilestoneCreate(updatedMilestone);
+        } else if (onMilestoneUpdate) {
             onMilestoneUpdate(updatedMilestone);
         }
         handleCloseEditModal();
-    }, [onMilestoneUpdate, handleCloseEditModal]);
+    }, [isNewMilestone, onMilestoneCreate, onMilestoneUpdate, handleCloseEditModal]);
+
+    const handleMilestoneDelete = useCallback((milestoneId: string) => {
+        if (onMilestoneDelete) {
+            onMilestoneDelete(milestoneId);
+        }
+        handleCloseEditModal();
+    }, [onMilestoneDelete, handleCloseEditModal]);
 
     // ====================================
     // 초기화 (마운트 시 1회만)
@@ -147,14 +176,15 @@ export function GanttChart({
         // 초기 줌 레벨 설정
         setZoomLevel(initialZoomLevel);
 
-        // 초기 확장 상태 설정
+        // 초기 확장 상태 설정 (먼저 클리어 후 추가)
+        collapseAll();
         if (initialExpandedIds && initialExpandedIds.length > 0) {
             expandAll(initialExpandedIds);
         } else if (taskIds.length > 0) {
             // 기본적으로 모든 태스크 확장
             expandAll(taskIds);
         }
-    }, [taskIds, initialExpandedIds, initialView, initialZoomLevel, setViewMode, setZoomLevel, expandAll]);
+    }, [taskIds, initialExpandedIds, initialView, initialZoomLevel, setViewMode, setZoomLevel, expandAll, collapseAll]);
 
     // ====================================
     // 새로 생성된 GROUP 자동 확장
@@ -473,6 +503,16 @@ export function GanttChart({
                                     + CP 추가
                                 </button>
                             )}
+                            {/* 마일스톤 추가 버튼 (Master View) */}
+                            {onMilestoneCreate && (
+                                <button
+                                    onClick={handleStartAddMilestone}
+                                    className="flex items-center gap-1 rounded bg-purple-500 px-2 py-1.5 text-xs font-medium text-white hover:bg-purple-600 transition-colors"
+                                    title="새 마일스톤 추가"
+                                >
+                                    + 마일스톤
+                                </button>
+                            )}
                             {isAddingCP && (
                                 <span className="text-xs text-gray-500 italic">CP 추가 중... (Enter 저장 / Esc 취소)</span>
                             )}
@@ -582,6 +622,8 @@ export function GanttChart({
                         onTaskReorder={onTaskReorder}
                         onTaskGroup={onTaskGroup}
                         onTaskUngroup={onTaskUngroup}
+                        onTaskDelete={onTaskDelete}
+                        onTaskMove={onTaskMove}
                         activeCPId={activeCPId}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
@@ -634,8 +676,10 @@ export function GanttChart({
             <MilestoneEditModal
                 milestone={editingMilestone}
                 isOpen={isEditModalOpen}
+                isNew={isNewMilestone}
                 onClose={handleCloseEditModal}
                 onSave={handleMilestoneSave}
+                onDelete={handleMilestoneDelete}
             />
         </div>
     );

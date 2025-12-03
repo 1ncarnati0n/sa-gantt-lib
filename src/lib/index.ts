@@ -75,6 +75,7 @@ export type {
     AnchorPoint,
     DependencyType,
     TaskType,
+    DropPosition,
     
     // Settings
     CalendarSettings,

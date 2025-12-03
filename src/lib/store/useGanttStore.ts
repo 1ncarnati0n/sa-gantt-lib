@@ -84,7 +84,9 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
     },
 
     expandAll: (taskIds: string[]) => {
-        set({ expandedTaskIds: new Set(taskIds) });
+        const { expandedTaskIds } = get();
+        const newExpanded = new Set([...expandedTaskIds, ...taskIds]);
+        set({ expandedTaskIds: newExpanded });
     },
 
     collapseAll: () => {

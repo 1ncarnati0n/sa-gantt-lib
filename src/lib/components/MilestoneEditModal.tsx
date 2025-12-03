@@ -1,16 +1,82 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { format } from 'date-fns';
-import { X, Calendar, FileText, Type } from 'lucide-react';
+import { X, Calendar, FileText, Type, Trash2 } from 'lucide-react';
 import { Milestone } from '../types';
 
 interface MilestoneEditModalProps {
     milestone: Milestone | null;
     isOpen: boolean;
+    isNew?: boolean;
     onClose: () => void;
     onSave: (milestone: Milestone) => void;
+    onDelete?: (milestoneId: string) => void;
 }
+
+/** 삭제 확인 모달 컴포넌트 (React Portal 사용) */
+const DeleteConfirmModal: React.FC<{
+    milestoneName: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+}> = ({ milestoneName, onConfirm, onCancel }) => {
+    return ReactDOM.createPortal(
+        <>
+            {/* Backdrop */}
+            <div 
+                className="fixed inset-0 z-[60] bg-black/50 transition-opacity"
+                onClick={onCancel}
+            />
+
+            {/* Modal */}
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div 
+                    className="w-[360px] rounded-lg bg-white p-6 shadow-xl"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="mb-4 flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                            <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900">마일스톤 삭제</h3>
+                            <p className="text-sm text-gray-500">이 작업은 되돌릴 수 없습니다</p>
+                        </div>
+                    </div>
+                    
+                    <div className="mb-6 rounded-md bg-gray-50 p-3">
+                        <p className="text-sm text-gray-600">
+                            다음 마일스톤을 삭제하시겠습니까?
+                        </p>
+                        <p className="mt-1 flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
+                            {milestoneName}
+                        </p>
+                    </div>
+                    
+                    <div className="flex justify-end gap-3">
+                        <button
+                            onClick={onCancel}
+                            className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                            취소
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+                        >
+                            삭제
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>,
+        document.body
+    );
+};
 
 /**
  * 마일스톤 편집 모달
@@ -20,12 +86,15 @@ interface MilestoneEditModalProps {
 export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
     milestone,
     isOpen,
+    isNew = false,
     onClose,
     onSave,
+    onDelete,
 }) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [dateStr, setDateStr] = useState('');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
     // 마일스톤 데이터로 폼 초기화
@@ -34,6 +103,7 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
             setName(milestone.name);
             setDescription(milestone.description || '');
             setDateStr(format(milestone.date, 'yyyy-MM-dd'));
+            setShowDeleteConfirm(false);
             
             // 모달 열릴 때 이름 입력란에 포커스
             setTimeout(() => {
@@ -47,13 +117,17 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && isOpen) {
-                onClose();
+                if (showDeleteConfirm) {
+                    setShowDeleteConfirm(false);
+                } else {
+                    onClose();
+                }
             }
         };
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
+    }, [isOpen, showDeleteConfirm, onClose]);
 
     const handleSave = () => {
         if (!milestone || !name.trim()) return;
@@ -67,6 +141,21 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
 
         onSave(updatedMilestone);
         onClose();
+    };
+
+    const handleDeleteClick = () => {
+        setShowDeleteConfirm(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        if (milestone && onDelete) {
+            onDelete(milestone.id);
+        }
+        setShowDeleteConfirm(false);
+    };
+
+    const handleDeleteCancel = () => {
+        setShowDeleteConfirm(false);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -95,7 +184,7 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
                         <h2 className="text-lg font-semibold text-gray-800">
-                            마일스톤 설정
+                            {isNew ? '새 마일스톤' : '마일스톤 설정'}
                         </h2>
                         <button
                             onClick={onClose}
@@ -156,24 +245,48 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-end gap-2 border-t border-gray-200 px-4 py-3">
-                        <button
-                            onClick={onClose}
-                            className="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
-                        >
-                            취소
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={!name.trim()}
-                            className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                        >
-                            저장
-                        </button>
+                    <div className="flex justify-between border-t border-gray-200 px-4 py-3">
+                        {/* 삭제 버튼 (왼쪽, 기존 마일스톤만) */}
+                        <div>
+                            {!isNew && onDelete && (
+                                <button
+                                    onClick={handleDeleteClick}
+                                    className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                >
+                                    <Trash2 size={16} />
+                                    삭제
+                                </button>
+                            )}
+                        </div>
+                        
+                        {/* 취소/저장 버튼 (오른쪽) */}
+                        <div className="flex gap-2">
+                            <button
+                                onClick={onClose}
+                                className="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={!name.trim()}
+                                className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                            >
+                                저장
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* 삭제 확인 모달 */}
+            {showDeleteConfirm && (
+                <DeleteConfirmModal
+                    milestoneName={name || milestone.name}
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={handleDeleteCancel}
+                />
+            )}
         </>
     );
 };
-
