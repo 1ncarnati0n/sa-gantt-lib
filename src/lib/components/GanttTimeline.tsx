@@ -679,10 +679,14 @@ const TaskBar: React.FC<TaskBarProps> = ({
             ? getHolidayOffsetsInDateRange(netStartCalendarDate, netEndCalendarDate, holidays, taskSettings)
             : [];
         
+        // 순작업 구간 내 휴일 수
+        const holidayCount = holidayOffsetsInNet.length;
         
-        // 순작업 바의 실제 캘린더 일수 (휴일 포함)
+        // 순작업 바의 캘린더 일수 = 순작업일 + 휴일 수 (소수점 반영)
+        // 기존: Math.max(1, ...) 때문에 소수점이 무시되고 최소 1일 강제됨
+        // 수정: 소수점 순작업일을 직접 사용하고, 휴일 수만큼 추가
         const netCalendarDays = effectiveNetDays > 0 
-            ? Math.max(1, differenceInDays(netEndCalendarDate, netStartCalendarDate) + 1)
+            ? effectiveNetDays + holidayCount
             : 0;
         
         // 너비 계산 (순작업은 실제 캘린더 일수 사용)
@@ -981,23 +985,15 @@ const SvgDefs: React.FC = () => (
             <polygon points="0 0, 10 3.5, 0 7" fill={GANTT_COLORS.dependency} />
         </marker>
         
-        {/* 휴일 빗금 패턴 (45도 대각선) - 흰색 빗금 */}
+        {/* 휴일 점 패턴 */}
         <pattern
             id="holidayHatchPattern"
             patternUnits="userSpaceOnUse"
             width="6"
             height="6"
-            patternTransform="rotate(45)"
         >
-            <rect width="6" height="6" fill="rgba(0, 0, 0, 0.2)" />
-            <line
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="6"
-                stroke="white"
-                strokeWidth="2"
-            />
+            <rect width="6" height="6" fill="rgba(0, 0, 0, 0.15)" />
+            <circle cx="3" cy="3" r="1.5" fill="white" />
         </pattern>
         
         {/* 휴일 빗금 패턴 (더 진한 버전) */}
@@ -1245,8 +1241,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             if (!currentDragState || !onBarDrag) return;
             
             const deltaX = e.clientX - currentDragState.startX;
-            // 소수점 첫째 자리까지만 반영 (0.1 단위)
-            const deltaDays = Math.round((deltaX / pixelsPerDay) * 10) / 10;
+            // 정수 단위로만 반영 (드래그 시)
+            const deltaDays = Math.round(deltaX / pixelsPerDay);
             
             let newStartDate = currentDragState.originalStartDate;
             let newEndDate = currentDragState.originalEndDate;

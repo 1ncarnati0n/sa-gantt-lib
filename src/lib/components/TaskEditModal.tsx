@@ -212,9 +212,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         const cleaned = value.replace(/[^0-9.]/g, '');
         // 소수점이 여러 개인 경우 첫 번째만 유지
         const parts = cleaned.split('.');
-        const sanitized = parts.length > 2 
+        let sanitized = parts.length > 2 
             ? parts[0] + '.' + parts.slice(1).join('')
             : cleaned;
+        // 소수점 첫째자리까지만 허용
+        if (parts.length === 2 && parts[1].length > 1) {
+            sanitized = parts[0] + '.' + parts[1].substring(0, 1);
+        }
         setter(sanitized);
     };
 
