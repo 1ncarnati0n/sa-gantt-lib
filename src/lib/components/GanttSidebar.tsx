@@ -19,21 +19,21 @@ import { GanttSidebarNewCPForm } from './GanttSidebarNewCPForm';
 
 const { ROW_HEIGHT, HEADER_HEIGHT, MILESTONE_LANE_HEIGHT } = GANTT_LAYOUT;
 
-// 컬럼 기본 설정
+// 컬럼 기본 설정 (Master View: 470px, Detail View: 565px)
 const DEFAULT_MASTER_COLUMNS = [
-    { id: 'name', label: 'CP명', width: 180, minWidth: 100 },
-    { id: 'total', label: '총 공기', width: 80, minWidth: 50 },
-    { id: 'workDays', label: '작업일수', width: 80, minWidth: 50 },
-    { id: 'nonWorkDays', label: '비작업일수', width: 80, minWidth: 50 },
+    { id: 'name', label: 'CP명', width: 200, minWidth: 100 },
+    { id: 'total', label: '총 공기', width: 90, minWidth: 60 },
+    { id: 'workDays', label: '작업일수', width: 90, minWidth: 60 },
+    { id: 'nonWorkDays', label: '비작업일수', width: 90, minWidth: 60 },
 ];
 
 const DEFAULT_DETAIL_COLUMNS = [
-    { id: 'name', label: '단위공정명', width: 150, minWidth: 80 },
-    { id: 'indirectPre', label: '선간접', width: 60, minWidth: 45 },
-    { id: 'netWork', label: '순작업', width: 60, minWidth: 45 },
-    { id: 'indirectPost', label: '후간접', width: 60, minWidth: 45 },
-    { id: 'startDate', label: '시작일', width: 90, minWidth: 70 },
-    { id: 'endDate', label: '종료일', width: 90, minWidth: 70 },
+    { id: 'name', label: '단위공정명', width: 180, minWidth: 80 },
+    { id: 'indirectPre', label: '선간접', width: 65, minWidth: 45 },
+    { id: 'netWork', label: '순작업', width: 65, minWidth: 45 },
+    { id: 'indirectPost', label: '후간접', width: 65, minWidth: 45 },
+    { id: 'startDate', label: '시작일', width: 95, minWidth: 75 },
+    { id: 'endDate', label: '종료일', width: 95, minWidth: 75 },
 ];
 
 

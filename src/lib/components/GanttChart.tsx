@@ -345,10 +345,13 @@ export function GanttChart({
         if (sidebarTotalWidth !== null) {
             setSidebarWidth(sidebarTotalWidth);
         } else {
-            // 폴백: 기본값 사용
-            setSidebarWidth(GANTT_LAYOUT.SIDEBAR_WIDTH);
+            // 폴백: 뷰 모드에 따른 기본값 사용
+            const defaultWidth = viewMode === 'MASTER'
+                ? GANTT_LAYOUT.SIDEBAR_MASTER_WIDTH
+                : GANTT_LAYOUT.SIDEBAR_DETAIL_WIDTH;
+            setSidebarWidth(defaultWidth);
         }
-    }, [sidebarTotalWidth, setSidebarWidth]);
+    }, [sidebarTotalWidth, setSidebarWidth, viewMode]);
 
     // ====================================
     // 뷰 전환 핸들러
@@ -641,51 +644,56 @@ export function GanttChart({
 
             {/* Main Content - 단일 스크롤 컨테이너 */}
             <div ref={scrollRef} className="relative flex flex-1 overflow-auto">
-                {/* Sidebar (sticky left - 수평 스크롤 시 고정) */}
+                {/* Sidebar + Resizer 컨테이너 (sticky - 깨짐 현상 방지) */}
                 <div
-                    className="z-10 flex shrink-0 flex-col bg-white sticky left-0"
-                    style={{ width: sidebarWidth }}
+                    className="sticky left-0 z-10 flex shrink-0"
+                    style={{ width: sidebarWidth + 4 }}
                 >
-                    <GanttSidebar
-                        tasks={visibleTasks}
-                        allTasks={tasks}
-                        viewMode={viewMode}
-                        expandedIds={expandedTaskIds}
-                        onToggle={toggleTask}
-                        onTaskClick={handleTaskClick}
-                        onTaskUpdate={onTaskUpdate}
-                        onTaskCreate={onTaskCreate}
-                        onTaskReorder={onTaskReorder}
-                        onTaskGroup={onTaskGroup}
-                        onTaskUngroup={onTaskUngroup}
-                        onTaskDelete={onTaskDelete}
-                        onTaskMove={onTaskMove}
-                        activeCPId={activeCPId}
-                        holidays={holidays}
-                        calendarSettings={calendarSettings}
-                        virtualRows={virtualRows}
-                        totalHeight={totalHeight}
-                        onTotalWidthChange={setSidebarTotalWidth}
-                        isAddingTask={isAddingTask}
-                        onCancelAddTask={handleCancelAddTask}
-                        isAddingCP={isAddingCP}
-                        onCancelAddCP={handleCancelAddCP}
-                        onTaskDoubleClick={handleTaskDoubleClick}
+                    {/* Sidebar */}
+                    <div
+                        className="flex shrink-0 flex-col bg-white"
+                        style={{ width: sidebarWidth }}
+                    >
+                        <GanttSidebar
+                            tasks={visibleTasks}
+                            allTasks={tasks}
+                            viewMode={viewMode}
+                            expandedIds={expandedTaskIds}
+                            onToggle={toggleTask}
+                            onTaskClick={handleTaskClick}
+                            onTaskUpdate={onTaskUpdate}
+                            onTaskCreate={onTaskCreate}
+                            onTaskReorder={onTaskReorder}
+                            onTaskGroup={onTaskGroup}
+                            onTaskUngroup={onTaskUngroup}
+                            onTaskDelete={onTaskDelete}
+                            onTaskMove={onTaskMove}
+                            activeCPId={activeCPId}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            virtualRows={virtualRows}
+                            totalHeight={totalHeight}
+                            onTotalWidthChange={setSidebarTotalWidth}
+                            isAddingTask={isAddingTask}
+                            onCancelAddTask={handleCancelAddTask}
+                            isAddingCP={isAddingCP}
+                            onCancelAddCP={handleCancelAddCP}
+                            onTaskDoubleClick={handleTaskDoubleClick}
+                        />
+                    </div>
+
+                    {/* Resizer - flex 레이아웃으로 자연스럽게 배치 */}
+                    <div
+                        className={`w-1 shrink-0 cursor-col-resize transition-colors ${
+                            isResizing
+                                ? 'bg-blue-500'
+                                : 'bg-gray-200 hover:bg-gray-300'
+                        }`}
+                        onMouseDown={handleResizeStart}
+                        onDoubleClick={handleResizeDoubleClick}
+                        title="드래그하여 너비 조절 / 더블클릭으로 초기화"
                     />
                 </div>
-
-                {/* Resizer (sticky - 사이드바와 함께 고정) */}
-                <div
-                    className={`z-20 w-1 shrink-0 cursor-col-resize sticky transition-colors ${
-                        isResizing
-                            ? 'bg-blue-500'
-                            : 'bg-gray-200 hover:bg-gray-300'
-                    }`}
-                    style={{ left: sidebarWidth }}
-                    onMouseDown={handleResizeStart}
-                    onDoubleClick={handleResizeDoubleClick}
-                    title="드래그하여 너비 조절 / 더블클릭으로 초기화"
-                />
 
                 {/* Timeline */}
                 <div className="relative flex flex-1 flex-col bg-white">

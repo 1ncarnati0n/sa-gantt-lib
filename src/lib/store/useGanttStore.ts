@@ -45,12 +45,18 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
     // ====================================
 
     setViewMode: (mode: ViewMode, cpId?: string | null) => {
+        // 뷰 모드에 따른 사이드바 너비 자동 조정
+        const newWidth = mode === 'MASTER'
+            ? GANTT_LAYOUT.SIDEBAR_MASTER_WIDTH
+            : GANTT_LAYOUT.SIDEBAR_DETAIL_WIDTH;
+
         set({
             viewMode: mode,
             activeCPId: cpId ?? null,
             // 뷰 모드에 따른 기본 줌 레벨 설정
             // Master (Level 1): 월 / Detail (Level 2): 일
             zoomLevel: mode === 'DETAIL' ? 'DAY' : 'MONTH',
+            sidebarWidth: newWidth,
         });
     },
 

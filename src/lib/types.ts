@@ -61,9 +61,11 @@ export const GANTT_LAYOUT = {
     HEADER_HEIGHT: 80,
     MILESTONE_LANE_HEIGHT: 40,
     BAR_HEIGHT: 24,
-    SIDEBAR_WIDTH: 400,
-    SIDEBAR_MIN_WIDTH: 250,
+    SIDEBAR_WIDTH: 500,
+    SIDEBAR_MIN_WIDTH: 300,
     SIDEBAR_MAX_WIDTH: 800,
+    SIDEBAR_MASTER_WIDTH: 500,
+    SIDEBAR_DETAIL_WIDTH: 600,
 } as const;
 
 // ============================================
