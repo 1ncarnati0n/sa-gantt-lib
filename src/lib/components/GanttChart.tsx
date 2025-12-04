@@ -697,12 +697,12 @@ export function GanttChart({
             <div ref={scrollRef} className="relative flex flex-1 overflow-auto">
                 {/* Sidebar + Resizer 컨테이너 (sticky - 깨짐 현상 방지) */}
                 <div
-                    className="sticky left-0 z-10 flex shrink-0"
+                    className="sticky left-0 z-10 flex shrink-0 relative"
                     style={{ width: sidebarWidth + 4 }}
                 >
                     {/* Sidebar */}
                     <div
-                        className="flex shrink-0 flex-col bg-white"
+                        className="flex shrink-0 flex-col bg-white overflow-hidden"
                         style={{ width: sidebarWidth }}
                     >
                         <GanttSidebar
@@ -733,9 +733,9 @@ export function GanttChart({
                         />
                     </div>
 
-                    {/* Resizer - flex 레이아웃으로 자연스럽게 배치 */}
+                    {/* Resizer - 사이드바 위에 overlay로 배치 */}
                     <div
-                        className={`w-1 shrink-0 cursor-col-resize transition-colors ${
+                        className={`absolute top-0 right-0 h-full w-1 cursor-col-resize z-20 transition-colors ${
                             isResizing
                                 ? 'bg-blue-500'
                                 : 'bg-gray-200 hover:bg-gray-300'

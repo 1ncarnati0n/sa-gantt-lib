@@ -612,7 +612,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         {/* Column Resizer (마지막 컬럼 제외) */}
                         {idx < columns.length - 1 && (
                             <div
-                                className={`absolute right-0 top-0 z-10 h-full w-[5px] cursor-col-resize transition-colors ${
+                                className={`absolute right-0 top-0 z-[5] h-full w-[5px] cursor-col-resize transition-colors ${
                                     resizingIndex === idx
                                         ? 'bg-blue-500'
                                         : 'hover:bg-blue-300'
