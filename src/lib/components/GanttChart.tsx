@@ -198,10 +198,10 @@ export function GanttChart({
     // 초기화 (마운트 시 1회만)
     // ====================================
     const isInitialized = useRef(false);
-    
+
     // tasks의 id 배열을 메모이제이션 (의존성 배열 최적화)
     const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
-    
+
     useEffect(() => {
         if (isInitialized.current) return;
         isInitialized.current = true;
@@ -241,11 +241,11 @@ export function GanttChart({
     // 새로 생성된 GROUP 자동 확장
     // ====================================
     const prevTaskIdsRef = useRef<Set<string>>(new Set());
-    
+
     useEffect(() => {
         const currentIds = new Set(tasks.map(t => t.id));
         const prevIds = prevTaskIdsRef.current;
-        
+
         // 새로 추가된 GROUP 찾기
         const newGroupIds: string[] = [];
         tasks.forEach(task => {
@@ -253,12 +253,12 @@ export function GanttChart({
                 newGroupIds.push(task.id);
             }
         });
-        
+
         // 새 GROUP이 있으면 확장
         if (newGroupIds.length > 0) {
             expandAll(newGroupIds);
         }
-        
+
         prevTaskIdsRef.current = currentIds;
     }, [tasks, expandAll]);
 
@@ -411,50 +411,95 @@ export function GanttChart({
     // ====================================
     // 타임라인 스크롤 함수
     // ====================================
-    
+
     // 특정 날짜로 타임라인 스크롤
     const scrollToDate = useCallback((targetDate: Date) => {
         const container = scrollRef.current;
         if (!container) return;
-        
+
         // 현재 줌 레벨의 pixelsPerDay 사용
         const pxPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
-        
+
         // minDate 계산 (calculateDateRange 사용)
         const { minDate } = calculateDateRange(tasks, milestones, 60);
-        
-        // X 좌표 계산
+
+        // Timeline 내에서의 X 좌표
         const x = dateToX(targetDate, minDate, pxPerDay);
 
-        // 약간의 여유를 두고 스크롤 (왼쪽 50px 마진)
-        container.scrollLeft = Math.max(0, x - 50);
-    }, [zoomLevel, tasks, milestones]);
+        // Timeline 가시 영역 계산 (Sidebar는 sticky로 고정)
+        const viewportWidth = container.clientWidth;
+        const timelineViewWidth = viewportWidth - sidebarWidth - 4;
 
-    // 첫 번째 Task/CP로 스크롤 (버튼용)
+        // 바가 Timeline 가시 영역의 왼쪽 20% 지점에 보이도록 (최소 50px, 최대 100px)
+        const leftMargin = Math.min(100, Math.max(50, timelineViewWidth * 0.2));
+
+        container.scrollLeft = Math.max(0, x - leftMargin);
+    }, [zoomLevel, tasks, milestones, sidebarWidth]);
+
+    // 진행 중인 Task 중 가장 먼저 시작하는 Task로 스크롤 (Focusing 버튼용)
     const scrollToFirstTask = useCallback(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // 시간 정규화
+
+        // 시작일에서 5일 전으로 스크롤 (여유 있게 보기 위함)
+        const FOCUS_OFFSET_DAYS = 5;
+        const getOffsetDate = (date: Date) => {
+            const offsetDate = new Date(date);
+            offsetDate.setDate(offsetDate.getDate() - FOCUS_OFFSET_DAYS);
+            return offsetDate;
+        };
+
         if (viewMode === 'MASTER') {
-            // Master View: 모든 CP 중 가장 빠른 시작일로 스크롤
+            // Master View: CP 중 진행 중인 것 찾기
             const cpTasks = visibleTasks.filter(t => t.type === 'CP');
-            if (cpTasks.length > 0) {
-                const firstCP = cpTasks.reduce((a, b) => 
+
+            // 진행 중인 CP 필터링 (startDate <= today <= endDate)
+            const inProgressCPs = cpTasks.filter(cp => {
+                const start = new Date(cp.startDate);
+                const end = new Date(cp.endDate);
+                start.setHours(0, 0, 0, 0);
+                end.setHours(0, 0, 0, 0);
+                return start <= today && today <= end;
+            });
+
+            if (inProgressCPs.length > 0) {
+                // 진행 중인 CP 중 가장 빠른 시작일
+                const targetCP = inProgressCPs.reduce((a, b) =>
                     a.startDate < b.startDate ? a : b
                 );
-                // 시작일보다 5일 전으로 스크롤 (여유 있게 보기)
-                const targetDate = new Date(firstCP.startDate);
-                targetDate.setDate(targetDate.getDate() - 5);
-                scrollToDate(targetDate);
+                scrollToDate(getOffsetDate(targetCP.startDate));
+            } else if (cpTasks.length > 0) {
+                // 진행 중인 CP가 없으면 가장 빠른 시작일의 CP로 폴백
+                const firstCP = cpTasks.reduce((a, b) =>
+                    a.startDate < b.startDate ? a : b
+                );
+                scrollToDate(getOffsetDate(firstCP.startDate));
             }
         } else if (viewMode === 'DETAIL' && activeCPId) {
-            // Detail View: 선택된 CP의 하위 task 중 가장 빠른 시작일로 스크롤
+            // Detail View: 선택된 CP의 하위 task
             const childTasks = tasks.filter(t => t.parentId === activeCPId);
-            if (childTasks.length > 0) {
-                const firstTask = childTasks.reduce((a, b) => 
+
+            // 진행 중인 Task 필터링 (startDate <= today <= endDate)
+            const inProgressTasks = childTasks.filter(task => {
+                const start = new Date(task.startDate);
+                const end = new Date(task.endDate);
+                start.setHours(0, 0, 0, 0);
+                end.setHours(0, 0, 0, 0);
+                return start <= today && today <= end;
+            });
+
+            if (inProgressTasks.length > 0) {
+                // 진행 중인 Task 중 가장 빠른 시작일
+                const targetTask = inProgressTasks.reduce((a, b) =>
                     a.startDate < b.startDate ? a : b
                 );
-                // 시작일보다 5일 전으로 스크롤 (여유 있게 보기)
-                const targetDate = new Date(firstTask.startDate);
-                targetDate.setDate(targetDate.getDate() - 5);
-                scrollToDate(targetDate);
+                scrollToDate(getOffsetDate(targetTask.startDate));
+            } else if (childTasks.length > 0) {
+                // 진행 중인 Task가 없으면 가장 빠른 시작일의 Task로 폴백
+                const firstTask = childTasks.reduce((a, b) =>
+                    a.startDate < b.startDate ? a : b
+                );
+                scrollToDate(getOffsetDate(firstTask.startDate));
             }
         }
     }, [viewMode, activeCPId, tasks, visibleTasks, scrollToDate]);
@@ -481,11 +526,11 @@ export function GanttChart({
     // Bar 드래그로 날짜/일수 변경 핸들러
     const handleBarDrag = useCallback(async (result: BarDragResult) => {
         if (!onTaskUpdate) return;
-        
+
         try {
             const task = tasks.find(t => t.id === result.taskId);
             if (!task || !task.task) return;
-            
+
             const updatedTask: ConstructionTask = {
                 ...task,
                 startDate: result.newStartDate,
@@ -497,7 +542,7 @@ export function GanttChart({
                     netWorkDays: result.newNetWorkDays,
                 },
             };
-            
+
             await onTaskUpdate(updatedTask);
         } catch (error) {
             console.error('Failed to update task:', error);
@@ -576,25 +621,24 @@ export function GanttChart({
                     <button
                         onClick={scrollToFirstTask}
                         className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
-                        title={viewMode === 'MASTER' ? '첫 번째 CP로 스크롤' : '첫 번째 작업으로 스크롤'}
+                        title={viewMode === 'MASTER' ? '진행 중인 CP로 스크롤' : '진행 중인 작업으로 스크롤'}
                     >
                         Focusing
                     </button>
 
                     {/* Zoom Controls - 뷰 모드에 따라 다른 옵션 표시 */}
                     <div className="flex rounded bg-gray-100 p-1">
-                        {(viewMode === 'MASTER' 
+                        {(viewMode === 'MASTER'
                             ? (['WEEK', 'MONTH'] as const)  // Level 1: 주, 월만
                             : (['DAY', 'WEEK'] as const)    // Level 2: 일, 주만
                         ).map((level) => (
                             <button
                                 key={level}
                                 onClick={() => setZoomLevel(level)}
-                                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
-                                    zoomLevel === level
-                                        ? 'bg-white text-gray-800 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${zoomLevel === level
+                                    ? 'bg-white text-gray-800 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
                             >
                                 {ZOOM_CONFIG[level].label}
                             </button>
@@ -613,11 +657,10 @@ export function GanttChart({
                         <button
                             onClick={onSave}
                             disabled={!hasUnsavedChanges || saveStatus === 'saving'}
-                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                hasUnsavedChanges
-                                    ? 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
-                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            }`}
+                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${hasUnsavedChanges
+                                ? 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}
                         >
                             {saveStatus === 'saving' ? (
                                 <>
@@ -637,7 +680,7 @@ export function GanttChart({
                             )}
                         </button>
                     )}
-                    
+
                     {onReset && (
                         <button
                             onClick={onReset}
@@ -649,12 +692,12 @@ export function GanttChart({
                             초기화
                         </button>
                     )}
-                    
+
                     {/* 구분선 */}
                     {(onExport || onImport) && (
                         <div className="h-6 w-px bg-gray-300" />
                     )}
-                    
+
                     {/* 내보내기 버튼 */}
                     {onExport && (
                         <button
@@ -668,7 +711,7 @@ export function GanttChart({
                             내보내기
                         </button>
                     )}
-                    
+
                     {/* 가져오기 버튼 */}
                     {onImport && (
                         <label className="flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-600 active:bg-amber-700">
@@ -735,11 +778,10 @@ export function GanttChart({
 
                     {/* Resizer - 사이드바 위에 overlay로 배치 */}
                     <div
-                        className={`absolute top-0 right-0 h-full w-1 cursor-col-resize z-20 transition-colors ${
-                            isResizing
-                                ? 'bg-blue-500'
-                                : 'bg-gray-200 hover:bg-gray-300'
-                        }`}
+                        className={`absolute top-0 right-0 h-full w-1 cursor-col-resize z-20 transition-colors ${isResizing
+                            ? 'bg-blue-500'
+                            : 'bg-gray-200 hover:bg-gray-300'
+                            }`}
                         onMouseDown={handleResizeStart}
                         onDoubleClick={handleResizeDoubleClick}
                         title="드래그하여 너비 조절 / 더블클릭으로 초기화"
