@@ -1,7 +1,7 @@
 'use client';
 
 import React, { forwardRef, useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth, differenceInDays } from 'date-fns';
+import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth } from 'date-fns';
 import {
     ConstructionTask,
     Milestone,
@@ -19,7 +19,9 @@ import {
     getTaskCalendarSettings,
     getHolidayOffsetsInDateRange,
 } from '../utils/dateUtils';
+import { calculateCriticalPath } from '../utils/criticalPathUtils';
 import type { VirtualRow } from '../hooks/useGanttVirtualization';
+import { CriticalPathBar } from './CriticalPathBar';
 
 const { ROW_HEIGHT, HEADER_HEIGHT, MILESTONE_LANE_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
 
@@ -170,7 +172,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
 
     return (
         <div
-            className="sticky top-0 z-20 flex flex-col border-b border-gray-300 bg-white shadow-sm"
+            className="sticky top-0 z-5 flex shrink-0 flex-col border-b border-gray-300 bg-white shadow-sm"
             style={{ height: HEADER_HEIGHT, minWidth: totalWidth }}
         >
             {isMonthView ? (
@@ -556,6 +558,8 @@ interface TaskBarProps {
     minDate: Date;
     pixelsPerDay: number;
     isMasterView: boolean;
+    /** 전체 Task 배열 (Level 1 CP에서 Level 2 Critical Path 계산용) */
+    allTasks?: ConstructionTask[];
     /** 휴일 목록 (순작업 바 내 휴일 표시용) */
     holidays?: Date[];
     /** 전역 캘린더 설정 */
@@ -587,6 +591,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
     minDate,
     pixelsPerDay,
     isMasterView,
+    allTasks = [],
     holidays = [],
     calendarSettings,
     isDraggable = false,
@@ -597,19 +602,43 @@ const TaskBar: React.FC<TaskBarProps> = ({
     // GROUP은 바를 렌더링하지 않음
     if (task.type === 'GROUP') return null;
 
-    const radius = 4;
+    const radius = 2;
     const isDragging = !!dragInfo;
-    
+
     // 드래그 중이면 드래그된 날짜 사용
     const effectiveStartDate = dragInfo?.startDate || task.startDate;
     const effectiveEndDate = dragInfo?.endDate || task.endDate;
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
 
     if (isMasterView) {
-        // Level 1: Aggregate Bar (Vermilion/Teal)
-        const workDays = task.cp?.workDaysTotal || 0;
-        const nonWorkDays = task.cp?.nonWorkDaysTotal || 0;
-        const totalDays = workDays + nonWorkDays;
+        // Level 1: CP 바 - Level 2 Task들의 Critical Path 계산으로 작업일/비작업일 산출
+        // 재귀적으로 CP의 모든 자손 중 TASK 타입만 수집 (GROUP 아래 TASK도 포함)
+        const collectDescendantTasks = (parentId: string): ConstructionTask[] => {
+            const result: ConstructionTask[] = [];
+            allTasks.forEach(t => {
+                if (t.parentId === parentId) {
+                    if (t.type === 'TASK' && t.wbsLevel === 2) {
+                        result.push(t);
+                    }
+                    // GROUP이면 하위도 재귀 탐색
+                    if (t.type === 'GROUP') {
+                        result.push(...collectDescendantTasks(t.id));
+                    }
+                }
+            });
+            return result;
+        };
+
+        const childTasks = collectDescendantTasks(task.id);
+        const cpSummary = calculateCriticalPath(
+            childTasks,
+            holidays,
+            calendarSettings || { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false }
+        );
+
+        const workDays = cpSummary.workDays;
+        const nonWorkDays = cpSummary.nonWorkDays;
+        const totalDays = cpSummary.totalDays;
 
         if (totalDays === 0) return null;
 
@@ -985,15 +1014,16 @@ const SvgDefs: React.FC = () => (
             <polygon points="0 0, 10 3.5, 0 7" fill={GANTT_COLORS.dependency} />
         </marker>
         
-        {/* 휴일 점 패턴 */}
+        {/* 휴일 빗금 패턴 (간접작업 색상 + 반투명 배경) */}
         <pattern
             id="holidayHatchPattern"
             patternUnits="userSpaceOnUse"
             width="6"
             height="6"
+            patternTransform="rotate(45)"
         >
-            <rect width="6" height="6" fill="rgba(0, 0, 0, 0.15)" />
-            <circle cx="3" cy="3" r="1.5" fill="white" />
+            <rect width="6" height="6" fill="rgba(255, 255, 255, 0.6)" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke={GANTT_COLORS.blue} strokeWidth="2" />
         </pattern>
         
         {/* 휴일 빗금 패턴 (더 진한 버전) */}
@@ -1033,6 +1063,8 @@ export interface BarDragResult {
 
 interface GanttTimelineProps {
     tasks: ConstructionTask[];
+    /** 전체 Task 배열 (Level 1 CP에서 Level 2 Critical Path 계산용) */
+    allTasks?: ConstructionTask[];
     milestones: Milestone[];
     viewMode: ViewMode;
     zoomLevel: ZoomLevel;
@@ -1051,10 +1083,12 @@ interface GanttTimelineProps {
     virtualRows?: VirtualRow[];
     /** 전체 높이 */
     totalHeight?: number;
+    /** Critical Path 바 표시 여부 (Level 2에서만 동작) */
+    showCriticalPath?: boolean;
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
-    ({ tasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onMilestoneUpdate, onMilestoneDoubleClick, onTaskDoubleClick, virtualRows, totalHeight: virtualTotalHeight }, ref) => {
+    ({ tasks, allTasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onMilestoneUpdate, onMilestoneDoubleClick, onTaskDoubleClick, virtualRows, totalHeight: virtualTotalHeight, showCriticalPath = true }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
         
@@ -1428,7 +1462,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
         return (
             <div className="flex h-full w-full flex-col overflow-hidden bg-white">
-                <div ref={ref} className="relative flex-1 overflow-auto">
+                {/* overflow 제거 (GanttChart에서 통합 스크롤) */}
+                <div ref={ref} className="relative flex-1">
                     <TimelineHeader
                         minDate={minDate}
                         totalDays={totalDays}
@@ -1579,18 +1614,31 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
                                     isMasterView={isMasterView}
+                                    allTasks={allTasks || tasks}
                                     holidays={holidays}
                                     calendarSettings={calendarSettings}
                                     isDraggable={!isMasterView && !!onBarDrag}
                                     dragInfo={getDragInfo(task.id)}
                                     onDragStart={handleBarMouseDown}
-                                    onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick 
-                                        ? () => onTaskDoubleClick(task) 
+                                    onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
+                                        ? () => onTaskDoubleClick(task)
                                         : undefined}
                                 />
                             );
                         })}
                     </svg>
+
+                    {/* Critical Path Bar (Level 2에서만 표시) - 스크롤 영역 내부 */}
+                    {!isMasterView && showCriticalPath && (
+                        <CriticalPathBar
+                            tasks={tasks}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            minDate={minDate}
+                            pixelsPerDay={pixelsPerDay}
+                            totalWidth={chartWidth}
+                        />
+                    )}
                 </div>
             </div>
         );
