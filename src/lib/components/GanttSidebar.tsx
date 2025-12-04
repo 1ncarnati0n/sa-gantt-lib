@@ -113,27 +113,27 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
 
             return map;
         }, [viewMode, allTasks, holidays, calendarSettings]);
-        
+
         // 드래그&드롭 상태 (Task 순서 변경 + 그룹 간 이동)
         const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
         const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
         const [dragOverPosition, setDragOverPosition] = useState<DropPosition | null>(null);
-        
+
         // 멀티선택 상태
         const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
         const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
-        
+
         // 컨텍스트 메뉴 상태
         const [contextMenu, setContextMenu] = useState<{ x: number; y: number; taskId: string } | null>(null);
-        
+
         // 인라인 편집 상태 (그룹 이름 편집)
         const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
         const [editingName, setEditingName] = useState<string>('');
         const editInputRef = useRef<HTMLInputElement>(null);
-        
+
         // 일수 입력 필드 로컬 편집 상태 (소수점 입력 허용)
-        const [editingDays, setEditingDays] = useState<{taskId: string, field: string, value: string} | null>(null);
-        
+        const [editingDays, setEditingDays] = useState<{ taskId: string, field: string, value: string } | null>(null);
+
         // 컬럼 너비 상태 관리
         const [masterColumnWidths, setMasterColumnWidths] = useState<number[]>(
             DEFAULT_MASTER_COLUMNS.map(col => col.width)
@@ -150,7 +150,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         const setColumnWidths = viewMode === 'MASTER' ? setMasterColumnWidths : setDetailColumnWidths;
 
         // 컬럼 정보와 현재 너비 결합
-        const columns = useMemo(() => 
+        const columns = useMemo(() =>
             baseColumns.map((col, idx) => ({
                 ...col,
                 width: columnWidths[idx] ?? col.width,
@@ -173,7 +173,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         const handleColumnResizeStart = useCallback((e: React.MouseEvent, columnIndex: number) => {
             // 더블클릭 방지 (detail이 2면 더블클릭)
             if (e.detail >= 2) return;
-            
+
             e.preventDefault();
             e.stopPropagation();
             isResizingRef.current = true;
@@ -187,7 +187,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 if (!isResizingRef.current) return;
                 const delta = e.clientX - startX;
                 const newWidth = Math.max(minWidth, startWidth + delta);
-                
+
                 setColumnWidths(prev => {
                     const updated = [...prev];
                     updated[columnIndex] = newWidth;
@@ -218,10 +218,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // 그룹 깊이 계산 (Detail View용)
         const getGroupDepth = useCallback((task: ConstructionTask): number => {
             if (!activeCPId || task.parentId === activeCPId) return 0;
-            
+
             let depth = 0;
             let currentParentId = task.parentId;
-            
+
             while (currentParentId && currentParentId !== activeCPId) {
                 const parent = allTasks.find(t => t.id === currentParentId);
                 if (parent?.type === 'GROUP') depth++;
@@ -233,10 +233,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // 그룹 깊이 계산 (Master View용 - 최상위부터 계산)
         const getMasterGroupDepth = useCallback((task: ConstructionTask): number => {
             if (!task.parentId) return 0;
-            
+
             let depth = 0;
             let currentParentId: string | null | undefined = task.parentId;
-            
+
             while (currentParentId) {
                 const parent = allTasks.find(t => t.id === currentParentId);
                 if (parent?.type === 'GROUP') depth++;
@@ -248,13 +248,13 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // 컬럼 내용에 맞게 최적 너비 계산 (가장 긴 콘텐츠에 맞춤, 트리 깊이 반영)
         const calculateOptimalWidth = useCallback((columnIndex: number) => {
             const minWidth = baseColumns[columnIndex].minWidth;
-            
+
             // 컬럼별 패딩 설정
             // 첫 번째 컬럼: 확장 버튼(24px) + 좌우 여백(16px) + 추가 여유(32px)
             // 나머지 컬럼: 좌우 여백만 (20px)
             const isNameColumn = columnIndex === 0;
             const basePadding = isNameColumn ? 72 : 20;
-            
+
             // 헤더 텍스트 너비 (헤더는 중앙 정렬이므로 좌우 여백 8px씩)
             const headerText = baseColumns[columnIndex].label;
             let maxWidth = measureTextWidth(headerText, 12, '500') + 16;
@@ -263,7 +263,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             tasks.forEach(task => {
                 let cellText = '';
                 let extraPadding = 0;
-                
+
                 if (viewMode === 'MASTER') {
                     const isGroup = task.type === 'GROUP';
                     // 트리 깊이에 따른 들여쓰기 (실제 렌더링과 동일하게 depth * 12px)
@@ -271,7 +271,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         const depth = getMasterGroupDepth(task);
                         extraPadding = depth * 12;
                     }
-                    
+
                     // CP별 Critical Path 요약 가져오기
                     const cpSummary = task.type === 'CP' ? cpSummaryMap.get(task.id) : null;
                     const formatNum = (n: number) => Number.isInteger(n) ? n.toString() : n.toFixed(1);
@@ -302,7 +302,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         const depth = getGroupDepth(task);
                         extraPadding = depth * 12;
                     }
-                    
+
                     switch (columnIndex) {
                         case 0: // 단위공정명
                             cellText = task.name;
@@ -339,11 +339,11 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         const handleColumnResizeDoubleClick = useCallback((e: React.MouseEvent, columnIndex: number) => {
             e.preventDefault();
             e.stopPropagation();
-            
+
             // 리사이징 상태 리셋
             isResizingRef.current = false;
             setResizingIndex(null);
-            
+
             const optimalWidth = calculateOptimalWidth(columnIndex);
             setColumnWidths(prev => {
                 const updated = [...prev];
@@ -379,7 +379,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', taskId);
             setDraggedTaskId(taskId);
-            
+
             // 드래그 이미지를 투명하게 (선택 사항)
             const dragImage = document.createElement('div');
             dragImage.style.opacity = '0';
@@ -391,16 +391,16 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         const handleDragOver = useCallback((e: React.DragEvent, taskId: string, isTargetGroup: boolean) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            
+
             if (taskId === draggedTaskId) return;
-            
+
             // 마우스 위치에 따라 position 결정
             const rect = e.currentTarget.getBoundingClientRect();
             const relativeY = e.clientY - rect.top;
             const height = rect.height;
-            
+
             let position: DropPosition;
-            
+
             if (isTargetGroup) {
                 // 그룹 행: 상단 1/3 = before, 중앙 1/3 = into, 하단 1/3 = after
                 if (relativeY < height / 3) {
@@ -414,7 +414,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 // 일반 행: 상단 1/2 = before, 하단 1/2 = after
                 position = relativeY < height / 2 ? 'before' : 'after';
             }
-            
+
             setDragOverTaskId(taskId);
             setDragOverPosition(position);
         }, [draggedTaskId]);
@@ -426,14 +426,14 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
 
         const handleDrop = useCallback((e: React.DragEvent, targetTaskId: string) => {
             e.preventDefault();
-            
+
             if (!draggedTaskId || draggedTaskId === targetTaskId || !dragOverPosition) {
                 setDraggedTaskId(null);
                 setDragOverTaskId(null);
                 setDragOverPosition(null);
                 return;
             }
-            
+
             // onTaskMove가 있으면 사용 (그룹 간 이동 지원)
             if (onTaskMove) {
                 onTaskMove(draggedTaskId, targetTaskId, dragOverPosition);
@@ -443,7 +443,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 const newIndex = dragOverPosition === 'after' ? targetIndex + 1 : targetIndex;
                 onTaskReorder(draggedTaskId, newIndex);
             }
-            
+
             setDraggedTaskId(null);
             setDragOverTaskId(null);
             setDragOverPosition(null);
@@ -458,14 +458,14 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // ====================================
         // 멀티선택 핸들러
         // ====================================
-        
+
         const handleRowClick = useCallback((e: React.MouseEvent, task: ConstructionTask, rowIndex: number) => {
             // 드래그 중이면 무시
             if (draggedTaskId) return;
-            
+
             const isCtrlOrCmd = e.ctrlKey || e.metaKey;
             const isShift = e.shiftKey;
-            
+
             if (isCtrlOrCmd) {
                 // Ctrl/Cmd + Click: 토글 선택
                 setSelectedTaskIds(prev => {
@@ -482,7 +482,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 // Shift + Click: 범위 선택
                 const start = Math.min(lastClickedIndex, rowIndex);
                 const end = Math.max(lastClickedIndex, rowIndex);
-                
+
                 setSelectedTaskIds(prev => {
                     const newSet = new Set(prev);
                     for (let i = start; i <= end; i++) {
@@ -502,15 +502,15 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // ====================================
         // 컨텍스트 메뉴 핸들러
         // ====================================
-        
+
         const handleContextMenu = useCallback((e: React.MouseEvent, task: ConstructionTask) => {
             e.preventDefault();
-            
+
             // 현재 태스크가 선택되지 않았으면 단일 선택
             if (!selectedTaskIds.has(task.id)) {
                 setSelectedTaskIds(new Set([task.id]));
             }
-            
+
             setContextMenu({
                 x: e.clientX,
                 y: e.clientY,
@@ -523,7 +523,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             const handleClickOutside = () => {
                 setContextMenu(null);
             };
-            
+
             if (contextMenu) {
                 document.addEventListener('click', handleClickOutside);
                 return () => document.removeEventListener('click', handleClickOutside);
@@ -540,7 +540,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     setEditingTaskId(null);
                 }
             };
-            
+
             document.addEventListener('keydown', handleKeyDown);
             return () => document.removeEventListener('keydown', handleKeyDown);
         }, []);
@@ -557,7 +557,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 editInputRef.current?.select();
             }, 0);
         }, []);
-        
+
         // taskId로 이름 편집 시작 (컨텍스트 메뉴용)
         const handleStartRename = useCallback((taskId: string) => {
             const task = tasks.find(t => t.id === taskId);
@@ -571,7 +571,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 setEditingTaskId(null);
                 return;
             }
-            
+
             const task = tasks.find(t => t.id === editingTaskId);
             if (task && editingName.trim() && editingName !== task.name) {
                 onTaskUpdate({
@@ -579,7 +579,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     name: editingName.trim(),
                 });
             }
-            
+
             setEditingTaskId(null);
             setEditingName('');
         }, [editingTaskId, editingName, tasks, onTaskUpdate]);
@@ -612,11 +612,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         {/* Column Resizer (마지막 컬럼 제외) */}
                         {idx < columns.length - 1 && (
                             <div
-                                className={`absolute right-0 top-0 z-[5] h-full w-[5px] cursor-col-resize transition-colors ${
-                                    resizingIndex === idx
+                                className={`absolute right-0 top-0 z-[5] h-full w-[5px] cursor-col-resize transition-colors ${resizingIndex === idx
                                         ? 'bg-blue-500'
                                         : 'hover:bg-blue-300'
-                                }`}
+                                    }`}
                                 style={{ transform: 'translateX(50%)' }}
                                 onMouseDown={(e) => handleColumnResizeStart(e, idx)}
                                 onDoubleClick={(e) => handleColumnResizeDoubleClick(e, idx)}
@@ -633,7 +632,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         );
 
         // 선택된 태스크 중 GROUP 타입 확인
-        const selectedGroupTask = selectedTaskIds.size === 1 
+        const selectedGroupTask = selectedTaskIds.size === 1
             ? tasks.find(t => t.id === Array.from(selectedTaskIds)[0] && t.type === 'GROUP')
             : null;
         // 1개 이상 선택 시 그룹화 가능 (GROUP 타입만 선택된 경우는 그룹 해제만 가능)
@@ -643,7 +642,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // 그룹화/해제 버튼 렌더링
         const renderGroupButtons = () => {
             if (!canGroup && !canUngroup && selectedTaskIds.size === 0) return null;
-            
+
             return (
                 <div className="flex items-center gap-2">
                     {/* 선택 개수 표시 */}
@@ -652,7 +651,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             {selectedTaskIds.size}개 선택
                         </span>
                     )}
-                    
+
                     {/* 그룹 해제 버튼 */}
                     {canUngroup && (
                         <button
@@ -669,7 +668,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             해제
                         </button>
                     )}
-                    
+
                     {/* 선택 해제 버튼 */}
                     {selectedTaskIds.size > 0 && (
                         <button
@@ -759,10 +758,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         onDragEnd={handleDragEnd}
                                         onClick={(e) => handleRowClick(e, task, row.index)}
                                         onContextMenu={(e) => handleContextMenu(e, task)}
-                                        className={`box-border flex items-center border-b transition-all duration-150 ${
-                                            isDragging 
-                                                ? 'opacity-50 bg-blue-50' 
-                                                : isDragOver 
+                                        className={`box-border flex items-center border-b transition-all duration-150 ${isDragging
+                                                ? 'opacity-50 bg-blue-50'
+                                                : isDragOver
                                                     ? dragOverPosition === 'before'
                                                         ? 'border-t-2 border-t-blue-500 border-b-gray-100'
                                                         : dragOverPosition === 'into'
@@ -773,8 +771,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                         : isGroup
                                                             ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
                                                             : 'border-gray-100 cursor-pointer hover:bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
-                                        }`}
-                                        style={{ 
+                                            }`}
+                                        style={{
                                             height: ROW_HEIGHT,
                                             ...(isVirtualized ? {
                                                 position: 'absolute',
@@ -789,14 +787,14 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                     >
                                         {/* Drag Handle */}
                                         {onTaskReorder && (
-                                            <div 
+                                            <div
                                                 className="flex shrink-0 items-center justify-center cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
                                                 style={{ width: 24 }}
                                             >
                                                 <GripVertical size={14} />
                                             </div>
                                         )}
-                                        
+
                                         {/* CP Name */}
                                         <div
                                             className="flex shrink-0 items-center overflow-hidden border-r border-gray-100 px-2"
@@ -833,11 +831,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                                 />
                                             ) : (
                                                 <span
-                                                    className={`truncate text-sm ${
-                                                        isGroup
+                                                    className={`truncate text-sm ${isGroup
                                                             ? 'font-normal text-gray-500 cursor-text'
                                                             : 'font-medium text-gray-800'
-                                                    }`}
+                                                        }`}
                                                     onDoubleClick={(e) => {
                                                         if (onTaskUpdate) {
                                                             e.stopPropagation();
@@ -892,7 +889,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                     columns={columns}
                                     tasks={tasks}
                                     onTaskCreate={onTaskCreate}
-                                    onCancel={onCancelAddCP || (() => {})}
+                                    onCancel={onCancelAddCP || (() => { })}
                                     isVirtualized={isVirtualized}
                                     virtualRowIndex={tasks.length}
                                     dragHandleWidth={dragHandleWidth}
@@ -960,293 +957,291 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     </div>
 
                     {/* Task Rows */}
-                        <div
-                            style={{
-                                minWidth: totalWidth,
-                                height: isVirtualized
-                                    ? totalHeight
-                                    : tasks.length * ROW_HEIGHT + 100,
-                                position: 'relative',
-                            }}
-                        >
-                            {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
-                                const task = tasks[row.index];
-                                if (!task) return null;
+                    <div
+                        style={{
+                            minWidth: totalWidth,
+                            height: isVirtualized
+                                ? totalHeight
+                                : tasks.length * ROW_HEIGHT + 100,
+                            position: 'relative',
+                        }}
+                    >
+                        {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
+                            const task = tasks[row.index];
+                            if (!task) return null;
 
-                                const isGroup = task.type === 'GROUP';
-                                const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
-                                const isExpanded = expandedIds.has(task.id);
-                                const depth = getGroupDepth(task);
-                                const indent = depth * 12;
-                                const isDragging = draggedTaskId === task.id;
-                                const isDragOver = dragOverTaskId === task.id;
-                                const isSelected = selectedTaskIds.has(task.id);
-                                
-                                return (
-                                    <div
-                                        key={row.key}
-                                        draggable={!!(onTaskReorder || onTaskMove)}
-                                        onDragStart={(e) => handleDragStart(e, task.id)}
-                                        onDragOver={(e) => handleDragOver(e, task.id, isGroup)}
-                                        onDragLeave={handleDragLeave}
-                                        onDrop={(e) => handleDrop(e, task.id)}
-                                        onDragEnd={handleDragEnd}
-                                        onClick={(e) => handleRowClick(e, task, row.index)}
-                                        onDoubleClick={() => {
-                                            if (!isGroup && task.type === 'TASK' && onTaskDoubleClick) {
-                                                onTaskDoubleClick(task);
-                                            }
-                                        }}
-                                        onContextMenu={(e) => handleContextMenu(e, task)}
-                                        className={`box-border flex items-center border-b transition-colors ${
-                                            isDragging 
-                                                ? 'opacity-50 bg-blue-50' 
-                                                : isDragOver 
-                                                    ? dragOverPosition === 'before'
-                                                        ? 'border-t-2 border-t-blue-500 border-b-gray-100'
-                                                        : dragOverPosition === 'into'
-                                                            ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
-                                                            : 'border-b-2 border-b-blue-500'
-                                                    : isSelected
-                                                        ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
-                                                        : isGroup
-                                                            ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
-                                                            : 'border-gray-100 hover:bg-gray-50 cursor-pointer'
+                            const isGroup = task.type === 'GROUP';
+                            const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
+                            const isExpanded = expandedIds.has(task.id);
+                            const depth = getGroupDepth(task);
+                            const indent = depth * 12;
+                            const isDragging = draggedTaskId === task.id;
+                            const isDragOver = dragOverTaskId === task.id;
+                            const isSelected = selectedTaskIds.has(task.id);
+
+                            return (
+                                <div
+                                    key={row.key}
+                                    draggable={!!(onTaskReorder || onTaskMove)}
+                                    onDragStart={(e) => handleDragStart(e, task.id)}
+                                    onDragOver={(e) => handleDragOver(e, task.id, isGroup)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => handleDrop(e, task.id)}
+                                    onDragEnd={handleDragEnd}
+                                    onClick={(e) => handleRowClick(e, task, row.index)}
+                                    onDoubleClick={() => {
+                                        if (!isGroup && task.type === 'TASK' && onTaskDoubleClick) {
+                                            onTaskDoubleClick(task);
+                                        }
+                                    }}
+                                    onContextMenu={(e) => handleContextMenu(e, task)}
+                                    className={`box-border flex items-center border-b transition-colors ${isDragging
+                                            ? 'opacity-50 bg-blue-50'
+                                            : isDragOver
+                                                ? dragOverPosition === 'before'
+                                                    ? 'border-t-2 border-t-blue-500 border-b-gray-100'
+                                                    : dragOverPosition === 'into'
+                                                        ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
+                                                        : 'border-b-2 border-b-blue-500'
+                                                : isSelected
+                                                    ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
+                                                    : isGroup
+                                                        ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
+                                                        : 'border-gray-100 hover:bg-gray-50 cursor-pointer'
                                         }`}
-                                        style={{ 
-                                            height: ROW_HEIGHT,
-                                            ...(isVirtualized ? {
-                                                position: 'absolute',
-                                                top: 0,
-                                                left: 0,
-                                                width: '100%',
-                                                transform: `translateY(${row.start}px)`,
-                                            } : {}),
-                                        }}
-                                        title={!isGroup && task.type === 'TASK' ? '더블클릭하여 공정 설정' : undefined}
+                                    style={{
+                                        height: ROW_HEIGHT,
+                                        ...(isVirtualized ? {
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            transform: `translateY(${row.start}px)`,
+                                        } : {}),
+                                    }}
+                                    title={!isGroup && task.type === 'TASK' ? '더블클릭하여 공정 설정' : undefined}
+                                >
+                                    {/* Drag Handle */}
+                                    {onTaskReorder && (
+                                        <div
+                                            className="flex shrink-0 items-center justify-center cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                            style={{ width: 24 }}
+                                        >
+                                            <GripVertical size={14} />
+                                        </div>
+                                    )}
+
+                                    {/* Task Name */}
+                                    <div
+                                        className="flex shrink-0 items-center overflow-hidden border-r border-gray-100 px-2"
+                                        style={{ width: onTaskReorder ? columns[0].width - 24 : columns[0].width, paddingLeft: indent + 8 }}
                                     >
-                                        {/* Drag Handle */}
-                                        {onTaskReorder && (
-                                            <div 
-                                                className="flex shrink-0 items-center justify-center cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
-                                                style={{ width: 24 }}
+                                        {canExpand ? (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onToggle(task.id);
+                                                }}
+                                                className="mr-1 shrink-0 rounded p-1 text-gray-500 hover:bg-gray-200"
                                             >
-                                                <GripVertical size={14} />
-                                            </div>
+                                                {isExpanded ? (
+                                                    <ChevronDown size={14} />
+                                                ) : (
+                                                    <ChevronRight size={14} />
+                                                )}
+                                            </button>
+                                        ) : (
+                                            <div className="w-6 shrink-0" />
                                         )}
-                                        
-                                        {/* Task Name */}
-                                        <div
-                                            className="flex shrink-0 items-center overflow-hidden border-r border-gray-100 px-2"
-                                            style={{ width: onTaskReorder ? columns[0].width - 24 : columns[0].width, paddingLeft: indent + 8 }}
-                                        >
-                                            {canExpand ? (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onToggle(task.id);
-                                                    }}
-                                                    className="mr-1 shrink-0 rounded p-1 text-gray-500 hover:bg-gray-200"
-                                                >
-                                                    {isExpanded ? (
-                                                        <ChevronDown size={14} />
-                                                    ) : (
-                                                        <ChevronRight size={14} />
-                                                    )}
-                                                </button>
-                                            ) : (
-                                                <div className="w-6 shrink-0" />
-                                            )}
-                                            {/* 인라인 편집 */}
-                                            {editingTaskId === task.id ? (
-                                                <input
-                                                    ref={editInputRef}
-                                                    type="text"
-                                                    value={editingName}
-                                                    onChange={(e) => setEditingName(e.target.value)}
-                                                    onKeyDown={handleEditKeyDown}
-                                                    onBlur={handleSaveEdit}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="w-full rounded border border-blue-400 bg-white px-1 py-0.5 text-sm font-normal text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                />
-                                            ) : (
-                                                <span
-                                                    className={`truncate text-sm ${
-                                                        isGroup
-                                                            ? 'font-normal text-gray-500 cursor-text'
-                                                            : 'font-medium text-gray-800'
+                                        {/* 인라인 편집 */}
+                                        {editingTaskId === task.id ? (
+                                            <input
+                                                ref={editInputRef}
+                                                type="text"
+                                                value={editingName}
+                                                onChange={(e) => setEditingName(e.target.value)}
+                                                onKeyDown={handleEditKeyDown}
+                                                onBlur={handleSaveEdit}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="w-full rounded border border-blue-400 bg-white px-1 py-0.5 text-sm font-normal text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            />
+                                        ) : (
+                                            <span
+                                                className={`truncate text-sm ${isGroup
+                                                        ? 'font-normal text-gray-500 cursor-text'
+                                                        : 'font-medium text-gray-800'
                                                     }`}
-                                                    onDoubleClick={(e) => {
-                                                        if (onTaskUpdate) {
-                                                            e.stopPropagation();
-                                                            handleStartEdit(task);
-                                                        }
-                                                    }}
-                                                    title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
-                                                >
-                                                    {task.name}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Pre Indirect Work Days Input (선간접) */}
-                                        <div
-                                            className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
-                                            style={{ width: columns[1].width }}
-                                        >
-                                            {task.task ? (
-                                                <input
-                                                    type="text"
-                                                    inputMode="decimal"
-                                                    pattern="[0-9]*\.?[0-9]?"
-                                                    className="w-full max-w-[45px] rounded border border-gray-300 bg-blue-50 px-1 py-1 text-center text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                    value={editingDays?.taskId === task.id && editingDays?.field === 'pre' 
-                                                        ? editingDays.value 
-                                                        : task.task.indirectWorkDaysPre}
-                                                    onFocus={() => setEditingDays({taskId: task.id, field: 'pre', value: String(task.task!.indirectWorkDaysPre)})}
-                                                    onChange={(e) => {
-                                                        const value = e.target.value.replace(/[^0-9.]/g, '');
-                                                        setEditingDays({taskId: task.id, field: 'pre', value});
-                                                    }}
-                                                    onBlur={() => {
-                                                        if (editingDays && editingDays.taskId === task.id && editingDays.field === 'pre') {
-                                                            const parsed = parseFloat(editingDays.value) || 0;
-                                                            const val = Math.round(parsed * 10) / 10;
-                                                            handleDurationChange(task, 'indirectWorkDaysPre', val);
-                                                            setEditingDays(null);
-                                                        }
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === '-' || e.key === 'e' || e.key === '+') {
-                                                            e.preventDefault();
-                                                        }
-                                                        if (e.key === 'Enter') {
-                                                            (e.target as HTMLInputElement).blur();
-                                                        }
-                                                    }}
-                                                    title="선 간접작업일 (바 드래그로도 조절 가능, 0.1 단위)"
-                                                />
-                                            ) : (
-                                                <span className="text-xs text-gray-400">-</span>
-                                            )}
-                                        </div>
-
-                                        {/* Net Work Days Input (순작업) */}
-                                        <div
-                                            className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
-                                            style={{ width: columns[2].width }}
-                                        >
-                                            {task.task ? (
-                                                <input
-                                                    type="text"
-                                                    inputMode="decimal"
-                                                    pattern="[0-9]*\.?[0-9]?"
-                                                    className="w-full max-w-[45px] rounded border border-gray-300 bg-red-50 px-1 py-1 text-center text-xs text-gray-800 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                                                    value={editingDays?.taskId === task.id && editingDays?.field === 'net' 
-                                                        ? editingDays.value 
-                                                        : task.task.netWorkDays}
-                                                    onFocus={() => setEditingDays({taskId: task.id, field: 'net', value: String(task.task!.netWorkDays)})}
-                                                    onChange={(e) => {
-                                                        const value = e.target.value.replace(/[^0-9.]/g, '');
-                                                        setEditingDays({taskId: task.id, field: 'net', value});
-                                                    }}
-                                                    onBlur={() => {
-                                                        if (editingDays && editingDays.taskId === task.id && editingDays.field === 'net') {
-                                                            const parsed = parseFloat(editingDays.value) || 0;
-                                                            const val = Math.round(parsed * 10) / 10;
-                                                            handleDurationChange(task, 'netWorkDays', val);
-                                                            setEditingDays(null);
-                                                        }
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === '-' || e.key === 'e' || e.key === '+') {
-                                                            e.preventDefault();
-                                                        }
-                                                        if (e.key === 'Enter') {
-                                                            (e.target as HTMLInputElement).blur();
-                                                        }
-                                                    }}
-                                                    title="순작업일 (0.1 단위)"
-                                                />
-                                            ) : (
-                                                <span className="text-xs text-gray-400">-</span>
-                                            )}
-                                        </div>
-
-                                        {/* Post Indirect Work Days Input (후간접) */}
-                                        <div
-                                            className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
-                                            style={{ width: columns[3].width }}
-                                        >
-                                            {task.task ? (
-                                                <input
-                                                    type="text"
-                                                    inputMode="decimal"
-                                                    pattern="[0-9]*\.?[0-9]?"
-                                                    className="w-full max-w-[45px] rounded border border-gray-300 bg-blue-50 px-1 py-1 text-center text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                    value={editingDays?.taskId === task.id && editingDays?.field === 'post' 
-                                                        ? editingDays.value 
-                                                        : task.task.indirectWorkDaysPost}
-                                                    onFocus={() => setEditingDays({taskId: task.id, field: 'post', value: String(task.task!.indirectWorkDaysPost)})}
-                                                    onChange={(e) => {
-                                                        const value = e.target.value.replace(/[^0-9.]/g, '');
-                                                        setEditingDays({taskId: task.id, field: 'post', value});
-                                                    }}
-                                                    onBlur={() => {
-                                                        if (editingDays && editingDays.taskId === task.id && editingDays.field === 'post') {
-                                                            const parsed = parseFloat(editingDays.value) || 0;
-                                                            const val = Math.round(parsed * 10) / 10;
-                                                            handleDurationChange(task, 'indirectWorkDaysPost', val);
-                                                            setEditingDays(null);
-                                                        }
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === '-' || e.key === 'e' || e.key === '+') {
-                                                            e.preventDefault();
-                                                        }
-                                                        if (e.key === 'Enter') {
-                                                            (e.target as HTMLInputElement).blur();
-                                                        }
-                                                    }}
-                                                    title="후 간접작업일 (바 드래그로도 조절 가능, 0.1 단위)"
-                                                />
-                                            ) : (
-                                                <span className="text-xs text-gray-400">-</span>
-                                            )}
-                                        </div>
-
-                                        {/* Start Date */}
-                                        <div
-                                            className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-gray-500"
-                                            style={{ width: columns[4].width }}
-                                        >
-                                            {format(task.startDate, 'yyyy-MM-dd')}
-                                        </div>
-
-                                        {/* End Date */}
-                                        <div
-                                            className="flex shrink-0 items-center justify-center text-xs text-gray-500"
-                                            style={{ width: columns[5].width }}
-                                        >
-                                            {format(task.endDate, 'yyyy-MM-dd')}
-                                        </div>
+                                                onDoubleClick={(e) => {
+                                                    if (onTaskUpdate) {
+                                                        e.stopPropagation();
+                                                        handleStartEdit(task);
+                                                    }
+                                                }}
+                                                title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
+                                            >
+                                                {task.name}
+                                            </span>
+                                        )}
                                     </div>
-                                );
-                            })}
 
-                            {/* 새 Task 입력 행 */}
-                            {isAddingTask && activeCPId && (
-                                <GanttSidebarNewTaskForm
-                                    columns={columns}
-                                    tasks={tasks}
-                                    activeCPId={activeCPId}
-                                    onTaskCreate={onTaskCreate}
-                                    onCancel={onCancelAddTask || (() => {})}
-                                    isVirtualized={isVirtualized}
-                                    virtualRowIndex={tasks.length}
-                                />
-                            )}
-                        </div>
+                                    {/* Pre Indirect Work Days Input (선간접) */}
+                                    <div
+                                        className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
+                                        style={{ width: columns[1].width }}
+                                    >
+                                        {task.task ? (
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                pattern="[0-9]*\.?[0-9]?"
+                                                className="w-full max-w-[45px] rounded border border-gray-300 bg-blue-50 px-1 py-1 text-center text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                value={editingDays?.taskId === task.id && editingDays?.field === 'pre'
+                                                    ? editingDays.value
+                                                    : task.task.indirectWorkDaysPre}
+                                                onFocus={() => setEditingDays({ taskId: task.id, field: 'pre', value: String(task.task!.indirectWorkDaysPre) })}
+                                                onChange={(e) => {
+                                                    const value = e.target.value.replace(/[^0-9.]/g, '');
+                                                    setEditingDays({ taskId: task.id, field: 'pre', value });
+                                                }}
+                                                onBlur={() => {
+                                                    if (editingDays && editingDays.taskId === task.id && editingDays.field === 'pre') {
+                                                        const parsed = parseFloat(editingDays.value) || 0;
+                                                        const val = Math.round(parsed * 10) / 10;
+                                                        handleDurationChange(task, 'indirectWorkDaysPre', val);
+                                                        setEditingDays(null);
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === '-' || e.key === 'e' || e.key === '+') {
+                                                        e.preventDefault();
+                                                    }
+                                                    if (e.key === 'Enter') {
+                                                        (e.target as HTMLInputElement).blur();
+                                                    }
+                                                }}
+                                                title="선 간접작업일 (바 드래그로도 조절 가능, 0.1 단위)"
+                                            />
+                                        ) : (
+                                            <span className="text-xs text-gray-400">-</span>
+                                        )}
+                                    </div>
+
+                                    {/* Net Work Days Input (순작업) */}
+                                    <div
+                                        className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
+                                        style={{ width: columns[2].width }}
+                                    >
+                                        {task.task ? (
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                pattern="[0-9]*\.?[0-9]?"
+                                                className="w-full max-w-[45px] rounded border border-gray-300 bg-red-50 px-1 py-1 text-center text-xs text-gray-800 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                                                value={editingDays?.taskId === task.id && editingDays?.field === 'net'
+                                                    ? editingDays.value
+                                                    : task.task.netWorkDays}
+                                                onFocus={() => setEditingDays({ taskId: task.id, field: 'net', value: String(task.task!.netWorkDays) })}
+                                                onChange={(e) => {
+                                                    const value = e.target.value.replace(/[^0-9.]/g, '');
+                                                    setEditingDays({ taskId: task.id, field: 'net', value });
+                                                }}
+                                                onBlur={() => {
+                                                    if (editingDays && editingDays.taskId === task.id && editingDays.field === 'net') {
+                                                        const parsed = parseFloat(editingDays.value) || 0;
+                                                        const val = Math.round(parsed * 10) / 10;
+                                                        handleDurationChange(task, 'netWorkDays', val);
+                                                        setEditingDays(null);
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === '-' || e.key === 'e' || e.key === '+') {
+                                                        e.preventDefault();
+                                                    }
+                                                    if (e.key === 'Enter') {
+                                                        (e.target as HTMLInputElement).blur();
+                                                    }
+                                                }}
+                                                title="순작업일 (0.1 단위)"
+                                            />
+                                        ) : (
+                                            <span className="text-xs text-gray-400">-</span>
+                                        )}
+                                    </div>
+
+                                    {/* Post Indirect Work Days Input (후간접) */}
+                                    <div
+                                        className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
+                                        style={{ width: columns[3].width }}
+                                    >
+                                        {task.task ? (
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                pattern="[0-9]*\.?[0-9]?"
+                                                className="w-full max-w-[45px] rounded border border-gray-300 bg-blue-50 px-1 py-1 text-center text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                value={editingDays?.taskId === task.id && editingDays?.field === 'post'
+                                                    ? editingDays.value
+                                                    : task.task.indirectWorkDaysPost}
+                                                onFocus={() => setEditingDays({ taskId: task.id, field: 'post', value: String(task.task!.indirectWorkDaysPost) })}
+                                                onChange={(e) => {
+                                                    const value = e.target.value.replace(/[^0-9.]/g, '');
+                                                    setEditingDays({ taskId: task.id, field: 'post', value });
+                                                }}
+                                                onBlur={() => {
+                                                    if (editingDays && editingDays.taskId === task.id && editingDays.field === 'post') {
+                                                        const parsed = parseFloat(editingDays.value) || 0;
+                                                        const val = Math.round(parsed * 10) / 10;
+                                                        handleDurationChange(task, 'indirectWorkDaysPost', val);
+                                                        setEditingDays(null);
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === '-' || e.key === 'e' || e.key === '+') {
+                                                        e.preventDefault();
+                                                    }
+                                                    if (e.key === 'Enter') {
+                                                        (e.target as HTMLInputElement).blur();
+                                                    }
+                                                }}
+                                                title="후 간접작업일 (바 드래그로도 조절 가능, 0.1 단위)"
+                                            />
+                                        ) : (
+                                            <span className="text-xs text-gray-400">-</span>
+                                        )}
+                                    </div>
+
+                                    {/* Start Date */}
+                                    <div
+                                        className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-gray-500"
+                                        style={{ width: columns[4].width }}
+                                    >
+                                        {isGroup ? '-' : format(task.startDate, 'yyyy-MM-dd')}
+                                    </div>
+
+                                    {/* End Date */}
+                                    <div
+                                        className="flex shrink-0 items-center justify-center text-xs text-gray-500"
+                                        style={{ width: columns[5].width }}
+                                    >
+                                        {isGroup ? '-' : format(task.endDate, 'yyyy-MM-dd')}
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {/* 새 Task 입력 행 */}
+                        {isAddingTask && activeCPId && (
+                            <GanttSidebarNewTaskForm
+                                columns={columns}
+                                tasks={tasks}
+                                activeCPId={activeCPId}
+                                onTaskCreate={onTaskCreate}
+                                onCancel={onCancelAddTask || (() => { })}
+                                isVirtualized={isVirtualized}
+                                virtualRowIndex={tasks.length}
+                            />
+                        )}
+                    </div>
                 </div>
 
                 {/* Context Menu */}
