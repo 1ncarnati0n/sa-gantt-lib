@@ -122,6 +122,11 @@ export interface TaskData {
     indirectWorkNamePre?: string;     // 앞 간접작업명 (선택)
     indirectWorkNamePost?: string;    // 뒤 간접작업명 (선택)
 
+    // Task별 캘린더 설정 (Optional - 없으면 전역 설정 사용)
+    workOnSaturdays?: boolean;        // 기본 true (토요일 작업), false면 휴무
+    workOnSundays?: boolean;          // 기본 false (일요일 휴무), true면 작업
+    workOnHolidays?: boolean;         // 기본 false (공휴일 휴무), true면 작업
+
     // 산출 근거 (Phase 2: 자동 계산용)
     quantity?: number;                // 수량
     unit?: string;                    // 단위 (㎥, 본, ton, ㎡ 등)
@@ -224,6 +229,10 @@ export interface GanttChartProps {
     hasUnsavedChanges?: boolean;
     saveStatus?: 'idle' | 'saving' | 'saved';
 
+    // 내보내기/가져오기 (mock.json 동기화용)
+    onExport?: () => void;
+    onImport?: (file: File) => void | Promise<void>;
+
     // 스타일링
     className?: string;
     style?: React.CSSProperties;
@@ -317,4 +326,31 @@ export interface Rect {
     y: number;
     width: number;
     height: number;
+}
+
+// ============================================
+// Critical Path 인터페이스
+// ============================================
+
+/** Critical Path 일별 상태 */
+export interface CriticalPathDay {
+    date: Date;
+    workDayValue: number;            // 해당일 작업일 값 (0~1, 소수점 가능)
+    nonWorkDayValue: number;         // 해당일 비작업일 값 (0~1, 소수점 가능)
+    hasNetWork: boolean;             // 순작업 존재 여부
+    hasIndirectWork: boolean;        // 간접작업 존재 여부
+    isHoliday: boolean;              // 휴일 여부
+    contributingTaskIds: string[];   // 해당일에 기여하는 Task ID들
+}
+
+/** Critical Path 요약 정보 */
+export interface CriticalPathSummary {
+    startDate: Date;
+    endDate: Date;
+    totalDays: number;               // 총 기간 (달력일)
+    workDays: number;                // 작업일수 (날짜 카운트 - 정수)
+    nonWorkDays: number;             // 비작업일수 (날짜 카운트 - 정수)
+    netWorkDaysTotal: number;        // 순작업일 합계 (소수점 포함)
+    indirectWorkDaysTotal: number;   // 간접작업일 합계 (소수점 포함)
+    dailyBreakdown: CriticalPathDay[];  // 일별 상세 정보
 }

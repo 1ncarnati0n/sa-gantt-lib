@@ -53,6 +53,37 @@ const serializeMilestones = (milestones: Milestone[]): string => {
     return JSON.stringify(serialized);
 };
 
+// ============================================
+// 내보내기용 직렬화 함수 (mock.json 형식)
+// ============================================
+
+// Task를 mock.json 형식으로 직렬화 (날짜는 YYYY-MM-DD)
+const serializeTasksForExport = (tasks: ConstructionTask[]) => {
+    return tasks.map(t => ({
+        id: t.id,
+        parentId: t.parentId,
+        wbsLevel: t.wbsLevel,
+        type: t.type,
+        name: t.name,
+        startDate: format(t.startDate, 'yyyy-MM-dd'),
+        endDate: format(t.endDate, 'yyyy-MM-dd'),
+        ...(t.cp ? { cp: t.cp } : {}),
+        ...(t.task ? { task: t.task } : {}),
+        dependencies: t.dependencies,
+    }));
+};
+
+// Milestone을 mock.json 형식으로 직렬화
+const serializeMilestonesForExport = (milestones: Milestone[]) => {
+    return milestones.map(m => ({
+        id: m.id,
+        date: format(m.date, 'yyyy-MM-dd'),
+        name: m.name,
+        type: 'MILESTONE',
+        ...(m.description ? { description: m.description } : {}),
+    }));
+};
+
 // 타입 가드: Task 데이터 검증
 const isValidTaskData = (data: unknown): data is Record<string, unknown> & { 
     id: string; 
@@ -368,6 +399,103 @@ function App() {
             alert('초기화 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
         }
     }, [resetHistory]);
+
+    // ====================================
+    // 내보내기 핸들러 (JSON 파일 다운로드)
+    // ====================================
+    const handleExport = useCallback(() => {
+        try {
+            // mock.json 형식으로 데이터 구성
+            const exportData = {
+                milestones: serializeMilestonesForExport(milestones),
+                tasks: serializeTasksForExport(tasks),
+            };
+            
+            // JSON 문자열로 변환 (가독성을 위해 들여쓰기 적용)
+            const jsonString = JSON.stringify(exportData, null, 4);
+            
+            // Blob 생성 및 다운로드
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `gantt-data-${format(new Date(), 'yyyy-MM-dd')}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            console.log('Data exported successfully');
+        } catch (error) {
+            console.error('Failed to export data:', error);
+            alert('내보내기 중 오류가 발생했습니다.');
+        }
+    }, [tasks, milestones]);
+
+    // ====================================
+    // 가져오기 핸들러 (JSON 파일 업로드)
+    // ====================================
+    const handleImport = useCallback(async (file: File) => {
+        try {
+            const text = await file.text();
+            const importedData = JSON.parse(text);
+            
+            // 데이터 유효성 검증
+            if (!importedData.tasks || !Array.isArray(importedData.tasks)) {
+                throw new Error('유효하지 않은 파일 형식입니다. tasks 배열이 필요합니다.');
+            }
+            
+            // Tasks 파싱
+            const importedTasks: ConstructionTask[] = importedData.tasks
+                .filter(isValidTaskData)
+                .map((t: Record<string, unknown>) => ({
+                    ...t,
+                    wbsLevel: t.wbsLevel as 1 | 2,
+                    type: t.type as 'GROUP' | 'CP' | 'TASK',
+                    startDate: parseISO(t.startDate as string),
+                    endDate: parseISO(t.endDate as string),
+                    dependencies: (t.dependencies as Array<Record<string, unknown>>)?.map(d => ({
+                        ...d,
+                        type: d.type as DependencyType,
+                        sourceAnchor: d.sourceAnchor as AnchorPoint | undefined,
+                        targetAnchor: d.targetAnchor as AnchorPoint | undefined,
+                    })) || [],
+                }));
+            
+            // Milestones 파싱 (있으면)
+            const importedMilestones: Milestone[] = (importedData.milestones || [])
+                .filter(isValidMilestoneData)
+                .map((m: Record<string, unknown>) => ({
+                    ...m,
+                    date: parseISO(m.date as string),
+                }));
+            
+            if (importedTasks.length === 0) {
+                throw new Error('가져올 수 있는 태스크가 없습니다.');
+            }
+            
+            // 상태 업데이트
+            const newState: AppState = {
+                tasks: importedTasks,
+                milestones: importedMilestones,
+            };
+            
+            setAppState(newState);
+            
+            // localStorage에도 저장
+            saveTasksToStorage(importedTasks);
+            saveMilestonesToStorage(importedMilestones);
+            
+            setHasUnsavedChanges(false);
+            setSaveStatus('idle');
+            
+            console.log('Data imported successfully:', importedTasks.length, 'tasks,', importedMilestones.length, 'milestones');
+            alert(`가져오기 완료: ${importedTasks.length}개의 태스크, ${importedMilestones.length}개의 마일스톤`);
+        } catch (error) {
+            console.error('Failed to import data:', error);
+            alert(error instanceof Error ? error.message : '가져오기 중 오류가 발생했습니다. 파일 형식을 확인해주세요.');
+        }
+    }, [setAppState]);
 
     // ====================================
     // 헬퍼: Level 1 태스크 cp 재계산
@@ -850,6 +978,8 @@ function App() {
                     onReset={handleReset}
                     hasUnsavedChanges={hasUnsavedChanges}
                     saveStatus={saveStatus}
+                    onExport={handleExport}
+                    onImport={handleImport}
                 />
             </div>
         </div>

@@ -8,7 +8,10 @@ import {
     ViewMode,
     GANTT_LAYOUT,
     DropPosition,
+    CalendarSettings,
+    CriticalPathSummary,
 } from '../types';
+import { calculateCriticalPath } from '../utils/criticalPathUtils';
 import type { VirtualRow } from '../hooks/useGanttVirtualization';
 import { GanttSidebarContextMenu } from './GanttSidebarContextMenu';
 import { GanttSidebarNewTaskForm } from './GanttSidebarNewTaskForm';
@@ -48,6 +51,10 @@ interface GanttSidebarProps {
     onTaskReorder?: (taskId: string, newIndex: number) => void;
     /** 현재 선택된 CP ID (Detail View) */
     activeCPId?: string | null;
+    /** 휴일 목록 */
+    holidays?: Date[];
+    /** 캘린더 설정 */
+    calendarSettings?: CalendarSettings;
     /** 가상화된 행 목록 */
     virtualRows?: VirtualRow[];
     /** 전체 높이 */
@@ -82,9 +89,46 @@ interface GanttSidebarProps {
  * - 컬럼 너비 드래그로 조절 가능
  */
 export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
-    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, onTaskDelete, onTaskMove, isAddingTask = false, onCancelAddTask, isAddingCP = false, onCancelAddCP, onTaskDoubleClick }, ref) => {
+    ({ tasks, allTasks, viewMode, expandedIds, onToggle, onTaskClick, onTaskUpdate, onTaskCreate, onTaskReorder, activeCPId, holidays = [], calendarSettings, virtualRows, totalHeight, onTotalWidthChange, onTaskGroup, onTaskUngroup, onTaskDelete, onTaskMove, isAddingTask = false, onCancelAddTask, isAddingCP = false, onCancelAddCP, onTaskDoubleClick }, ref) => {
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
+
+        // CP별 Critical Path 요약 계산 (Master View용)
+        const cpSummaryMap = useMemo(() => {
+            const map = new Map<string, CriticalPathSummary>();
+            if (viewMode !== 'MASTER') return map;
+
+            // 재귀적으로 CP의 모든 자손 중 TASK 타입만 수집
+            const collectDescendantTasks = (parentId: string): ConstructionTask[] => {
+                const result: ConstructionTask[] = [];
+                allTasks.forEach(t => {
+                    if (t.parentId === parentId) {
+                        if (t.type === 'TASK' && t.wbsLevel === 2) {
+                            result.push(t);
+                        }
+                        if (t.type === 'GROUP') {
+                            result.push(...collectDescendantTasks(t.id));
+                        }
+                    }
+                });
+                return result;
+            };
+
+            // 모든 CP에 대해 Critical Path 계산
+            allTasks.forEach(task => {
+                if (task.type === 'CP') {
+                    const childTasks = collectDescendantTasks(task.id);
+                    const summary = calculateCriticalPath(
+                        childTasks,
+                        holidays,
+                        calendarSettings || { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false }
+                    );
+                    map.set(task.id, summary);
+                }
+            });
+
+            return map;
+        }, [viewMode, allTasks, holidays, calendarSettings]);
         
         // 드래그&드롭 상태 (Task 순서 변경 + 그룹 간 이동)
         const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
@@ -244,23 +288,27 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         extraPadding = depth * 12;
                     }
                     
+                    // CP별 Critical Path 요약 가져오기
+                    const cpSummary = task.type === 'CP' ? cpSummaryMap.get(task.id) : null;
+                    const formatNum = (n: number) => Number.isInteger(n) ? n.toString() : n.toFixed(1);
+
                     switch (columnIndex) {
                         case 0: // CP명
                             cellText = task.name;
                             break;
                         case 1: // 총 공기
-                            cellText = isGroup ? '-' : task.cp 
-                                ? `${task.cp.workDaysTotal + task.cp.nonWorkDaysTotal}일` 
+                            cellText = isGroup ? '-' : cpSummary
+                                ? `${cpSummary.totalDays}일`
                                 : '-';
                             break;
                         case 2: // 작업일수
-                            cellText = isGroup ? '-' : task.cp 
-                                ? `${task.cp.workDaysTotal}일` 
+                            cellText = isGroup ? '-' : cpSummary
+                                ? `${formatNum(cpSummary.workDays)}일`
                                 : '-';
                             break;
                         case 3: // 비작업일수
-                            cellText = isGroup ? '-' : task.cp 
-                                ? `${task.cp.nonWorkDaysTotal}일` 
+                            cellText = isGroup ? '-' : cpSummary
+                                ? `${formatNum(cpSummary.nonWorkDays)}일`
                                 : '-';
                             break;
                     }
@@ -660,7 +708,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 <div className="flex h-full flex-col bg-white select-none">
                     {/* Header */}
                     <div
-                        className="flex flex-col border-b border-gray-300 bg-gray-50"
+                        className="flex shrink-0 flex-col border-b border-gray-300 bg-gray-50"
                         style={{ height: HEADER_HEIGHT }}
                     >
                         <div className="flex flex-1 items-center justify-between px-4">
@@ -675,8 +723,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         <div className="fixed inset-0 z-50 cursor-col-resize" />
                     )}
 
-                    {/* Body */}
-                    <div ref={ref} className="relative flex-1 overflow-auto">
+                    {/* Body - overflow 제거 (GanttChart에서 통합 스크롤) */}
+                    <div ref={ref} className="relative flex-1">
                         {/* Milestone Lane Spacer */}
                         <div
                             className="flex items-center border-b border-gray-200 bg-gray-50/50"
@@ -694,17 +742,19 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         </div>
 
                         {/* Task Rows */}
-                        <div 
-                            style={{ 
+                        <div
+                            style={{
                                 minWidth: totalWidth,
-                                height: isVirtualized ? totalHeight : undefined,
+                                height: isVirtualized
+                                    ? totalHeight
+                                    : tasks.length * ROW_HEIGHT + 100,
                                 position: 'relative',
                             }}
                         >
                             {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
                                 const task = tasks[row.index];
                                 if (!task) return null;
-                                
+
                                 const isGroup = task.type === 'GROUP';
                                 const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
                                 const isExpanded = expandedIds.has(task.id);
@@ -818,40 +868,36 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         </div>
 
                                         {/* Total Duration */}
-                                        <div
-                                            className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-gray-500"
-                                            style={{ width: columns[1].width }}
-                                        >
-                                            {isGroup
-                                                ? '-'
-                                                : task.cp
-                                                    ? `${task.cp.workDaysTotal + task.cp.nonWorkDaysTotal}일`
-                                                    : '-'}
-                                        </div>
+                                        {(() => {
+                                            const cpSummary = task.type === 'CP' ? cpSummaryMap.get(task.id) : null;
+                                            const formatNum = (n: number) => Number.isInteger(n) ? n.toString() : n.toFixed(1);
+                                            return (
+                                                <>
+                                                    <div
+                                                        className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-gray-500"
+                                                        style={{ width: columns[1].width }}
+                                                    >
+                                                        {isGroup ? '-' : cpSummary ? `${cpSummary.totalDays}일` : '-'}
+                                                    </div>
 
-                                        {/* Work Days */}
-                                        <div
-                                            className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-vermilion"
-                                            style={{ width: columns[2].width }}
-                                        >
-                                            {isGroup
-                                                ? '-'
-                                                : task.cp
-                                                    ? `${task.cp.workDaysTotal}일`
-                                                    : '-'}
-                                        </div>
+                                                    {/* Work Days */}
+                                                    <div
+                                                        className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-vermilion"
+                                                        style={{ width: columns[2].width }}
+                                                    >
+                                                        {isGroup ? '-' : cpSummary ? `${formatNum(cpSummary.workDays)}일` : '-'}
+                                                    </div>
 
-                                        {/* Non-Work Days (비작업일수) */}
-                                        <div
-                                            className="flex shrink-0 items-center justify-center text-xs text-teal"
-                                            style={{ width: columns[3].width }}
-                                        >
-                                            {isGroup
-                                                ? '-'
-                                                : task.cp
-                                                    ? `${task.cp.nonWorkDaysTotal}일`
-                                                    : '-'}
-                                        </div>
+                                                    {/* Non-Work Days (비작업일수) */}
+                                                    <div
+                                                        className="flex shrink-0 items-center justify-center text-xs text-teal"
+                                                        style={{ width: columns[3].width }}
+                                                    >
+                                                        {isGroup ? '-' : cpSummary ? `${formatNum(cpSummary.nonWorkDays)}일` : '-'}
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 );
                             })}
@@ -896,7 +942,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             <div className="flex h-full flex-col bg-white select-none">
                 {/* Header */}
                 <div
-                    className="flex flex-col border-b border-gray-300 bg-gray-50"
+                    className="flex shrink-0 flex-col border-b border-gray-300 bg-gray-50"
                     style={{ height: HEADER_HEIGHT }}
                 >
                     <div className="flex flex-1 items-center justify-between px-4">
@@ -911,8 +957,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     <div className="fixed inset-0 z-50 cursor-col-resize" />
                 )}
 
-                {/* Body */}
-                <div ref={ref} className="relative flex-1 overflow-auto">
+                {/* Body - overflow 제거 (GanttChart에서 통합 스크롤) */}
+                <div ref={ref} className="relative flex-1">
                     {/* Milestone Lane Spacer */}
                     <div
                         className="flex items-center border-b border-gray-200 bg-gray-50/50"
@@ -930,17 +976,19 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     </div>
 
                     {/* Task Rows */}
-                        <div 
-                            style={{ 
+                        <div
+                            style={{
                                 minWidth: totalWidth,
-                                height: isVirtualized ? totalHeight : undefined,
+                                height: isVirtualized
+                                    ? totalHeight
+                                    : tasks.length * ROW_HEIGHT + 100,
                                 position: 'relative',
                             }}
                         >
                             {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
                                 const task = tasks[row.index];
                                 if (!task) return null;
-                                
+
                                 const isGroup = task.type === 'GROUP';
                                 const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
                                 const isExpanded = expandedIds.has(task.id);

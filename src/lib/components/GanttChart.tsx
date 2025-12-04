@@ -68,6 +68,8 @@ export function GanttChart({
     onReset,
     hasUnsavedChanges,
     saveStatus,
+    onExport,
+    onImport,
     className,
     style,
 }: GanttChartProps) {
@@ -83,9 +85,7 @@ export function GanttChart({
     // Refs
     // ====================================
     const containerRef = useRef<HTMLDivElement>(null);
-    const sidebarScrollRef = useRef<HTMLDivElement>(null);
-    const timelineScrollRef = useRef<HTMLDivElement>(null);
-    const isScrollingRef = useRef(false);
+    const scrollRef = useRef<HTMLDivElement>(null); // 단일 스크롤 컨테이너
     const isResizingRef = useRef(false);
     const [isResizing, setIsResizing] = useState(false);
 
@@ -303,45 +303,9 @@ export function GanttChart({
     // 가상화 (대규모 공정표 성능 최적화)
     // ====================================
     const { virtualRows, totalHeight } = useGanttVirtualization({
-        containerRef: timelineScrollRef,
+        containerRef: scrollRef, // 단일 스크롤 컨테이너 참조
         count: visibleTasks.length,
     });
-
-    // ====================================
-    // 스크롤 동기화
-    // ====================================
-    useEffect(() => {
-        const sidebar = sidebarScrollRef.current;
-        const timeline = timelineScrollRef.current;
-
-        if (!sidebar || !timeline) return;
-
-        const handleSidebarScroll = () => {
-            if (isScrollingRef.current) return;
-            isScrollingRef.current = true;
-            timeline.scrollTop = sidebar.scrollTop;
-            requestAnimationFrame(() => {
-                isScrollingRef.current = false;
-            });
-        };
-
-        const handleTimelineScroll = () => {
-            if (isScrollingRef.current) return;
-            isScrollingRef.current = true;
-            sidebar.scrollTop = timeline.scrollTop;
-            requestAnimationFrame(() => {
-                isScrollingRef.current = false;
-            });
-        };
-
-        sidebar.addEventListener('scroll', handleSidebarScroll);
-        timeline.addEventListener('scroll', handleTimelineScroll);
-
-        return () => {
-            sidebar.removeEventListener('scroll', handleSidebarScroll);
-            timeline.removeEventListener('scroll', handleTimelineScroll);
-        };
-    }, []);
 
     // ====================================
     // 사이드바 리사이즈
@@ -400,8 +364,8 @@ export function GanttChart({
     
     // 특정 날짜로 타임라인 스크롤
     const scrollToDate = useCallback((targetDate: Date) => {
-        const timeline = timelineScrollRef.current;
-        if (!timeline) return;
+        const container = scrollRef.current;
+        if (!container) return;
         
         // 현재 줌 레벨의 pixelsPerDay 사용
         const pxPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
@@ -411,9 +375,9 @@ export function GanttChart({
         
         // X 좌표 계산
         const x = dateToX(targetDate, minDate, pxPerDay);
-        
+
         // 약간의 여유를 두고 스크롤 (왼쪽 50px 마진)
-        timeline.scrollLeft = Math.max(0, x - 50);
+        container.scrollLeft = Math.max(0, x - 50);
     }, [zoomLevel, tasks, milestones]);
 
     // 첫 번째 Task/CP로 스크롤 (버튼용)
@@ -631,18 +595,58 @@ export function GanttChart({
                             초기화
                         </button>
                     )}
+                    
+                    {/* 구분선 */}
+                    {(onExport || onImport) && (
+                        <div className="h-6 w-px bg-gray-300" />
+                    )}
+                    
+                    {/* 내보내기 버튼 */}
+                    {onExport && (
+                        <button
+                            onClick={onExport}
+                            className="flex items-center gap-1.5 rounded-md bg-green-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-600 active:bg-green-700"
+                            title="현재 데이터를 JSON 파일로 내보내기"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            내보내기
+                        </button>
+                    )}
+                    
+                    {/* 가져오기 버튼 */}
+                    {onImport && (
+                        <label className="flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-600 active:bg-amber-700">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            가져오기
+                            <input
+                                type="file"
+                                accept=".json"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        onImport(file);
+                                        e.target.value = ''; // 같은 파일 재선택 가능하도록
+                                    }
+                                }}
+                            />
+                        </label>
+                    )}
                 </div>
             </header>
 
-            {/* Main Content */}
-            <div className="relative flex flex-1 overflow-hidden">
-                {/* Sidebar */}
+            {/* Main Content - 단일 스크롤 컨테이너 */}
+            <div ref={scrollRef} className="relative flex flex-1 overflow-auto">
+                {/* Sidebar (sticky left - 수평 스크롤 시 고정) */}
                 <div
-                    className="z-10 flex shrink-0 flex-col bg-white"
+                    className="z-10 flex shrink-0 flex-col bg-white sticky left-0"
                     style={{ width: sidebarWidth }}
                 >
                     <GanttSidebar
-                        ref={sidebarScrollRef}
                         tasks={visibleTasks}
                         allTasks={tasks}
                         viewMode={viewMode}
@@ -657,6 +661,8 @@ export function GanttChart({
                         onTaskDelete={onTaskDelete}
                         onTaskMove={onTaskMove}
                         activeCPId={activeCPId}
+                        holidays={holidays}
+                        calendarSettings={calendarSettings}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
                         onTotalWidthChange={setSidebarTotalWidth}
@@ -668,23 +674,24 @@ export function GanttChart({
                     />
                 </div>
 
-                {/* Resizer */}
+                {/* Resizer (sticky - 사이드바와 함께 고정) */}
                 <div
-                    className={`z-20 w-1 shrink-0 cursor-col-resize transition-colors ${
+                    className={`z-20 w-1 shrink-0 cursor-col-resize sticky transition-colors ${
                         isResizing
                             ? 'bg-blue-500'
                             : 'bg-gray-200 hover:bg-gray-300'
                     }`}
+                    style={{ left: sidebarWidth }}
                     onMouseDown={handleResizeStart}
                     onDoubleClick={handleResizeDoubleClick}
                     title="드래그하여 너비 조절 / 더블클릭으로 초기화"
                 />
 
                 {/* Timeline */}
-                <div className="relative flex flex-1 flex-col overflow-hidden bg-white">
+                <div className="relative flex flex-1 flex-col bg-white">
                     <GanttTimeline
-                        ref={timelineScrollRef}
                         tasks={visibleTasks}
+                        allTasks={tasks}
                         milestones={milestones}
                         viewMode={viewMode}
                         zoomLevel={zoomLevel}

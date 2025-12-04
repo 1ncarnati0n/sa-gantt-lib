@@ -9,6 +9,7 @@ import {
 import {
     CalendarSettings,
     ConstructionTask,
+    TaskData,
     TaskDates,
     AnchorPoint,
     ZoomLevel,
@@ -376,4 +377,122 @@ export const calculateDateRange = (
         maxDate: effectiveMax,
         totalDays,
     };
+};
+
+// ============================================
+// Task별 캘린더 설정
+// ============================================
+
+/**
+ * 기본 캘린더 설정 (건설 현장 표준)
+ * - 토요일: 작업일 (기본)
+ * - 일요일: 휴일
+ * - 공휴일: 휴일
+ */
+export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
+    workOnSaturdays: true,
+    workOnSundays: false,
+    workOnHolidays: false,
+};
+
+/**
+ * Task별 캘린더 설정을 전역 설정과 병합하여 최종 CalendarSettings 반환
+ * 
+ * @param taskData - Task 데이터 (task별 설정 포함)
+ * @param globalSettings - 전역 캘린더 설정
+ * @returns 병합된 캘린더 설정
+ * 
+ * @example
+ * ```ts
+ * const settings = getTaskCalendarSettings(
+ *   { netWorkDays: 5, workOnSaturdays: false }, // 이 task는 토요일 휴무
+ *   { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false }
+ * );
+ * // settings.workOnSaturdays === false
+ * ```
+ */
+export const getTaskCalendarSettings = (
+    taskData: TaskData | undefined,
+    globalSettings: CalendarSettings = DEFAULT_CALENDAR_SETTINGS
+): CalendarSettings => {
+    if (!taskData) {
+        return globalSettings;
+    }
+
+    return {
+        workOnSaturdays: taskData.workOnSaturdays ?? globalSettings.workOnSaturdays,
+        workOnSundays: taskData.workOnSundays ?? globalSettings.workOnSundays,
+        workOnHolidays: taskData.workOnHolidays ?? globalSettings.workOnHolidays,
+    };
+};
+
+/**
+ * 날짜 범위 내의 휴일 목록 반환 (UI 렌더링용)
+ * 
+ * @param startDate - 시작 날짜
+ * @param endDate - 종료 날짜
+ * @param holidays - 공휴일 목록
+ * @param settings - 캘린더 설정
+ * @returns 휴일에 해당하는 날짜 배열
+ * 
+ * @example
+ * ```ts
+ * const holidays = getHolidaysInDateRange(
+ *   new Date('2024-05-01'),
+ *   new Date('2024-05-07'),
+ *   [],
+ *   { workOnSaturdays: false, workOnSundays: false, workOnHolidays: false }
+ * );
+ * // 2024-05-04 (토), 2024-05-05 (일) 반환
+ * ```
+ */
+export const getHolidaysInDateRange = (
+    startDate: Date,
+    endDate: Date,
+    holidays: Date[] = [],
+    settings: CalendarSettings
+): Date[] => {
+    const result: Date[] = [];
+    let currentDate = startOfDay(new Date(startDate));
+    const end = startOfDay(new Date(endDate));
+
+    while (currentDate <= end) {
+        if (isHoliday(currentDate, holidays, settings)) {
+            result.push(new Date(currentDate));
+        }
+        currentDate = addDays(currentDate, 1);
+    }
+
+    return result;
+};
+
+/**
+ * 날짜 범위 내 휴일 정보를 상세하게 반환 (날짜 + 오프셋)
+ * 
+ * @param startDate - 시작 날짜
+ * @param endDate - 종료 날짜
+ * @param holidays - 공휴일 목록
+ * @param settings - 캘린더 설정
+ * @returns 휴일 정보 배열 (날짜, 시작일로부터의 오프셋)
+ */
+export const getHolidayOffsetsInDateRange = (
+    startDate: Date,
+    endDate: Date,
+    holidays: Date[] = [],
+    settings: CalendarSettings
+): { date: Date; offset: number }[] => {
+    const result: { date: Date; offset: number }[] = [];
+    let currentDate = startOfDay(new Date(startDate));
+    const end = startOfDay(new Date(endDate));
+    let offset = 0;
+
+    while (currentDate <= end) {
+        if (isHoliday(currentDate, holidays, settings)) {
+            result.push({ date: new Date(currentDate), offset });
+        }
+        currentDate = addDays(currentDate, 1);
+        offset++;
+    }
+
+    return result;
 };

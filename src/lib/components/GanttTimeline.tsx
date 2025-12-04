@@ -16,8 +16,12 @@ import {
     isHoliday,
     calculateDateRange,
     dateToX,
+    getTaskCalendarSettings,
+    getHolidayOffsetsInDateRange,
 } from '../utils/dateUtils';
+import { calculateCriticalPath } from '../utils/criticalPathUtils';
 import type { VirtualRow } from '../hooks/useGanttVirtualization';
+import { CriticalPathBar } from './CriticalPathBar';
 
 const { ROW_HEIGHT, HEADER_HEIGHT, MILESTONE_LANE_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
 
@@ -168,7 +172,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
 
     return (
         <div
-            className="sticky top-0 z-20 flex flex-col border-b border-gray-300 bg-white shadow-sm"
+            className="sticky top-0 z-5 flex shrink-0 flex-col border-b border-gray-300 bg-white shadow-sm"
             style={{ height: HEADER_HEIGHT, minWidth: totalWidth }}
         >
             {isMonthView ? (
@@ -554,6 +558,12 @@ interface TaskBarProps {
     minDate: Date;
     pixelsPerDay: number;
     isMasterView: boolean;
+    /** 전체 Task 배열 (Level 1 CP에서 Level 2 Critical Path 계산용) */
+    allTasks?: ConstructionTask[];
+    /** 휴일 목록 (순작업 바 내 휴일 표시용) */
+    holidays?: Date[];
+    /** 전역 캘린더 설정 */
+    calendarSettings?: CalendarSettings;
     /** 드래그 기능 활성화 여부 */
     isDraggable?: boolean;
     /** 드래그 중인 정보 (드래그 중일 때만 값이 있음) */
@@ -581,6 +591,9 @@ const TaskBar: React.FC<TaskBarProps> = ({
     minDate,
     pixelsPerDay,
     isMasterView,
+    allTasks = [],
+    holidays = [],
+    calendarSettings,
     isDraggable = false,
     dragInfo,
     onDragStart,
@@ -589,19 +602,43 @@ const TaskBar: React.FC<TaskBarProps> = ({
     // GROUP은 바를 렌더링하지 않음
     if (task.type === 'GROUP') return null;
 
-    const radius = 4;
+    const radius = 2;
     const isDragging = !!dragInfo;
-    
+
     // 드래그 중이면 드래그된 날짜 사용
     const effectiveStartDate = dragInfo?.startDate || task.startDate;
     const effectiveEndDate = dragInfo?.endDate || task.endDate;
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
 
     if (isMasterView) {
-        // Level 1: Aggregate Bar (Vermilion/Teal)
-        const workDays = task.cp?.workDaysTotal || 0;
-        const nonWorkDays = task.cp?.nonWorkDaysTotal || 0;
-        const totalDays = workDays + nonWorkDays;
+        // Level 1: CP 바 - Level 2 Task들의 Critical Path 계산으로 작업일/비작업일 산출
+        // 재귀적으로 CP의 모든 자손 중 TASK 타입만 수집 (GROUP 아래 TASK도 포함)
+        const collectDescendantTasks = (parentId: string): ConstructionTask[] => {
+            const result: ConstructionTask[] = [];
+            allTasks.forEach(t => {
+                if (t.parentId === parentId) {
+                    if (t.type === 'TASK' && t.wbsLevel === 2) {
+                        result.push(t);
+                    }
+                    // GROUP이면 하위도 재귀 탐색
+                    if (t.type === 'GROUP') {
+                        result.push(...collectDescendantTasks(t.id));
+                    }
+                }
+            });
+            return result;
+        };
+
+        const childTasks = collectDescendantTasks(task.id);
+        const cpSummary = calculateCriticalPath(
+            childTasks,
+            holidays,
+            calendarSettings || { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false }
+        );
+
+        const workDays = cpSummary.workDays;
+        const nonWorkDays = cpSummary.nonWorkDays;
+        const totalDays = cpSummary.totalDays;
 
         if (totalDays === 0) return null;
 
@@ -655,9 +692,35 @@ const TaskBar: React.FC<TaskBarProps> = ({
         const effectivePostDays = dragInfo?.indirectWorkDaysPost ?? indirectWorkDaysPost;
         const effectiveNetDays = dragInfo?.netWorkDays ?? netWorkDays;
         
-        // 너비 계산
+        // Task별 캘린더 설정 적용
+        const taskSettings = calendarSettings 
+            ? getTaskCalendarSettings(task.task, calendarSettings) 
+            : { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false };
+        
+        // 순작업의 실제 캘린더 날짜 계산 (간접작업일은 캘린더일 기준)
+        const netStartCalendarDate = addDays(effectiveStartDate, effectivePreDays);
+        const netEndCalendarDate = effectivePostDays > 0 
+            ? addDays(effectiveEndDate, -effectivePostDays)
+            : effectiveEndDate;
+        
+        // 순작업 구간 내 휴일 찾기
+        const holidayOffsetsInNet = calendarSettings && holidays 
+            ? getHolidayOffsetsInDateRange(netStartCalendarDate, netEndCalendarDate, holidays, taskSettings)
+            : [];
+        
+        // 순작업 구간 내 휴일 수
+        const holidayCount = holidayOffsetsInNet.length;
+        
+        // 순작업 바의 캘린더 일수 = 순작업일 + 휴일 수 (소수점 반영)
+        // 기존: Math.max(1, ...) 때문에 소수점이 무시되고 최소 1일 강제됨
+        // 수정: 소수점 순작업일을 직접 사용하고, 휴일 수만큼 추가
+        const netCalendarDays = effectiveNetDays > 0 
+            ? effectiveNetDays + holidayCount
+            : 0;
+        
+        // 너비 계산 (순작업은 실제 캘린더 일수 사용)
         const preWidth = effectivePreDays * pixelsPerDay;
-        const netWidth = effectiveNetDays * pixelsPerDay;
+        const netWidth = netCalendarDays * pixelsPerDay;
         const postWidth = effectivePostDays * pixelsPerDay;
         const barWidth = preWidth + netWidth + postWidth;
 
@@ -714,17 +777,31 @@ const TaskBar: React.FC<TaskBarProps> = ({
 
                 {/* Net Work (Red - 가운데) */}
                 {effectiveNetDays > 0 && (
-                    <rect
-                        x={netX}
-                        y={0}
-                        width={netWidth}
-                        height={BAR_HEIGHT}
-                        fill={GANTT_COLORS.red}
-                        rx={radius}
-                        ry={radius}
-                        className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                        style={{ pointerEvents: 'none' }}
-                    />
+                    <>
+                        <rect
+                            x={netX}
+                            y={0}
+                            width={netWidth}
+                            height={BAR_HEIGHT}
+                            fill={GANTT_COLORS.red}
+                            rx={radius}
+                            ry={radius}
+                            className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                            style={{ pointerEvents: 'none' }}
+                        />
+                        {/* 순작업 바 내 휴일 빗금 오버레이 */}
+                        {holidayOffsetsInNet.map((holiday, idx) => (
+                            <rect
+                                key={`holiday-${idx}`}
+                                x={netX + holiday.offset * pixelsPerDay}
+                                y={0}
+                                width={pixelsPerDay}
+                                height={BAR_HEIGHT}
+                                fill="url(#holidayHatchPattern)"
+                                className="pointer-events-none"
+                            />
+                        ))}
+                    </>
                 )}
                 
                 {/* Post Indirect Work (Blue - 오른쪽) */}
@@ -936,6 +1013,36 @@ const SvgDefs: React.FC = () => (
         >
             <polygon points="0 0, 10 3.5, 0 7" fill={GANTT_COLORS.dependency} />
         </marker>
+        
+        {/* 휴일 빗금 패턴 (간접작업 색상 + 반투명 배경) */}
+        <pattern
+            id="holidayHatchPattern"
+            patternUnits="userSpaceOnUse"
+            width="6"
+            height="6"
+            patternTransform="rotate(45)"
+        >
+            <rect width="6" height="6" fill="rgba(255, 255, 255, 0.6)" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke={GANTT_COLORS.blue} strokeWidth="2" />
+        </pattern>
+        
+        {/* 휴일 빗금 패턴 (더 진한 버전) */}
+        <pattern
+            id="holidayHatchPatternDark"
+            patternUnits="userSpaceOnUse"
+            width="8"
+            height="8"
+            patternTransform="rotate(45)"
+        >
+            <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="8"
+                stroke="rgba(0, 0, 0, 0.5)"
+                strokeWidth="3"
+            />
+        </pattern>
     </defs>
 );
 
@@ -956,6 +1063,8 @@ export interface BarDragResult {
 
 interface GanttTimelineProps {
     tasks: ConstructionTask[];
+    /** 전체 Task 배열 (Level 1 CP에서 Level 2 Critical Path 계산용) */
+    allTasks?: ConstructionTask[];
     milestones: Milestone[];
     viewMode: ViewMode;
     zoomLevel: ZoomLevel;
@@ -974,10 +1083,12 @@ interface GanttTimelineProps {
     virtualRows?: VirtualRow[];
     /** 전체 높이 */
     totalHeight?: number;
+    /** Critical Path 바 표시 여부 (Level 2에서만 동작) */
+    showCriticalPath?: boolean;
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
-    ({ tasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onMilestoneUpdate, onMilestoneDoubleClick, onTaskDoubleClick, virtualRows, totalHeight: virtualTotalHeight }, ref) => {
+    ({ tasks, allTasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onMilestoneUpdate, onMilestoneDoubleClick, onTaskDoubleClick, virtualRows, totalHeight: virtualTotalHeight, showCriticalPath = true }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
         
@@ -1164,8 +1275,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             if (!currentDragState || !onBarDrag) return;
             
             const deltaX = e.clientX - currentDragState.startX;
-            // 소수점 첫째 자리까지만 반영 (0.1 단위)
-            const deltaDays = Math.round((deltaX / pixelsPerDay) * 10) / 10;
+            // 정수 단위로만 반영 (드래그 시)
+            const deltaDays = Math.round(deltaX / pixelsPerDay);
             
             let newStartDate = currentDragState.originalStartDate;
             let newEndDate = currentDragState.originalEndDate;
@@ -1351,7 +1462,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
         return (
             <div className="flex h-full w-full flex-col overflow-hidden bg-white">
-                <div ref={ref} className="relative flex-1 overflow-auto">
+                {/* overflow 제거 (GanttChart에서 통합 스크롤) */}
+                <div ref={ref} className="relative flex-1">
                     <TimelineHeader
                         minDate={minDate}
                         totalDays={totalDays}
@@ -1502,16 +1614,31 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
                                     isMasterView={isMasterView}
+                                    allTasks={allTasks || tasks}
+                                    holidays={holidays}
+                                    calendarSettings={calendarSettings}
                                     isDraggable={!isMasterView && !!onBarDrag}
                                     dragInfo={getDragInfo(task.id)}
                                     onDragStart={handleBarMouseDown}
-                                    onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick 
-                                        ? () => onTaskDoubleClick(task) 
+                                    onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
+                                        ? () => onTaskDoubleClick(task)
                                         : undefined}
                                 />
                             );
                         })}
                     </svg>
+
+                    {/* Critical Path Bar (Level 2에서만 표시) - 스크롤 영역 내부 */}
+                    {!isMasterView && showCriticalPath && (
+                        <CriticalPathBar
+                            tasks={tasks}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            minDate={minDate}
+                            pixelsPerDay={pixelsPerDay}
+                            totalWidth={chartWidth}
+                        />
+                    )}
                 </div>
             </div>
         );

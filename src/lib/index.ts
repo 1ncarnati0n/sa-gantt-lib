@@ -33,6 +33,7 @@ export { GanttChart } from './components/GanttChart';
 export { GanttSidebar } from './components/GanttSidebar';
 export { GanttTimeline } from './components/GanttTimeline';
 export { TaskEditModal } from './components/TaskEditModal';
+export { CriticalPathBar } from './components/CriticalPathBar';
 export type { BarDragResult } from './components/GanttTimeline';
 
 // ============================================
@@ -98,6 +99,10 @@ export type {
     DateRange,
     Point,
     Rect,
+
+    // Critical Path Types
+    CriticalPathDay,
+    CriticalPathSummary,
 } from './types';
 
 // ============================================
@@ -135,3 +140,9 @@ export {
     // Date Range
     calculateDateRange,
 } from './utils/dateUtils';
+
+// Critical Path Utilities
+export {
+    calculateCriticalPath,
+    formatCriticalPathSummary,
+} from './utils/criticalPathUtils';
