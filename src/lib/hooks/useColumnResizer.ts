@@ -1,13 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-
-interface ColumnConfig {
-    id: string;
-    label: string;
-    width: number;
-    minWidth: number;
-}
+import type { ColumnConfig } from '../types';
 
 /**
  * 컬럼 리사이저 훅
