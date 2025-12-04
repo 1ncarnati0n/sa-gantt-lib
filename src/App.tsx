@@ -14,6 +14,32 @@ import { useHistory } from './lib/hooks/useHistory';
 import mockData from './data/mock.json';
 
 // ============================================
+// File System Access API 타입 선언
+// ============================================
+interface SaveFilePickerOptions {
+    suggestedName?: string;
+    types?: Array<{
+        description: string;
+        accept: Record<string, string[]>;
+    }>;
+}
+
+interface FileSystemWritableFileStream extends WritableStream {
+    write(data: string | BufferSource | Blob): Promise<void>;
+    close(): Promise<void>;
+}
+
+interface FileSystemFileHandle {
+    createWritable(): Promise<FileSystemWritableFileStream>;
+}
+
+declare global {
+    interface Window {
+        showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+    }
+}
+
+// ============================================
 // 앱 상태 타입 (Undo/Redo 단위)
 // ============================================
 interface AppState {
@@ -85,9 +111,9 @@ const serializeMilestonesForExport = (milestones: Milestone[]) => {
 };
 
 // 타입 가드: Task 데이터 검증
-const isValidTaskData = (data: unknown): data is Record<string, unknown> & { 
-    id: string; 
-    startDate: string; 
+const isValidTaskData = (data: unknown): data is Record<string, unknown> & {
+    id: string;
+    startDate: string;
     endDate: string;
 } => {
     if (!data || typeof data !== 'object') return false;
@@ -104,13 +130,13 @@ const loadTasksFromStorage = (): ConstructionTask[] | null => {
     try {
         const stored = localStorage.getItem(STORAGE_KEYS.TASKS);
         if (!stored) return null;
-        
+
         const parsed = JSON.parse(stored);
         if (!Array.isArray(parsed)) {
             console.error('Invalid tasks data format: expected array');
             return null;
         }
-        
+
         return parsed
             .filter(isValidTaskData)
             .map((t) => ({
@@ -125,9 +151,9 @@ const loadTasksFromStorage = (): ConstructionTask[] | null => {
 };
 
 // 타입 가드: Milestone 데이터 검증
-const isValidMilestoneData = (data: unknown): data is Record<string, unknown> & { 
-    id: string; 
-    date: string; 
+const isValidMilestoneData = (data: unknown): data is Record<string, unknown> & {
+    id: string;
+    date: string;
     name: string;
 } => {
     if (!data || typeof data !== 'object') return false;
@@ -144,13 +170,13 @@ const loadMilestonesFromStorage = (): Milestone[] | null => {
     try {
         const stored = localStorage.getItem(STORAGE_KEYS.MILESTONES);
         if (!stored) return null;
-        
+
         const parsed = JSON.parse(stored);
         if (!Array.isArray(parsed)) {
             console.error('Invalid milestones data format: expected array');
             return null;
         }
-        
+
         return parsed
             .filter(isValidMilestoneData)
             .map((m) => ({
@@ -206,11 +232,7 @@ const parseMockData = (): AppState => {
         startDate: parseISO(t.startDate),
         endDate: parseISO(t.endDate),
         cp: t.cp ? { ...t.cp } : undefined,
-        task: t.task ? {
-            netWorkDays: t.task.netWorkDays,
-            indirectWorkDaysPre: t.task.indirectWorkDaysPre,
-            indirectWorkDaysPost: t.task.indirectWorkDaysPost,
-        } : undefined,
+        task: t.task ? { ...t.task } : undefined,
         dependencies: t.dependencies.map(d => ({
             ...d,
             type: d.type as DependencyType,
@@ -226,7 +248,7 @@ const parseMockData = (): AppState => {
 const loadInitialState = (): AppState => {
     const storedTasks = loadTasksFromStorage();
     const storedMilestones = loadMilestonesFromStorage();
-    
+
     if (storedTasks && storedTasks.length > 0) {
         console.log('Loaded from localStorage');
         return {
@@ -234,14 +256,14 @@ const loadInitialState = (): AppState => {
             milestones: storedMilestones || [],
         };
     }
-    
+
     console.log('Loaded from mock.json (first time)');
     const mockState = parseMockData();
-    
+
     // mock 데이터를 localStorage에 저장
     saveTasksToStorage(mockState.tasks);
     saveMilestonesToStorage(mockState.milestones);
-    
+
     return mockState;
 };
 
@@ -277,13 +299,13 @@ function App() {
     } = useHistory<AppState>({ tasks: [], milestones: [] });
 
     const { tasks, milestones } = appState;
-    
+
     const [isLoaded, setIsLoaded] = useState(false);
-    
+
     // 변경사항 감지
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-    
+
     // 초기 로드 여부 추적
     const isInitialLoad = useRef(true);
 
@@ -292,7 +314,7 @@ function App() {
         const initialState = loadInitialState();
         setAppState(initialState);
         setIsLoaded(true);
-        
+
         // 초기 로드 완료 후 플래그 해제
         setTimeout(() => {
             isInitialLoad.current = false;
@@ -338,7 +360,7 @@ function App() {
     useEffect(() => {
         // 초기 로드 시에는 변경사항으로 표시하지 않음
         if (isInitialLoad.current || !isLoaded) return;
-        
+
         setHasUnsavedChanges(true);
         setSaveStatus('idle');
     }, [tasks, milestones, isLoaded]);
@@ -348,19 +370,19 @@ function App() {
     // ====================================
     const handleSave = useCallback(() => {
         if (!hasUnsavedChanges) return;
-        
+
         setSaveStatus('saving');
-        
+
         try {
             // 저장 실행
             saveTasksToStorage(tasks);
             saveMilestonesToStorage(milestones);
-            
+
             // 저장 완료 표시
             setTimeout(() => {
                 setHasUnsavedChanges(false);
                 setSaveStatus('saved');
-                
+
                 // 3초 후 상태 초기화
                 setTimeout(() => {
                     setSaveStatus('idle');
@@ -376,23 +398,23 @@ function App() {
     // 초기화 핸들러 (mock.json으로 리셋)
     const handleReset = useCallback(() => {
         if (!confirm('모든 변경사항을 취소하고 초기 데이터로 되돌리시겠습니까?')) return;
-        
+
         try {
             resetStorageToMock();
-            
+
             // mock.json에서 다시 로드
             const mockState = parseMockData();
-            
+
             // 히스토리 초기화와 함께 상태 리셋
             resetHistory(mockState);
-            
+
             // localStorage에 저장
             saveTasksToStorage(mockState.tasks);
             saveMilestonesToStorage(mockState.milestones);
-            
+
             setHasUnsavedChanges(false);
             setSaveStatus('idle');
-            
+
             console.log('Reset to mock data');
         } catch (error) {
             console.error('Failed to reset data:', error);
@@ -401,31 +423,66 @@ function App() {
     }, [resetHistory]);
 
     // ====================================
-    // 내보내기 핸들러 (JSON 파일 다운로드)
+    // 내보내기 핸들러 (JSON 파일 다운로드 - 저장 위치 지정 가능)
     // ====================================
-    const handleExport = useCallback(() => {
+    const handleExport = useCallback(async () => {
         try {
             // mock.json 형식으로 데이터 구성
             const exportData = {
                 milestones: serializeMilestonesForExport(milestones),
                 tasks: serializeTasksForExport(tasks),
             };
-            
+
             // JSON 문자열로 변환 (가독성을 위해 들여쓰기 적용)
             const jsonString = JSON.stringify(exportData, null, 4);
-            
-            // Blob 생성 및 다운로드
+
+            // 기본 파일명
+            const defaultFileName = `gantt-data-${format(new Date(), 'yyyy-MM-dd')}.json`;
+
+            // File System Access API 지원 여부 확인
+            if ('showSaveFilePicker' in window && window.showSaveFilePicker) {
+                try {
+                    // 저장 다이얼로그 표시
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: defaultFileName,
+                        types: [
+                            {
+                                description: 'JSON 파일',
+                                accept: { 'application/json': ['.json'] },
+                            },
+                        ],
+                    });
+
+                    // 파일에 쓰기
+                    const writable = await handle.createWritable();
+                    await writable.write(jsonString);
+                    await writable.close();
+
+                    console.log('Data exported successfully (File System Access API)');
+                    return;
+                } catch (err) {
+                    // 사용자가 취소한 경우
+                    if (err instanceof Error && err.name === 'AbortError') {
+                        console.log('Export cancelled by user');
+                        return;
+                    }
+                    // 다른 에러는 폴백으로 진행
+                    console.warn('File System Access API failed, falling back:', err);
+                }
+            }
+
+            // 폴백: 기존 다운로드 방식 (File System Access API 미지원 브라우저)
             const blob = new Blob([jsonString], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `gantt-data-${format(new Date(), 'yyyy-MM-dd')}.json`;
+            link.download = defaultFileName;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            
-            console.log('Data exported successfully');
+
+            console.log('Data exported successfully (fallback method)');
         } catch (error) {
             console.error('Failed to export data:', error);
             alert('내보내기 중 오류가 발생했습니다.');
@@ -439,12 +496,12 @@ function App() {
         try {
             const text = await file.text();
             const importedData = JSON.parse(text);
-            
+
             // 데이터 유효성 검증
             if (!importedData.tasks || !Array.isArray(importedData.tasks)) {
                 throw new Error('유효하지 않은 파일 형식입니다. tasks 배열이 필요합니다.');
             }
-            
+
             // Tasks 파싱
             const importedTasks: ConstructionTask[] = importedData.tasks
                 .filter(isValidTaskData)
@@ -461,7 +518,7 @@ function App() {
                         targetAnchor: d.targetAnchor as AnchorPoint | undefined,
                     })) || [],
                 }));
-            
+
             // Milestones 파싱 (있으면)
             const importedMilestones: Milestone[] = (importedData.milestones || [])
                 .filter(isValidMilestoneData)
@@ -469,26 +526,26 @@ function App() {
                     ...m,
                     date: parseISO(m.date as string),
                 }));
-            
+
             if (importedTasks.length === 0) {
                 throw new Error('가져올 수 있는 태스크가 없습니다.');
             }
-            
+
             // 상태 업데이트
             const newState: AppState = {
                 tasks: importedTasks,
                 milestones: importedMilestones,
             };
-            
+
             setAppState(newState);
-            
+
             // localStorage에도 저장
             saveTasksToStorage(importedTasks);
             saveMilestonesToStorage(importedMilestones);
-            
+
             setHasUnsavedChanges(false);
             setSaveStatus('idle');
-            
+
             console.log('Data imported successfully:', importedTasks.length, 'tasks,', importedMilestones.length, 'milestones');
             alert(`가져오기 완료: ${importedTasks.length}개의 태스크, ${importedMilestones.length}개의 마일스톤`);
         } catch (error) {
@@ -501,6 +558,21 @@ function App() {
     // 헬퍼: Level 1 태스크 cp 재계산
     // ====================================
     const recalculateCPData = useCallback((taskList: ConstructionTask[]): ConstructionTask[] => {
+        // Task ID -> Task 맵 생성
+        const taskMap = new Map<string, ConstructionTask>();
+        taskList.forEach(t => taskMap.set(t.id, t));
+
+        // 재귀적으로 루트 CP ID 찾기 (GROUP 하위 TASK도 CP에 귀속)
+        const findRootCPId = (taskId: string | null): string | null => {
+            if (!taskId) return null;
+            const task = taskMap.get(taskId);
+            if (!task) return null;
+            // CP 타입이면 해당 ID 반환 (GROUP 건너뛰기)
+            if (task.type === 'CP') return task.id;
+            // 아니면 부모를 따라 올라감
+            return findRootCPId(task.parentId);
+        };
+
         const cpMap = new Map<string, {
             work: number;
             nonWork: number;
@@ -508,9 +580,13 @@ function App() {
             maxEnd: Date;
         }>();
 
+        // 모든 Level 2 TASK를 순회하며 루트 CP에 귀속
         taskList.forEach(t => {
-            if (t.parentId && t.wbsLevel === 2 && t.task) {
-                const current = cpMap.get(t.parentId) || {
+            if (t.wbsLevel === 2 && t.type === 'TASK' && t.task) {
+                const rootCPId = findRootCPId(t.parentId);
+                if (!rootCPId) return;
+
+                const current = cpMap.get(rootCPId) || {
                     work: 0,
                     nonWork: 0,
                     minStart: new Date(8640000000000000),
@@ -522,7 +598,7 @@ function App() {
                 if (t.startDate < current.minStart) current.minStart = t.startDate;
                 if (t.endDate > current.maxEnd) current.maxEnd = t.endDate;
 
-                cpMap.set(t.parentId, current);
+                cpMap.set(rootCPId, current);
             }
         });
 
@@ -565,6 +641,11 @@ function App() {
 
                 // 3. Level 1 태스크의 cp 재계산
                 newTasks = recalculateCPData(newTasks);
+
+                // 디버그: CP 날짜 확인
+                newTasks.filter(t => t.wbsLevel === 1).forEach(cp => {
+                    console.log(`CP [${cp.name}] 날짜: ${cp.startDate.toISOString().slice(0, 10)} ~ ${cp.endDate.toISOString().slice(0, 10)}`);
+                });
 
                 console.log('Task updated:', updatedTask);
                 return { ...prev, tasks: newTasks };
@@ -622,17 +703,17 @@ function App() {
             setAppState(prev => {
                 const taskIndex = prev.tasks.findIndex(t => t.id === taskId);
                 if (taskIndex === -1) return prev;
-                
+
                 const task = prev.tasks[taskIndex];
                 const newTasks = [...prev.tasks];
-                
+
                 // 기존 위치에서 제거
                 newTasks.splice(taskIndex, 1);
-                
+
                 // 새 위치에 삽입 (제거 후 인덱스 조정)
                 const adjustedIndex = taskIndex < newIndex ? newIndex - 1 : newIndex;
                 newTasks.splice(adjustedIndex, 0, task);
-                
+
                 console.log('Task reordered:', taskId, 'to index:', adjustedIndex);
                 return { ...prev, tasks: newTasks };
             });
@@ -735,12 +816,12 @@ function App() {
             setAppState(prev => {
                 const taskToMove = prev.tasks.find(t => t.id === taskId);
                 const targetTask = prev.tasks.find(t => t.id === targetId);
-                
+
                 if (!taskToMove || !targetTask) return prev;
-                
+
                 // 자기 자신을 자기 안에 넣으려는 경우 방지
                 if (taskId === targetId) return prev;
-                
+
                 // 부모를 자식 안에 넣으려는 경우 방지 (순환 참조 방지)
                 const isDescendant = (parentId: string | null, childId: string): boolean => {
                     let current = prev.tasks.find(t => t.id === childId);
@@ -750,36 +831,36 @@ function App() {
                     }
                     return false;
                 };
-                
+
                 if (position === 'into' && isDescendant(taskId, targetId)) {
                     console.warn('Cannot move parent into its own descendant');
                     return prev;
                 }
-                
+
                 let newTasks = [...prev.tasks];
-                
+
                 // 기존 위치에서 제거
                 const taskIndex = newTasks.findIndex(t => t.id === taskId);
                 newTasks.splice(taskIndex, 1);
-                
+
                 if (position === 'into') {
                     // 그룹 안으로 이동: parentId를 target으로 변경
                     const updatedTask = { ...taskToMove, parentId: targetId };
-                    
+
                     // target 바로 뒤에 삽입 (그룹의 첫 번째 자식으로)
                     const targetIndex = newTasks.findIndex(t => t.id === targetId);
                     newTasks.splice(targetIndex + 1, 0, updatedTask);
                 } else {
                     // before/after: target의 parentId를 상속
                     const updatedTask = { ...taskToMove, parentId: targetTask.parentId };
-                    
+
                     // target 위치 찾기 (제거 후 인덱스)
                     const targetIndex = newTasks.findIndex(t => t.id === targetId);
                     const insertIndex = position === 'after' ? targetIndex + 1 : targetIndex;
-                    
+
                     newTasks.splice(insertIndex, 0, updatedTask);
                 }
-                
+
                 console.log('Task moved:', taskId, 'to', targetId, 'position:', position);
                 return { ...prev, tasks: newTasks };
             });
@@ -897,17 +978,16 @@ function App() {
                             <span className="text-vermilion">표준공정표</span> 관리 시스템
                         </span>
                     </h1>
-                    
+
                     {/* Undo/Redo 버튼 */}
                     <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
                         <button
                             onClick={undo}
                             disabled={!canUndo}
-                            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                                canUndo
-                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    : 'cursor-not-allowed bg-gray-50 text-gray-300'
-                            }`}
+                            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${canUndo
+                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                : 'cursor-not-allowed bg-gray-50 text-gray-300'
+                                }`}
                             title="실행 취소 (Ctrl+Z / Cmd+Z)"
                         >
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -921,11 +1001,10 @@ function App() {
                         <button
                             onClick={redo}
                             disabled={!canRedo}
-                            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                                canRedo
-                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    : 'cursor-not-allowed bg-gray-50 text-gray-300'
-                            }`}
+                            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${canRedo
+                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                : 'cursor-not-allowed bg-gray-50 text-gray-300'
+                                }`}
                             title="다시 실행 (Ctrl+Shift+Z / Cmd+Shift+Z)"
                         >
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -937,7 +1016,7 @@ function App() {
                             )}
                         </button>
                     </div>
-                    
+
                     {/* 변경사항 표시 */}
                     {hasUnsavedChanges && (
                         <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
@@ -945,7 +1024,7 @@ function App() {
                             변경사항 있음
                         </span>
                     )}
-                    
+
                     {/* 저장 완료 표시 */}
                     {saveStatus === 'saved' && !hasUnsavedChanges && (
                         <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
@@ -955,7 +1034,7 @@ function App() {
                     )}
                 </div>
             </div>
-            
+
             {/* 간트 차트 영역 */}
             <div className="flex-1 overflow-hidden">
                 <GanttChart

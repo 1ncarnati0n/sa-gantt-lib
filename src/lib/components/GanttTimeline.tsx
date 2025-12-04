@@ -178,8 +178,8 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
             {isMonthView ? (
                 <>
                     {/* MONTH View: Year Row (2줄 높이 = 48px) */}
-                    <div 
-                        className="flex h-[48px] items-center border-b border-gray-300 bg-gray-100 text-sm font-bold text-gray-800" 
+                    <div
+                        className="flex h-[48px] items-center border-b border-gray-300 bg-gray-100 text-sm font-bold text-gray-800"
                         style={{ minWidth: totalWidth }}
                     >
                         {yearGroups.map((g, i) => (
@@ -194,8 +194,8 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                     </div>
 
                     {/* MONTH View: Month Row (1줄 높이 = 32px, 각 월이 한 칸) */}
-                    <div 
-                        className="flex h-[32px] items-center bg-white text-xs font-medium text-gray-700" 
+                    <div
+                        className="flex h-[32px] items-center bg-white text-xs font-medium text-gray-700"
                         style={{ minWidth: totalWidth }}
                     >
                         {monthGroups.map((g, i) => (
@@ -212,8 +212,8 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
             ) : (
                 <>
                     {/* WEEK/DAY View: Year Row */}
-                    <div 
-                        className="flex h-[24px] items-center border-b border-gray-300 bg-gray-100 text-xs font-bold text-gray-800" 
+                    <div
+                        className="flex h-[24px] items-center border-b border-gray-300 bg-gray-100 text-xs font-bold text-gray-800"
                         style={{ minWidth: totalWidth }}
                     >
                         {yearGroups.map((g, i) => (
@@ -228,8 +228,8 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                     </div>
 
                     {/* WEEK/DAY View: Month Row */}
-                    <div 
-                        className="flex h-[24px] items-center border-b border-gray-200 bg-gray-100 text-xs font-medium text-gray-700" 
+                    <div
+                        className="flex h-[24px] items-center border-b border-gray-200 bg-gray-100 text-xs font-medium text-gray-700"
                         style={{ minWidth: totalWidth }}
                     >
                         {monthGroups.map((g, i) => (
@@ -296,7 +296,7 @@ const WeekendGrid: React.FC<WeekendGridProps> = ({
                 if (isSunday) {
                     fillColor = 'rgba(254, 242, 242, 0.5)'; // 일요일 색상 (red-50/50)
                 }
-                
+
                 rects.push(
                     <rect
                         key={`weekend-${i}`}
@@ -338,12 +338,12 @@ const calculateMilestoneLabels = (
     pixelsPerDay: number
 ): MilestoneWithLayout[] => {
     if (milestones.length === 0) return [];
-    
+
     // 텍스트 너비 추정값 (한글 기준 약 12px per character + 여백)
     const LABEL_PADDING = 25;
     const CHAR_WIDTH = 12;
     const MIN_GAP = 8; // 최소 간격
-    
+
     // x 좌표 계산 및 정렬
     const milestonesWithX = milestones.map(m => ({
         milestone: m,
@@ -351,25 +351,25 @@ const calculateMilestoneLabels = (
         labelLevel: 0,
         labelWidth: m.name.length * CHAR_WIDTH + LABEL_PADDING,
     })).sort((a, b) => a.x - b.x);
-    
+
     // 충돌 감지 및 레벨 할당
     const result: MilestoneWithLayout[] = [];
-    
+
     // 레벨 0 (왼쪽): 라벨 끝 x 좌표 추적
     // 레벨 1 (오른쪽): 라벨 시작 x 좌표 추적 (역방향 체크)
     const leftLabelEndX: number[] = []; // 왼쪽 라벨들의 끝 위치
     const rightLabelRanges: Array<{ start: number; end: number }> = []; // 오른쪽 라벨들의 범위
-    
+
     for (const item of milestonesWithX) {
         const labelWidth = item.labelWidth;
-        
+
         // 레벨 0 (왼쪽) 충돌 체크
         const leftLabelStart = item.x - labelWidth;
         const leftLabelEnd = item.x - MIN_GAP;
-        
+
         // 이전 왼쪽 라벨들과 충돌 체크
         const leftCollision = leftLabelEndX.some(endX => leftLabelStart < endX + MIN_GAP);
-        
+
         if (!leftCollision) {
             // 왼쪽에 배치 가능
             leftLabelEndX.push(leftLabelEnd);
@@ -382,12 +382,12 @@ const calculateMilestoneLabels = (
             // 레벨 1 (오른쪽) 충돌 체크
             const rightLabelStart = item.x + MIN_GAP;
             const rightLabelEnd = item.x + labelWidth;
-            
+
             // 이전 오른쪽 라벨들과 충돌 체크
             const rightCollision = rightLabelRanges.some(
                 range => !(rightLabelEnd < range.start || rightLabelStart > range.end)
             );
-            
+
             if (!rightCollision) {
                 // 오른쪽에 배치 가능
                 rightLabelRanges.push({ start: rightLabelStart, end: rightLabelEnd });
@@ -406,7 +406,7 @@ const calculateMilestoneLabels = (
             }
         }
     }
-    
+
     return result;
 };
 
@@ -424,9 +424,9 @@ interface MilestoneMarkerProps {
     onDoubleClick?: (milestone: Milestone) => void;
 }
 
-const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({ 
-    milestone, 
-    x, 
+const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
+    milestone,
+    x,
     labelLevel = 0,
     isDragging = false,
     dragX,
@@ -436,12 +436,12 @@ const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
     const size = 12;
     const y = MILESTONE_LANE_HEIGHT / 2;
     const currentX = isDragging && dragX !== undefined ? dragX : x;
-    
+
     // 레벨에 따른 라벨 위치 계산
     let textX: number;
     let textY: number;
     let textAnchor: 'start' | 'middle' | 'end';
-    
+
     if (labelLevel === 0) {
         // 기본: 마커 왼쪽
         textX = -8;
@@ -476,8 +476,8 @@ const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
     };
 
     return (
-        <g 
-            transform={`translate(${currentX}, ${y})`} 
+        <g
+            transform={`translate(${currentX}, ${y})`}
             className={`group ${onMouseDown ? 'cursor-ew-resize' : 'cursor-pointer'} ${isDragging ? 'cursor-ew-resize' : ''}`}
             onMouseDown={handleMouseDown}
             onDoubleClick={handleDoubleClick}
@@ -501,8 +501,8 @@ const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
                 stroke="white"
                 strokeWidth={1}
                 className="drop-shadow-sm transition-transform duration-150 group-hover:scale-[1.3]"
-                style={{ 
-                    transformOrigin: 'center', 
+                style={{
+                    transformOrigin: 'center',
                     transformBox: 'fill-box',
                     transform: isDragging ? 'scale(1.3)' : undefined,
                 }}
@@ -535,7 +535,7 @@ const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
 // ============================================
 
 /** 드래그 타입 */
-type DragType = 
+type DragType =
     | 'move'           // 전체 이동
     | 'resize-pre'     // 왼쪽 끝 - 앞간접 또는 순작업 조절
     | 'resize-post'    // 오른쪽 끝 - 뒤간접 또는 순작업 조절
@@ -686,38 +686,38 @@ const TaskBar: React.FC<TaskBarProps> = ({
         if (!task.task) return null;
 
         const { netWorkDays, indirectWorkDaysPre, indirectWorkDaysPost, indirectWorkNamePre, indirectWorkNamePost } = task.task;
-        
+
         // 드래그 중이면 드래그된 값 사용
         const effectivePreDays = dragInfo?.indirectWorkDaysPre ?? indirectWorkDaysPre;
         const effectivePostDays = dragInfo?.indirectWorkDaysPost ?? indirectWorkDaysPost;
         const effectiveNetDays = dragInfo?.netWorkDays ?? netWorkDays;
-        
+
         // Task별 캘린더 설정 적용
-        const taskSettings = calendarSettings 
-            ? getTaskCalendarSettings(task.task, calendarSettings) 
+        const taskSettings = calendarSettings
+            ? getTaskCalendarSettings(task.task, calendarSettings)
             : { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false };
-        
+
         // 순작업의 실제 캘린더 날짜 계산 (간접작업일은 캘린더일 기준)
         const netStartCalendarDate = addDays(effectiveStartDate, effectivePreDays);
-        const netEndCalendarDate = effectivePostDays > 0 
+        const netEndCalendarDate = effectivePostDays > 0
             ? addDays(effectiveEndDate, -effectivePostDays)
             : effectiveEndDate;
-        
+
         // 순작업 구간 내 휴일 찾기
-        const holidayOffsetsInNet = calendarSettings && holidays 
+        const holidayOffsetsInNet = calendarSettings && holidays
             ? getHolidayOffsetsInDateRange(netStartCalendarDate, netEndCalendarDate, holidays, taskSettings)
             : [];
-        
+
         // 순작업 구간 내 휴일 수
         const holidayCount = holidayOffsetsInNet.length;
-        
+
         // 순작업 바의 캘린더 일수 = 순작업일 + 휴일 수 (소수점 반영)
         // 기존: Math.max(1, ...) 때문에 소수점이 무시되고 최소 1일 강제됨
         // 수정: 소수점 순작업일을 직접 사용하고, 휴일 수만큼 추가
-        const netCalendarDays = effectiveNetDays > 0 
+        const netCalendarDays = effectiveNetDays > 0
             ? effectiveNetDays + holidayCount
             : 0;
-        
+
         // 너비 계산 (순작업은 실제 캘린더 일수 사용)
         const preWidth = effectivePreDays * pixelsPerDay;
         const netWidth = netCalendarDays * pixelsPerDay;
@@ -728,7 +728,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
         const preX = 0;
         const netX = preWidth;
         const postX = preWidth + netWidth;
-        
+
         const handleWidth = 8;
         const boundaryHandleWidth = 6;
 
@@ -742,8 +742,8 @@ const TaskBar: React.FC<TaskBarProps> = ({
         };
 
         return (
-            <g 
-                transform={`translate(${startX}, ${y})`} 
+            <g
+                transform={`translate(${startX}, ${y})`}
                 className={`group ${isDragging ? 'opacity-90' : ''} ${onDoubleClick ? 'cursor-pointer' : ''}`}
                 onDoubleClick={onDoubleClick}
             >
@@ -803,7 +803,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         ))}
                     </>
                 )}
-                
+
                 {/* Post Indirect Work (Blue - 오른쪽) */}
                 {effectivePostDays > 0 && (
                     <>
@@ -831,11 +831,11 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         )}
                     </>
                 )}
-                
+
                 {/* ========================================
                     드래그 핸들 영역
                 ======================================== */}
-                
+
                 {/* 순작업 영역 드래그 (move: 전체 바 이동, 간접작업 종속) */}
                 {isDraggable && effectiveNetDays > 0 && (
                     <rect
@@ -850,7 +850,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         <title>전체 이동 (드래그)</title>
                     </rect>
                 )}
-                
+
                 {/* 왼쪽 끝 리사이즈 핸들 (resize-pre: 앞간접 또는 순작업 조절) */}
                 {isDraggable && (
                     <rect
@@ -865,7 +865,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         <title>{effectivePreDays > 0 ? '앞 간접작업일 조절' : '순작업일 조절'} (드래그)</title>
                     </rect>
                 )}
-                
+
                 {/* 앞간접-순작업 경계 핸들 (resize-pre-net) */}
                 {isDraggable && effectivePreDays > 0 && effectiveNetDays > 0 && (
                     <rect
@@ -880,7 +880,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         <title>앞간접-순작업 경계 조절 (드래그)</title>
                     </rect>
                 )}
-                
+
                 {/* 순작업-뒤간접 경계 핸들 (resize-net-post) */}
                 {isDraggable && effectivePostDays > 0 && effectiveNetDays > 0 && (
                     <rect
@@ -895,7 +895,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         <title>순작업-뒤간접 경계 조절 (드래그)</title>
                     </rect>
                 )}
-                
+
                 {/* 오른쪽 끝 리사이즈 핸들 (resize-post: 뒤간접 또는 순작업 조절) */}
                 {isDraggable && (
                     <rect
@@ -910,7 +910,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                         <title>{effectivePostDays > 0 ? '뒤 간접작업일 조절' : '순작업일 조절'} (드래그)</title>
                     </rect>
                 )}
-                
+
                 {/* 리사이즈 핸들 시각적 표시 (hover 시) */}
                 {isDraggable && (
                     <>
@@ -970,7 +970,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                 >
                     {task.name}
                 </text>
-                
+
                 {/* 드래그 중 정보 프리뷰 */}
                 {isDragging && (
                     <g>
@@ -1013,7 +1013,7 @@ const SvgDefs: React.FC = () => (
         >
             <polygon points="0 0, 10 3.5, 0 7" fill={GANTT_COLORS.dependency} />
         </marker>
-        
+
         {/* 휴일 빗금 패턴 (간접작업 색상 + 반투명 배경) */}
         <pattern
             id="holidayHatchPattern"
@@ -1025,7 +1025,7 @@ const SvgDefs: React.FC = () => (
             <rect width="6" height="6" fill="rgba(255, 255, 255, 0.6)" />
             <line x1="0" y1="0" x2="0" y2="6" stroke={GANTT_COLORS.blue} strokeWidth="2" />
         </pattern>
-        
+
         {/* 휴일 빗금 패턴 (더 진한 버전) */}
         <pattern
             id="holidayHatchPatternDark"
@@ -1091,10 +1091,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
     ({ tasks, allTasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onMilestoneUpdate, onMilestoneDoubleClick, onTaskDoubleClick, virtualRows, totalHeight: virtualTotalHeight, showCriticalPath = true }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
-        
+
         // 가상화가 활성화되었는지 확인
         const isVirtualized = virtualRows && virtualRows.length > 0;
-        
+
         // ====================================
         // Bar 드래그 상태 관리
         // ====================================
@@ -1127,7 +1127,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         } | null>(null);
 
         const milestoneDragStateRef = useRef<typeof milestoneDragState>(null);
-        
+
         useEffect(() => {
             milestoneDragStateRef.current = milestoneDragState;
         }, [milestoneDragState]);
@@ -1143,17 +1143,17 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         }, [milestones, minDate, pixelsPerDay]);
 
         const chartWidth = totalDays * pixelsPerDay;
-        const chartHeight = isVirtualized 
+        const chartHeight = isVirtualized
             ? Math.max((virtualTotalHeight || 0) + MILESTONE_LANE_HEIGHT + 100, 500)
             : Math.max(tasks.length * ROW_HEIGHT + MILESTONE_LANE_HEIGHT + 100, 500);
 
         // ====================================
         // Bar 드래그 핸들러
         // ====================================
-        
+
         // dragState를 ref로 관리하여 handleMouseMove/handleMouseUp이 재생성되지 않도록 최적화
         const dragStateRef = useRef<typeof dragState>(null);
-        
+
         // dragState 변경 시 ref도 업데이트
         useEffect(() => {
             dragStateRef.current = dragState;
@@ -1166,27 +1166,27 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             if (!onMilestoneUpdate) return;
             e.preventDefault();
             e.stopPropagation();
-            
+
             const milestoneX = dateToX(milestone.date, minDate, pixelsPerDay);
-            
+
             const newState = {
                 milestoneId: milestone.id,
                 startX: e.clientX,
                 originalDate: milestone.date,
                 currentX: milestoneX,
             };
-            
+
             setMilestoneDragState(newState);
         }, [onMilestoneUpdate, minDate, pixelsPerDay]);
 
         const handleMilestoneMouseMove = useCallback((e: MouseEvent) => {
             const state = milestoneDragStateRef.current;
             if (!state) return;
-            
+
             const deltaX = e.clientX - state.startX;
             const originalX = dateToX(state.originalDate, minDate, pixelsPerDay);
             const newX = Math.max(0, originalX + deltaX);
-            
+
             setMilestoneDragState(prev => prev ? { ...prev, currentX: newX } : null);
         }, [minDate, pixelsPerDay]);
 
@@ -1196,14 +1196,14 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 setMilestoneDragState(null);
                 return;
             }
-            
+
             const deltaX = e.clientX - state.startX;
             const deltaDays = Math.round(deltaX / pixelsPerDay);
-            
+
             if (deltaDays !== 0) {
                 const newDate = addDays(state.originalDate, deltaDays);
                 const updatedMilestone = milestones.find(m => m.id === state.milestoneId);
-                
+
                 if (updatedMilestone) {
                     onMilestoneUpdate({
                         ...updatedMilestone,
@@ -1211,7 +1211,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                     });
                 }
             }
-            
+
             setMilestoneDragState(null);
         }, [onMilestoneUpdate, pixelsPerDay, milestones]);
 
@@ -1220,7 +1220,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             if (milestoneDragState) {
                 window.addEventListener('mousemove', handleMilestoneMouseMove);
                 window.addEventListener('mouseup', handleMilestoneMouseUp);
-                
+
                 return () => {
                     window.removeEventListener('mousemove', handleMilestoneMouseMove);
                     window.removeEventListener('mouseup', handleMilestoneMouseUp);
@@ -1233,7 +1233,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 onMilestoneDoubleClick(milestone);
             }
         }, [onMilestoneDoubleClick]);
-        
+
         const handleBarMouseDown = useCallback((
             e: React.MouseEvent,
             taskId: string,
@@ -1249,7 +1249,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             if (!onBarDrag) return;
             e.preventDefault();
             e.stopPropagation();
-            
+
             const newDragState = {
                 taskId,
                 dragType,
@@ -1265,7 +1265,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 currentNetWorkDays: taskData.netWorkDays,
                 currentIndirectWorkDaysPost: taskData.indirectWorkDaysPost,
             };
-            
+
             setDragState(newDragState);
             dragStateRef.current = newDragState;
         }, [onBarDrag]);
@@ -1273,17 +1273,17 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         const handleMouseMove = useCallback((e: MouseEvent) => {
             const currentDragState = dragStateRef.current;
             if (!currentDragState || !onBarDrag) return;
-            
+
             const deltaX = e.clientX - currentDragState.startX;
             // 정수 단위로만 반영 (드래그 시)
             const deltaDays = Math.round(deltaX / pixelsPerDay);
-            
+
             let newStartDate = currentDragState.originalStartDate;
             let newEndDate = currentDragState.originalEndDate;
             let newPreDays = currentDragState.originalIndirectWorkDaysPre;
             let newNetDays = currentDragState.originalNetWorkDays;
             let newPostDays = currentDragState.originalIndirectWorkDaysPost;
-            
+
             if (currentDragState.dragType === 'move') {
                 // 전체 이동: 시작일과 종료일 동시 이동, 일수는 유지
                 newStartDate = addDays(currentDragState.originalStartDate, deltaDays);
@@ -1292,15 +1292,15 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 // 순작업만 이동: 순작업 시작점을 이동하고, 간접작업일을 자동 재계산
                 // deltaDays 양수 = 순작업이 오른쪽으로 이동 = 앞간접 증가, 뒤간접 감소
                 // deltaDays 음수 = 순작업이 왼쪽으로 이동 = 앞간접 감소, 뒤간접 증가
-                
+
                 const maxPreIncrease = currentDragState.originalIndirectWorkDaysPost; // 뒤간접을 0까지만 줄일 수 있음
                 const maxPreDecrease = currentDragState.originalIndirectWorkDaysPre; // 앞간접을 0까지만 줄일 수 있음
-                
+
                 const constrainedDelta = Math.max(-maxPreDecrease, Math.min(maxPreIncrease, deltaDays));
-                
+
                 newPreDays = currentDragState.originalIndirectWorkDaysPre + constrainedDelta;
                 newPostDays = currentDragState.originalIndirectWorkDaysPost - constrainedDelta;
-                
+
                 // 시작일/종료일은 유지 (총 기간 동일)
                 newStartDate = currentDragState.originalStartDate;
                 newEndDate = currentDragState.originalEndDate;
@@ -1309,7 +1309,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 if (currentDragState.originalIndirectWorkDaysPre > 0) {
                     // 앞간접이 있으면 앞간접 조절
                     newPreDays = Math.max(0, currentDragState.originalIndirectWorkDaysPre - deltaDays);
-                    
+
                     // 시작일 재계산: 원래 순작업 시작일 - 새 선간접일수
                     const netWorkStartDate = addDays(currentDragState.originalStartDate, currentDragState.originalIndirectWorkDaysPre);
                     newStartDate = addDays(netWorkStartDate, -newPreDays);
@@ -1317,10 +1317,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 } else {
                     // 앞간접이 0이면 순작업일 조절
                     newNetDays = Math.max(1, currentDragState.originalNetWorkDays - deltaDays);
-                    
+
                     // 시작일 재계산
                     const netWorkEndDate = addDays(
-                        currentDragState.originalStartDate, 
+                        currentDragState.originalStartDate,
                         currentDragState.originalNetWorkDays - 1
                     );
                     newStartDate = addDays(netWorkEndDate, -(newNetDays - 1));
@@ -1331,7 +1331,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 if (currentDragState.originalIndirectWorkDaysPost > 0) {
                     // 뒤간접이 있으면 뒤간접 조절
                     newPostDays = Math.max(0, currentDragState.originalIndirectWorkDaysPost + deltaDays);
-                    
+
                     // 종료일 재계산: 원래 순작업 종료일 + 새 후간접일수
                     const netWorkEndDate = addDays(currentDragState.originalEndDate, -currentDragState.originalIndirectWorkDaysPost);
                     newEndDate = addDays(netWorkEndDate, newPostDays);
@@ -1339,7 +1339,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 } else {
                     // 뒤간접이 0이면 순작업일 조절
                     newNetDays = Math.max(1, currentDragState.originalNetWorkDays + deltaDays);
-                    
+
                     // 종료일 재계산
                     newEndDate = addDays(currentDragState.originalStartDate, newNetDays - 1);
                     newStartDate = currentDragState.originalStartDate;
@@ -1348,15 +1348,15 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 // 앞간접-순작업 경계 조절: 총 기간 유지, 앞간접과 순작업 사이에서 조절
                 // deltaDays 양수 = 경계가 오른쪽으로 = 앞간접 증가, 순작업 감소
                 // deltaDays 음수 = 경계가 왼쪽으로 = 앞간접 감소, 순작업 증가
-                
+
                 const maxPreIncrease = currentDragState.originalNetWorkDays - 1; // 순작업 최소 1일
                 const maxPreDecrease = currentDragState.originalIndirectWorkDaysPre; // 앞간접 0까지
-                
+
                 const constrainedDelta = Math.max(-maxPreDecrease, Math.min(maxPreIncrease, deltaDays));
-                
+
                 newPreDays = currentDragState.originalIndirectWorkDaysPre + constrainedDelta;
                 newNetDays = currentDragState.originalNetWorkDays - constrainedDelta;
-                
+
                 // 시작일/종료일은 유지
                 newStartDate = currentDragState.originalStartDate;
                 newEndDate = currentDragState.originalEndDate;
@@ -1364,20 +1364,20 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 // 순작업-뒤간접 경계 조절: 총 기간 유지, 순작업과 뒤간접 사이에서 조절
                 // deltaDays 양수 = 경계가 오른쪽으로 = 순작업 증가, 뒤간접 감소
                 // deltaDays 음수 = 경계가 왼쪽으로 = 순작업 감소, 뒤간접 증가
-                
+
                 const maxNetIncrease = currentDragState.originalIndirectWorkDaysPost; // 뒤간접 0까지
                 const maxNetDecrease = currentDragState.originalNetWorkDays - 1; // 순작업 최소 1일
-                
+
                 const constrainedDelta = Math.max(-maxNetDecrease, Math.min(maxNetIncrease, deltaDays));
-                
+
                 newNetDays = currentDragState.originalNetWorkDays + constrainedDelta;
                 newPostDays = currentDragState.originalIndirectWorkDaysPost - constrainedDelta;
-                
+
                 // 시작일/종료일은 유지
                 newStartDate = currentDragState.originalStartDate;
                 newEndDate = currentDragState.originalEndDate;
             }
-            
+
             setDragState(prev => prev ? {
                 ...prev,
                 currentStartDate: newStartDate,
@@ -1395,16 +1395,16 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 dragStateRef.current = null;
                 return;
             }
-            
+
             // 변경이 있을 때만 콜백 호출
-            const hasDateChange = 
+            const hasDateChange =
                 currentDragState.currentStartDate.getTime() !== currentDragState.originalStartDate.getTime() ||
                 currentDragState.currentEndDate.getTime() !== currentDragState.originalEndDate.getTime();
             const hasDaysChange =
                 currentDragState.currentIndirectWorkDaysPre !== currentDragState.originalIndirectWorkDaysPre ||
                 currentDragState.currentNetWorkDays !== currentDragState.originalNetWorkDays ||
                 currentDragState.currentIndirectWorkDaysPost !== currentDragState.originalIndirectWorkDaysPost;
-            
+
             if (hasDateChange || hasDaysChange) {
                 onBarDrag({
                     taskId: currentDragState.taskId,
@@ -1416,9 +1416,14 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                     newNetWorkDays: currentDragState.currentNetWorkDays,
                 });
             }
-            
+
             setDragState(null);
             dragStateRef.current = null;
+
+            // 드래그 완료 후 포커스 해제 (사이드바 input 자동 포커싱 방지)
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
         }, [onBarDrag]);
 
         // 전역 마우스 이벤트 리스너
@@ -1426,7 +1431,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             if (dragState) {
                 window.addEventListener('mousemove', handleMouseMove);
                 window.addEventListener('mouseup', handleMouseUp);
-                
+
                 // 드래그 타입에 따른 커서 스타일
                 let cursor = 'ew-resize';
                 if (dragState.dragType === 'move' || dragState.dragType === 'move-net') {
@@ -1436,7 +1441,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 }
                 document.body.style.cursor = cursor;
                 document.body.style.userSelect = 'none';
-                
+
                 return () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
@@ -1479,7 +1484,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         {/* ========================================
                             Layer 1: 배경 (가장 뒤)
                         ======================================== */}
-                        
+
                         {/* Weekend/Holiday Grid */}
                         <WeekendGrid
                             minDate={minDate}
@@ -1495,7 +1500,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
                             const task = tasks[row.index];
                             if (!task || task.type !== 'GROUP') return null;
-                            
+
                             const rowY = row.start + MILESTONE_LANE_HEIGHT;
                             return (
                                 <rect
@@ -1519,11 +1524,11 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const x = (i + 1) * pixelsPerDay;
                             const date = addDays(minDate, i);
                             const dayOfWeek = getDay(date);
-                            
+
                             // 줌 레벨에 따라 다른 간격으로 라인 표시
                             let showLine = false;
                             let strokeColor = '#f0f0f0'; // 기본 연한 색상
-                            
+
                             if (zoomLevel === 'DAY') {
                                 // 일 단위: 모든 날짜에 라인, 일요일은 진하게
                                 showLine = true;
@@ -1537,9 +1542,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 showLine = dayOfWeek === 0;
                                 strokeColor = '#f0f0f0';
                             }
-                            
+
                             if (!showLine) return null;
-                            
+
                             return (
                                 <line
                                     key={`vline-${i}`}
@@ -1604,7 +1609,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
                             const task = tasks[row.index];
                             if (!task) return null;
-                            
+
                             const y = row.start + (ROW_HEIGHT - BAR_HEIGHT) / 2 + MILESTONE_LANE_HEIGHT;
                             return (
                                 <TaskBar

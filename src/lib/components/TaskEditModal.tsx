@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { X, Clock, Type, Trash2, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
 import { ConstructionTask } from '../types';
 
 interface TaskEditModalProps {
@@ -22,14 +23,14 @@ const DeleteConfirmModal: React.FC<{
     return ReactDOM.createPortal(
         <>
             {/* Backdrop */}
-            <div 
+            <div
                 className="fixed inset-0 z-[60] bg-black/50 transition-opacity"
                 onClick={onCancel}
             />
 
             {/* Modal */}
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                <div 
+                <div
                     className="w-[360px] rounded-lg bg-white p-6 shadow-xl"
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -44,7 +45,7 @@ const DeleteConfirmModal: React.FC<{
                             <p className="text-sm text-gray-500">이 작업은 되돌릴 수 없습니다</p>
                         </div>
                     </div>
-                    
+
                     <div className="mb-6 rounded-md bg-gray-50 p-3">
                         <p className="text-sm text-gray-600">
                             다음 공정을 삭제하시겠습니까?
@@ -54,7 +55,7 @@ const DeleteConfirmModal: React.FC<{
                             {taskName}
                         </p>
                     </div>
-                    
+
                     <div className="flex justify-end gap-3">
                         <button
                             onClick={onCancel}
@@ -92,17 +93,21 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const [indirectWorkDaysPreStr, setIndirectWorkDaysPreStr] = useState('0');
     const [netWorkDaysStr, setNetWorkDaysStr] = useState('1');
     const [indirectWorkDaysPostStr, setIndirectWorkDaysPostStr] = useState('0');
-    
+
     // 작업명 상태
     const [indirectWorkNamePre, setIndirectWorkNamePre] = useState('');
     const [indirectWorkNamePost, setIndirectWorkNamePost] = useState('');
-    
+
     // 작업일 설정 상태 (기본값: 토요일 작업, 일요일/공휴일 휴무)
     const [saturdayOff, setSaturdayOff] = useState(false);       // 토요일 휴무 (체크 시 휴무)
     const [sundayWork, setSundayWork] = useState(false);         // 일요일 작업 (체크 시 작업)
     const [holidayWork, setHolidayWork] = useState(false);       // 공휴일 작업 (체크 시 작업)
-    
+
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    // 시작일 상태
+    const [startDateStr, setStartDateStr] = useState('');
+
     const preInputRef = useRef<HTMLInputElement>(null);
 
     // 문자열을 숫자로 파싱 (소수점 첫째자리까지)
@@ -110,7 +115,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         const parsed = parseFloat(str) || 0;
         return Math.round(parsed * 10) / 10;
     };
-    
+
     // 숫자 값 계산용
     const indirectWorkDaysPre = parseToNumber(indirectWorkDaysPreStr);
     const netWorkDays = parseToNumber(netWorkDaysStr);
@@ -124,7 +129,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             setIndirectWorkDaysPostStr(String(task.task.indirectWorkDaysPost));
             setIndirectWorkNamePre(task.task.indirectWorkNamePre || '');
             setIndirectWorkNamePost(task.task.indirectWorkNamePost || '');
-            
+
             // 작업일 설정 초기화 (기본값: 토요일 작업(true), 일요일/공휴일 휴무(false))
             // workOnSaturdays: true가 기본 → saturdayOff는 false가 기본
             // workOnSundays: false가 기본 → sundayWork는 false가 기본
@@ -132,9 +137,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             setSaturdayOff(task.task.workOnSaturdays === false);
             setSundayWork(task.task.workOnSundays === true);
             setHolidayWork(task.task.workOnHolidays === true);
-            
+
+            // 시작일 초기화
+            setStartDateStr(format(task.startDate, 'yyyy-MM-dd'));
+
             setShowDeleteConfirm(false);
-            
+
             // 모달 열릴 때 첫 입력란에 포커스
             setTimeout(() => {
                 preInputRef.current?.focus();
@@ -161,8 +169,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const handleSave = () => {
         if (!task || !task.task) return;
 
+        // 새 시작일 파싱
+        const newStartDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : task.startDate;
+
         const updatedTask: ConstructionTask = {
             ...task,
+            startDate: newStartDate,
             task: {
                 ...task.task,
                 indirectWorkDaysPre,
@@ -212,7 +224,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         const cleaned = value.replace(/[^0-9.]/g, '');
         // 소수점이 여러 개인 경우 첫 번째만 유지
         const parts = cleaned.split('.');
-        let sanitized = parts.length > 2 
+        let sanitized = parts.length > 2
             ? parts[0] + '.' + parts.slice(1).join('')
             : cleaned;
         // 소수점 첫째자리까지만 허용
@@ -229,14 +241,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     return (
         <>
             {/* Backdrop */}
-            <div 
+            <div
                 className="fixed inset-0 z-50 bg-black/50 transition-opacity"
                 onClick={onClose}
             />
 
             {/* Modal */}
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div 
+                <div
                     className="w-full max-w-lg rounded-lg bg-white shadow-xl"
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -258,6 +270,26 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
                     {/* Body */}
                     <div className="space-y-5 p-4">
+                        {/* 시작일 설정 */}
+                        <div className="rounded-lg border border-green-200 bg-green-50/50 p-4">
+                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-green-700">
+                                <Calendar size={14} />
+                                시작일
+                            </h3>
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="date"
+                                    value={startDateStr}
+                                    onChange={(e) => setStartDateStr(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                                />
+                                <span className="text-xs text-gray-500">
+                                    시작일 변경 시 종료일이 자동 계산됩니다
+                                </span>
+                            </div>
+                        </div>
+
                         {/* 앞 간접작업 */}
                         <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
                             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-700">
@@ -317,7 +349,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     className="w-full max-w-[120px] rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                                 />
                             </div>
-                            
+
                             {/* 작업일 설정 */}
                             <div className="border-t border-red-200 pt-3">
                                 <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-gray-600">
@@ -421,7 +453,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                 </button>
                             )}
                         </div>
-                        
+
                         {/* 취소/저장 버튼 (오른쪽) */}
                         <div className="flex gap-2">
                             <button

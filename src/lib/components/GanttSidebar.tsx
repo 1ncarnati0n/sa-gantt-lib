@@ -613,8 +613,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         {idx < columns.length - 1 && (
                             <div
                                 className={`absolute right-0 top-0 z-[5] h-full w-[5px] cursor-col-resize transition-colors ${resizingIndex === idx
-                                        ? 'bg-blue-500'
-                                        : 'hover:bg-blue-300'
+                                    ? 'bg-blue-500'
+                                    : 'hover:bg-blue-300'
                                     }`}
                                 style={{ transform: 'translateX(50%)' }}
                                 onMouseDown={(e) => handleColumnResizeStart(e, idx)}
@@ -759,18 +759,18 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         onClick={(e) => handleRowClick(e, task, row.index)}
                                         onContextMenu={(e) => handleContextMenu(e, task)}
                                         className={`box-border flex items-center border-b transition-all duration-150 ${isDragging
-                                                ? 'opacity-50 bg-blue-50'
-                                                : isDragOver
-                                                    ? dragOverPosition === 'before'
-                                                        ? 'border-t-2 border-t-blue-500 border-b-gray-100'
-                                                        : dragOverPosition === 'into'
-                                                            ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
-                                                            : 'border-b-2 border-b-blue-500'
-                                                    : isSelected
-                                                        ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
-                                                        : isGroup
-                                                            ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
-                                                            : 'border-gray-100 cursor-pointer hover:bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
+                                            ? 'opacity-50 bg-blue-50'
+                                            : isDragOver
+                                                ? dragOverPosition === 'before'
+                                                    ? 'border-t-2 border-t-blue-500 border-b-gray-100'
+                                                    : dragOverPosition === 'into'
+                                                        ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
+                                                        : 'border-b-2 border-b-blue-500'
+                                                : isSelected
+                                                    ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
+                                                    : isGroup
+                                                        ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
+                                                        : 'border-gray-100 cursor-pointer hover:bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
                                             }`}
                                         style={{
                                             height: ROW_HEIGHT,
@@ -832,8 +832,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                             ) : (
                                                 <span
                                                     className={`truncate text-sm ${isGroup
-                                                            ? 'font-normal text-gray-500 cursor-text'
-                                                            : 'font-medium text-gray-800'
+                                                        ? 'font-normal text-gray-500 cursor-text'
+                                                        : 'font-medium text-gray-800'
                                                         }`}
                                                     onDoubleClick={(e) => {
                                                         if (onTaskUpdate) {
@@ -996,18 +996,18 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                     }}
                                     onContextMenu={(e) => handleContextMenu(e, task)}
                                     className={`box-border flex items-center border-b transition-colors ${isDragging
-                                            ? 'opacity-50 bg-blue-50'
-                                            : isDragOver
-                                                ? dragOverPosition === 'before'
-                                                    ? 'border-t-2 border-t-blue-500 border-b-gray-100'
-                                                    : dragOverPosition === 'into'
-                                                        ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
-                                                        : 'border-b-2 border-b-blue-500'
-                                                : isSelected
-                                                    ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
-                                                    : isGroup
-                                                        ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
-                                                        : 'border-gray-100 hover:bg-gray-50 cursor-pointer'
+                                        ? 'opacity-50 bg-blue-50'
+                                        : isDragOver
+                                            ? dragOverPosition === 'before'
+                                                ? 'border-t-2 border-t-blue-500 border-b-gray-100'
+                                                : dragOverPosition === 'into'
+                                                    ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
+                                                    : 'border-b-2 border-b-blue-500'
+                                            : isSelected
+                                                ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
+                                                : isGroup
+                                                    ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
+                                                    : 'border-gray-100 hover:bg-gray-50 cursor-pointer'
                                         }`}
                                     style={{
                                         height: ROW_HEIGHT,
@@ -1068,8 +1068,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         ) : (
                                             <span
                                                 className={`truncate text-sm ${isGroup
-                                                        ? 'font-normal text-gray-500 cursor-text'
-                                                        : 'font-medium text-gray-800'
+                                                    ? 'font-normal text-gray-500 cursor-text'
+                                                    : 'font-medium text-gray-800'
                                                     }`}
                                                 onDoubleClick={(e) => {
                                                     if (onTaskUpdate) {
@@ -1210,10 +1210,17 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                         )}
                                     </div>
 
-                                    {/* Start Date */}
+                                    {/* Start Date (읽기 전용 - 더블클릭으로 모달에서 편집) */}
                                     <div
-                                        className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-gray-500"
+                                        className={`flex shrink-0 items-center justify-center border-r border-gray-100 text-xs ${isGroup ? 'text-gray-400' : 'text-gray-600 hover:bg-blue-50 cursor-pointer'}`}
                                         style={{ width: columns[4].width }}
+                                        onDoubleClick={(e) => {
+                                            if (!isGroup && onTaskDoubleClick) {
+                                                e.stopPropagation();
+                                                onTaskDoubleClick(task);
+                                            }
+                                        }}
+                                        title={isGroup ? undefined : '더블클릭하여 시작일 편집'}
                                     >
                                         {isGroup ? '-' : format(task.startDate, 'yyyy-MM-dd')}
                                     </div>
