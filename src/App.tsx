@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { parseISO, format } from 'date-fns';
-import { GanttChart, ConstructionTask, Milestone, CalendarSettings, calculateDualCalendarDates, AnchorPoint, DependencyType, DropPosition } from './lib';
+import { GanttChart, ConstructionTask, Milestone, CalendarSettings, calculateDualCalendarDates, AnchorPoint, DependencyType, DropPosition, Dependency } from './lib';
 import { useHistory } from './lib/hooks/useHistory';
 import mockData from './data/mock.json';
 
@@ -233,12 +233,7 @@ const parseMockData = (): AppState => {
         endDate: parseISO(t.endDate),
         cp: t.cp ? { ...t.cp } : undefined,
         task: t.task ? { ...t.task } : undefined,
-        dependencies: t.dependencies.map(d => ({
-            ...d,
-            type: d.type as DependencyType,
-            sourceAnchor: d.sourceAnchor as AnchorPoint | undefined,
-            targetAnchor: d.targetAnchor as AnchorPoint | undefined,
-        })),
+        dependencies: (t.dependencies as Dependency[]) || [],
     }));
 
     return { milestones, tasks };
@@ -623,12 +618,20 @@ function App() {
     // 태스크 업데이트 핸들러
     // ====================================
     const handleTaskUpdate = useCallback(async (updatedTask: ConstructionTask) => {
+        console.log('[handleTaskUpdate] Received updatedTask:', updatedTask);
+        console.log('[handleTaskUpdate] updatedTask.task:', updatedTask.task);
+        console.log('[handleTaskUpdate] indirectWorkNamePre:', updatedTask.task?.indirectWorkNamePre);
+        console.log('[handleTaskUpdate] indirectWorkNamePost:', updatedTask.task?.indirectWorkNamePost);
         try {
             setAppState(prev => {
                 // 1. 해당 태스크 업데이트
                 let newTasks = prev.tasks.map(t =>
                     t.id === updatedTask.id ? updatedTask : t
                 );
+
+                // 디버그: 업데이트 직후 확인
+                const afterUpdate = newTasks.find(t => t.id === updatedTask.id);
+                console.log('[handleTaskUpdate] After update - task:', afterUpdate?.task);
 
                 // 2. Level 2 태스크의 날짜 재계산
                 newTasks = newTasks.map(t => {
@@ -638,6 +641,11 @@ function App() {
                     }
                     return t;
                 });
+
+                // 디버그: 날짜 재계산 후 확인
+                const afterRecalc = newTasks.find(t => t.id === updatedTask.id);
+                console.log('[handleTaskUpdate] After date recalc - task:', afterRecalc?.task);
+                console.log('[handleTaskUpdate] After date recalc - indirectWorkNamePre:', afterRecalc?.task?.indirectWorkNamePre);
 
                 // 3. Level 1 태스크의 cp 재계산
                 newTasks = recalculateCPData(newTasks);

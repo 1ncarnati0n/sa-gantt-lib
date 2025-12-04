@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { X, Clock, Type, Trash2, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
@@ -148,7 +148,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 preInputRef.current?.focus();
             }, 100);
         }
-    }, [task, isOpen]);
+    }, [task?.id, isOpen]);
 
     // ESC 키로 닫기
     useEffect(() => {
@@ -165,6 +165,42 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, showDeleteConfirm, onClose]);
+
+    // 변경 감지: 현재 상태와 task props 비교 (useMemo로 동기적 계산)
+    const hasChanges = useMemo(() => {
+        if (!task || !task.task || !isOpen) {
+            return false;
+        }
+
+        const currentPre = parseToNumber(indirectWorkDaysPreStr);
+        const currentNet = parseToNumber(netWorkDaysStr);
+        const currentPost = parseToNumber(indirectWorkDaysPostStr);
+        const currentStartDate = startDateStr;
+
+        return (
+            currentPre !== task.task.indirectWorkDaysPre ||
+            currentNet !== task.task.netWorkDays ||
+            currentPost !== task.task.indirectWorkDaysPost ||
+            indirectWorkNamePre !== (task.task.indirectWorkNamePre || '') ||
+            indirectWorkNamePost !== (task.task.indirectWorkNamePost || '') ||
+            (saturdayOff !== (task.task.workOnSaturdays === false)) ||
+            (sundayWork !== (task.task.workOnSundays === true)) ||
+            (holidayWork !== (task.task.workOnHolidays === true)) ||
+            currentStartDate !== format(task.startDate, 'yyyy-MM-dd')
+        );
+    }, [
+        task,
+        isOpen,
+        indirectWorkDaysPreStr,
+        netWorkDaysStr,
+        indirectWorkDaysPostStr,
+        indirectWorkNamePre,
+        indirectWorkNamePost,
+        saturdayOff,
+        sundayWork,
+        holidayWork,
+        startDateStr,
+    ]);
 
     const handleSave = () => {
         if (!task || !task.task) return;
@@ -189,8 +225,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             },
         };
 
+        console.log('[TaskEditModal] Save button clicked:', updatedTask);
         onSave(updatedTask);
-        onClose();
+        // 모달은 닫지 않음 - hasChanges가 false가 되면 "닫기" 버튼으로 변경
     };
 
     const handleDeleteClick = () => {
@@ -454,19 +491,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                             )}
                         </div>
 
-                        {/* 취소/저장 버튼 (오른쪽) */}
+                        {/* 저장/닫기 토글 버튼 (오른쪽) */}
                         <div className="flex gap-2">
                             <button
-                                onClick={onClose}
-                                className="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                                onClick={hasChanges ? handleSave : onClose}
+                                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                                    hasChanges
+                                        ? 'bg-blue-500 text-white hover:bg-blue-600'
+                                        : 'bg-gray-500 text-white hover:bg-gray-600'
+                                }`}
                             >
-                                취소
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
-                            >
-                                저장
+                                {hasChanges ? '저장' : '닫기'}
                             </button>
                         </div>
                     </div>

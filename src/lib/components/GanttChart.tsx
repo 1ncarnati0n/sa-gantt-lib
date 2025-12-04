@@ -149,8 +149,8 @@ export function GanttChart({
         if (onTaskUpdate) {
             onTaskUpdate(updatedTask);
         }
-        handleCloseTaskEditModal();
-    }, [onTaskUpdate, handleCloseTaskEditModal]);
+        // 모달 닫기는 TaskEditModal에서 onClose()를 통해 처리
+    }, [onTaskUpdate]);
 
     const handleTaskEditDelete = useCallback((taskId: string) => {
         if (onTaskDelete) {
@@ -158,6 +158,16 @@ export function GanttChart({
         }
         handleCloseTaskEditModal();
     }, [onTaskDelete, handleCloseTaskEditModal]);
+
+    // tasks가 변경될 때 editingTask 동기화 (저장 후 모달 상태 업데이트)
+    useEffect(() => {
+        if (editingTask && isTaskEditModalOpen) {
+            const updatedTask = tasks.find(t => t.id === editingTask.id);
+            if (updatedTask) {
+                setEditingTask(updatedTask);
+            }
+        }
+    }, [tasks]);
 
     const handleStartAddMilestone = useCallback(() => {
         // 새 마일스톤 기본 데이터
