@@ -66,7 +66,39 @@ export const GANTT_LAYOUT = {
     SIDEBAR_MAX_WIDTH: 800,
     SIDEBAR_MASTER_WIDTH: 500,
     SIDEBAR_DETAIL_WIDTH: 600,
+    /** 뷰 전환 후 스크롤 대기 시간 (ms) */
+    SCROLL_DELAY_MS: 100,
 } as const;
+
+// ============================================
+// 사이드바 컬럼 설정
+// ============================================
+
+/** 컬럼 설정 인터페이스 */
+export interface ColumnConfig {
+    id: string;
+    label: string;
+    width: number;
+    minWidth: number;
+}
+
+/** Master View 기본 컬럼 (총 470px) */
+export const DEFAULT_MASTER_COLUMNS: ColumnConfig[] = [
+    { id: 'name', label: 'CP명', width: 200, minWidth: 100 },
+    { id: 'total', label: '총 공기', width: 90, minWidth: 60 },
+    { id: 'workDays', label: '작업일수', width: 90, minWidth: 60 },
+    { id: 'nonWorkDays', label: '비작업일수', width: 90, minWidth: 60 },
+];
+
+/** Detail View 기본 컬럼 (총 565px) */
+export const DEFAULT_DETAIL_COLUMNS: ColumnConfig[] = [
+    { id: 'name', label: '단위공정명', width: 180, minWidth: 80 },
+    { id: 'indirectPre', label: '선간접', width: 65, minWidth: 45 },
+    { id: 'netWork', label: '순작업', width: 65, minWidth: 45 },
+    { id: 'indirectPost', label: '후간접', width: 65, minWidth: 45 },
+    { id: 'startDate', label: '시작일', width: 95, minWidth: 75 },
+    { id: 'endDate', label: '종료일', width: 95, minWidth: 75 },
+];
 
 // ============================================
 // 줌 레벨별 설정
@@ -190,6 +222,22 @@ export interface TaskDates {
 }
 
 // ============================================
+// 에러 컨텍스트
+// ============================================
+
+/** 에러 발생 컨텍스트 정보 */
+export interface GanttErrorContext {
+    /** 에러가 발생한 작업 유형 */
+    action: 'task_update' | 'task_create' | 'task_delete' | 'task_reorder' | 'task_move' | 'task_group' | 'task_ungroup' | 'dependency_create' | 'dependency_delete' | 'milestone_create' | 'milestone_update' | 'milestone_delete' | 'bar_drag' | 'unknown';
+    /** 관련된 Task ID (있는 경우) */
+    taskId?: string;
+    /** 관련된 Milestone ID (있는 경우) */
+    milestoneId?: string;
+    /** 추가 정보 */
+    details?: Record<string, unknown>;
+}
+
+// ============================================
 // 컴포넌트 Props 인터페이스
 // ============================================
 
@@ -234,6 +282,10 @@ export interface GanttChartProps {
     // 내보내기/가져오기 (mock.json 동기화용)
     onExport?: () => void;
     onImport?: (file: File) => void | Promise<void>;
+
+    // 에러 핸들링
+    /** 에러 발생 시 호출되는 콜백 (사용자 알림용) */
+    onError?: (error: Error, context: GanttErrorContext) => void;
 
     // 스타일링
     className?: string;

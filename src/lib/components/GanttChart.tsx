@@ -70,6 +70,7 @@ export function GanttChart({
     saveStatus,
     onExport,
     onImport,
+    onError,
     className,
     style,
 }: GanttChartProps) {
@@ -88,6 +89,10 @@ export function GanttChart({
     const scrollRef = useRef<HTMLDivElement>(null); // 단일 스크롤 컨테이너
     const isResizingRef = useRef(false);
     const [isResizing, setIsResizing] = useState(false);
+
+    // 이벤트 리스너 참조 (메모리 누수 방지용)
+    const mouseMoveListenerRef = useRef<((e: MouseEvent) => void) | null>(null);
+    const mouseUpListenerRef = useRef<(() => void) | null>(null);
 
     // ====================================
     // 새 Task/CP 추가 상태 (헤더에서 제어)
@@ -218,6 +223,21 @@ export function GanttChart({
     }, [taskIds, initialExpandedIds, initialView, initialZoomLevel, setViewMode, setZoomLevel, expandAll, collapseAll]);
 
     // ====================================
+    // 이벤트 리스너 Cleanup (메모리 누수 방지)
+    // ====================================
+    useEffect(() => {
+        return () => {
+            // 컴포넌트 언마운트 시 드래그 이벤트 리스너 정리
+            if (mouseMoveListenerRef.current) {
+                document.removeEventListener('mousemove', mouseMoveListenerRef.current);
+            }
+            if (mouseUpListenerRef.current) {
+                document.removeEventListener('mouseup', mouseUpListenerRef.current);
+            }
+        };
+    }, []);
+
+    // ====================================
     // 새로 생성된 GROUP 자동 확장
     // ====================================
     const prevTaskIdsRef = useRef<Set<string>>(new Set());
@@ -243,27 +263,45 @@ export function GanttChart({
     }, [tasks, expandAll]);
 
     // ====================================
-    // 뷰에 따른 태스크 필터링
+    // Parent → Children 맵 생성 (O(n) 조회를 위한 최적화)
+    // ====================================
+    const childrenMap = useMemo(() => {
+        const map = new Map<string | null, ConstructionTask[]>();
+
+        tasks.forEach(task => {
+            const parentId = task.parentId;
+            if (!map.has(parentId)) {
+                map.set(parentId, []);
+            }
+            map.get(parentId)!.push(task);
+        });
+
+        return map;
+    }, [tasks]);
+
+    // ====================================
+    // 뷰에 따른 태스크 필터링 (O(n) 최적화)
     // ====================================
     const visibleTasks = useMemo(() => {
         if (viewMode === 'MASTER') {
             // Master View: Level 1 (GROUP + CP)
             const visible: ConstructionTask[] = [];
 
-            // 재귀적으로 표시할 태스크 수집 (GROUP 계층 지원)
-            const collectVisible = (parentId: string | null, depth: number = 0) => {
-                tasks.forEach(task => {
-                    // 해당 부모에 속한 Level 1 태스크만 처리
+            // childrenMap을 활용한 재귀 수집 (O(n))
+            const collectVisible = (parentId: string | null) => {
+                const children = childrenMap.get(parentId) || [];
+
+                children.forEach(task => {
+                    // Level 1 태스크만 처리
                     if (task.wbsLevel !== 1) return;
-                    if (task.parentId !== parentId) return;
 
                     // 최상위(parentId === null) 또는 부모가 확장된 경우
                     if (parentId === null || expandedTaskIds.has(parentId)) {
                         visible.push(task);
-                        
+
                         // GROUP인 경우 자식들도 재귀적으로 수집
                         if (task.type === 'GROUP') {
-                            collectVisible(task.id, depth + 1);
+                            collectVisible(task.id);
                         }
                     }
                 });
@@ -275,16 +313,18 @@ export function GanttChart({
             // Detail View: Level 2 Tasks of selected CP
             const visible: ConstructionTask[] = [];
 
-            // 재귀적으로 표시할 태스크 수집 (GROUP 계층 지원)
+            // childrenMap을 활용한 재귀 수집 (O(n))
             const collectVisible = (parentId: string | null) => {
-                tasks.forEach(task => {
+                const children = childrenMap.get(parentId) || [];
+
+                children.forEach(task => {
+                    // Level 2 태스크만 처리
                     if (task.wbsLevel !== 2) return;
-                    if (task.parentId !== parentId) return;
 
                     // activeCPId의 자식이거나 부모가 확장된 경우
                     if (parentId === activeCPId || expandedTaskIds.has(parentId!)) {
                         visible.push(task);
-                        
+
                         // GROUP인 경우 자식들도 재귀적으로 수집
                         if (task.type === 'GROUP') {
                             collectVisible(task.id);
@@ -297,7 +337,7 @@ export function GanttChart({
             collectVisible(activeCPId!);
             return visible;
         }
-    }, [tasks, viewMode, activeCPId, expandedTaskIds]);
+    }, [childrenMap, viewMode, activeCPId, expandedTaskIds]);
 
     // ====================================
     // 가상화 (대규모 공정표 성능 최적화)
@@ -315,7 +355,7 @@ export function GanttChart({
     const handleResizeStart = useCallback((e: React.MouseEvent) => {
         // 더블클릭 시 드래그 시작 방지
         if (e.detail >= 2) return;
-        
+
         e.preventDefault();
         isResizingRef.current = true;
         setIsResizing(true);
@@ -334,7 +374,14 @@ export function GanttChart({
             setIsResizing(false);
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
+            // 리스너 참조 초기화
+            mouseMoveListenerRef.current = null;
+            mouseUpListenerRef.current = null;
         };
+
+        // 리스너 참조 저장 (cleanup용)
+        mouseMoveListenerRef.current = handleMouseMove;
+        mouseUpListenerRef.current = handleMouseUp;
 
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
@@ -426,7 +473,7 @@ export function GanttChart({
             // 뷰 전환 후 렌더링이 완료되면 첫 번째 task로 스크롤
             const timer = setTimeout(() => {
                 scrollToFirstTask();
-            }, 100);
+            }, GANTT_LAYOUT.SCROLL_DELAY_MS);
             return () => clearTimeout(timer);
         }
     }, [viewMode, activeCPId, scrollToFirstTask]);
@@ -454,9 +501,13 @@ export function GanttChart({
             await onTaskUpdate(updatedTask);
         } catch (error) {
             console.error('Failed to update task:', error);
-            // TODO: 사용자에게 에러 알림 표시 (토스트 메시지 등)
+            // 에러 콜백 호출 (사용자 알림용)
+            onError?.(error as Error, {
+                action: 'bar_drag',
+                taskId: result.taskId,
+            });
         }
-    }, [tasks, onTaskUpdate]);
+    }, [tasks, onTaskUpdate, onError]);
 
     // ====================================
     // 렌더링

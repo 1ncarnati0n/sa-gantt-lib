@@ -34,6 +34,7 @@ export { GanttSidebar } from './components/GanttSidebar';
 export { GanttTimeline } from './components/GanttTimeline';
 export { TaskEditModal } from './components/TaskEditModal';
 export { CriticalPathBar } from './components/CriticalPathBar';
+export { GanttErrorBoundary } from './components/GanttErrorBoundary';
 export type { BarDragResult } from './components/GanttTimeline';
 
 // ============================================
@@ -50,12 +51,24 @@ export {
 } from './store/useGanttStore';
 
 // ============================================
+// Context
+// ============================================
+export {
+    GanttProvider,
+    useGanttContext,
+    useGanttContextOptional,
+} from './context/GanttContext';
+export type { GanttContextValue } from './context/GanttContext';
+
+// ============================================
 // Hooks
 // ============================================
 export { useGanttVirtualization } from './hooks/useGanttVirtualization';
 export type { VirtualRow, UseGanttVirtualizationOptions } from './hooks/useGanttVirtualization';
 
 export { useHistory } from './hooks/useHistory';
+
+export { useColumnResizer } from './hooks/useColumnResizer';
 
 // ============================================
 // Types
@@ -103,6 +116,9 @@ export type {
     // Critical Path Types
     CriticalPathDay,
     CriticalPathSummary,
+
+    // Error Types
+    GanttErrorContext,
 } from './types';
 
 // ============================================
@@ -112,7 +128,11 @@ export {
     GANTT_COLORS,
     GANTT_LAYOUT,
     ZOOM_CONFIG,
+    DEFAULT_MASTER_COLUMNS,
+    DEFAULT_DETAIL_COLUMNS,
 } from './types';
+
+export type { ColumnConfig } from './types';
 
 // ============================================
 // Utilities
@@ -146,3 +166,27 @@ export {
     calculateCriticalPath,
     formatCriticalPathSummary,
 } from './utils/criticalPathUtils';
+
+// Comparison Utilities
+export {
+    shallowEqualTasks,
+    shallowEqualMilestones,
+    shallowEqual,
+    shallowEqualHistoryState,
+} from './utils/comparisonUtils';
+
+// Type Guards
+export {
+    isTaskWithDetails,
+    isTaskWithCP,
+    isGroupTask,
+    isCPTask,
+    isRegularTask,
+    isValidDate,
+    isValidMilestone,
+    isValidDependency,
+    isLevel1Task,
+    isLevel2Task,
+    isRootTask,
+    isNonEmptyArray,
+} from './utils/typeGuards';

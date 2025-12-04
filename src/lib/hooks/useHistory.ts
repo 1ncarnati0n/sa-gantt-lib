@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { shallowEqualHistoryState } from '../utils/comparisonUtils';
 
 /**
  * 히스토리 상태 인터페이스
@@ -121,8 +122,8 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
                 };
             }
 
-            // 이전 상태와 동일하면 무시
-            if (JSON.stringify(prev.present) === JSON.stringify(resolvedState)) {
+            // 이전 상태와 동일하면 무시 (얕은 비교로 성능 최적화)
+            if (shallowEqualHistoryState(prev.present as Record<string, unknown>, resolvedState as Record<string, unknown>)) {
                 return prev;
             }
 
