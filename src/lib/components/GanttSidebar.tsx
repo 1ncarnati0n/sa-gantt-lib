@@ -134,6 +134,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // 일수 입력 필드 로컬 편집 상태 (소수점 입력 허용)
         const [editingDays, setEditingDays] = useState<{ taskId: string, field: string, value: string } | null>(null);
 
+        // 클립보드 상태 (복사/붙여넣기용)
+        const [clipboardTasks, setClipboardTasks] = useState<ConstructionTask[]>([]);
+
         // 컬럼 너비 상태 관리
         const [masterColumnWidths, setMasterColumnWidths] = useState<number[]>(
             DEFAULT_MASTER_COLUMNS.map(col => col.width)
@@ -489,6 +492,82 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         }, []);
 
         // ====================================
+        // 복사/붙여넣기 핸들러
+        // ====================================
+
+        // 복사 핸들러
+        const handleCopy = useCallback(() => {
+            if (selectedTaskIds.size === 0) return;
+
+            // 선택된 태스크와 그 하위 태스크(GROUP인 경우) 모두 수집
+            const selectedIds = Array.from(selectedTaskIds);
+            const tasksToCopy: ConstructionTask[] = [];
+
+            const collectTasksRecursively = (taskId: string) => {
+                const task = allTasks.find(t => t.id === taskId);
+                if (task && !tasksToCopy.some(t => t.id === task.id)) {
+                    tasksToCopy.push({ ...task });
+                    // GROUP인 경우 자식들도 수집
+                    if (task.type === 'GROUP') {
+                        allTasks.filter(t => t.parentId === taskId)
+                            .forEach(child => collectTasksRecursively(child.id));
+                    }
+                }
+            };
+
+            selectedIds.forEach(id => collectTasksRecursively(id));
+            setClipboardTasks(tasksToCopy);
+            console.log('Tasks copied:', tasksToCopy.length);
+        }, [selectedTaskIds, allTasks]);
+
+        // 붙여넣기 핸들러
+        const handlePaste = useCallback(() => {
+            if (clipboardTasks.length === 0 || !onTaskCreate) return;
+
+            const timestamp = Date.now();
+            const idMap = new Map<string, string>(); // 기존 ID -> 새 ID 매핑
+
+            // 새 ID 생성 및 매핑
+            clipboardTasks.forEach((task, index) => {
+                const newId = `${task.type.toLowerCase()}-${timestamp + index}`;
+                idMap.set(task.id, newId);
+            });
+
+            // 최상위 복사 대상 parentId 결정
+            const topLevelParentId = viewMode === 'DETAIL' ? activeCPId : null;
+
+            // 복사된 태스크들의 최상위 parentId 집합 (원본에서 복사 대상이 아닌 부모를 가진 태스크)
+            const copiedIds = new Set(clipboardTasks.map(t => t.id));
+
+            // 새 태스크 생성
+            clipboardTasks.forEach(task => {
+                let newParentId: string | null;
+
+                if (task.parentId && idMap.has(task.parentId)) {
+                    // 부모도 복사 대상에 포함된 경우 - 새 부모 ID 사용
+                    newParentId = idMap.get(task.parentId)!;
+                } else if (copiedIds.has(task.id) && !clipboardTasks.some(t => t.id === task.parentId)) {
+                    // 최상위 복사 대상인 경우 - 현재 컨텍스트의 parentId 사용
+                    newParentId = topLevelParentId ?? null;
+                } else {
+                    newParentId = task.parentId;
+                }
+
+                const newTask: Partial<ConstructionTask> = {
+                    ...task,
+                    id: idMap.get(task.id),
+                    parentId: newParentId,
+                    name: `${task.name} (복사본)`,
+                    dependencies: [], // 종속성은 초기화
+                };
+
+                onTaskCreate(newTask);
+            });
+
+            console.log('Tasks pasted:', clipboardTasks.length);
+        }, [clipboardTasks, onTaskCreate, viewMode, activeCPId]);
+
+        // ====================================
         // 멀티선택 핸들러
         // ====================================
 
@@ -564,19 +643,39 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         }, [contextMenu]);
 
 
-        // 선택 해제 (ESC 키)
+        // 키보드 단축키 (ESC, Cmd+C, Cmd+V)
         useEffect(() => {
             const handleKeyDown = (e: KeyboardEvent) => {
+                // input, textarea 등에서는 복사/붙여넣기 무시
+                const target = e.target as HTMLElement;
+                const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
                 if (e.key === 'Escape') {
                     setSelectedTaskIds(new Set());
                     setContextMenu(null);
                     setEditingTaskId(null);
                 }
+
+                // Cmd/Ctrl + C: 복사
+                if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c' && !isInputField) {
+                    if (selectedTaskIds.size > 0) {
+                        e.preventDefault();
+                        handleCopy();
+                    }
+                }
+
+                // Cmd/Ctrl + V: 붙여넣기
+                if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v' && !isInputField) {
+                    if (clipboardTasks.length > 0) {
+                        e.preventDefault();
+                        handlePaste();
+                    }
+                }
             };
 
             document.addEventListener('keydown', handleKeyDown);
             return () => document.removeEventListener('keydown', handleKeyDown);
-        }, []);
+        }, [handleCopy, handlePaste, selectedTaskIds, clipboardTasks]);
 
         // ====================================
         // 인라인 편집 핸들러 (모든 태스크 이름 편집)
@@ -654,8 +753,8 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 {/* Visual Line */}
                                 <div
                                     className={`h-full w-[2px] transition-colors ${resizingIndex === idx
-                                            ? 'bg-blue-500'
-                                            : 'bg-transparent group-hover:bg-blue-300'
+                                        ? 'bg-blue-500'
+                                        : 'bg-transparent group-hover:bg-blue-300'
                                         }`}
                                 />
                             </div>
