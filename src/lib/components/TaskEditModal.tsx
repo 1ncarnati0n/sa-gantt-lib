@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { X, Clock, Type, Trash2, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
-import { ConstructionTask } from '../types';
+import { ConstructionTask, TaskData } from '../types';
 
 interface TaskEditModalProps {
     task: ConstructionTask | null;
@@ -24,12 +24,12 @@ const DeleteConfirmModal: React.FC<{
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 z-[60] bg-black/50 transition-opacity"
+                className="fixed inset-0 z-60 bg-black/50 transition-opacity"
                 onClick={onCancel}
             />
 
             {/* Modal */}
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
                 <div
                     className="w-[360px] rounded-lg bg-white p-6 shadow-xl"
                     onClick={(e) => e.stopPropagation()}
@@ -208,21 +208,24 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         // 새 시작일 파싱
         const newStartDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : task.startDate;
 
+        // 명시적으로 TaskData 객체 구성 (기존 데이터 보존 + 변경사항 적용)
+        const updatedTaskData: TaskData = {
+            ...task.task,
+            indirectWorkDaysPre,
+            netWorkDays,
+            indirectWorkDaysPost,
+            indirectWorkNamePre: indirectWorkNamePre.trim() || undefined,
+            indirectWorkNamePost: indirectWorkNamePost.trim() || undefined,
+            // 작업일 설정 (기본값과 다를 때만 저장)
+            workOnSaturdays: saturdayOff ? false : undefined,
+            workOnSundays: sundayWork ? true : undefined,
+            workOnHolidays: holidayWork ? true : undefined,
+        };
+
         const updatedTask: ConstructionTask = {
             ...task,
             startDate: newStartDate,
-            task: {
-                ...task.task,
-                indirectWorkDaysPre,
-                netWorkDays,
-                indirectWorkDaysPost,
-                indirectWorkNamePre: indirectWorkNamePre.trim() || undefined,
-                indirectWorkNamePost: indirectWorkNamePost.trim() || undefined,
-                // 작업일 설정 (기본값과 다를 때만 저장)
-                workOnSaturdays: saturdayOff ? false : undefined, // 기본 true이므로 false일 때만 저장
-                workOnSundays: sundayWork ? true : undefined,     // 기본 false이므로 true일 때만 저장
-                workOnHolidays: holidayWork ? true : undefined,   // 기본 false이므로 true일 때만 저장
-            },
+            task: updatedTaskData,
         };
 
         console.log('[TaskEditModal] Save button clicked:', updatedTask);
@@ -495,11 +498,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                         <div className="flex gap-2">
                             <button
                                 onClick={hasChanges ? handleSave : onClose}
-                                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                                    hasChanges
-                                        ? 'bg-blue-500 text-white hover:bg-blue-600'
-                                        : 'bg-gray-500 text-white hover:bg-gray-600'
-                                }`}
+                                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${hasChanges
+                                    ? 'bg-blue-500 text-white hover:bg-blue-600'
+                                    : 'bg-gray-500 text-white hover:bg-gray-600'
+                                    }`}
                             >
                                 {hasChanges ? '저장' : '닫기'}
                             </button>
