@@ -2,25 +2,25 @@
     "milestones": [
         {
             "id": "m1",
-            "date": "2025-08-20",
+            "date": "2025-10-11",
             "name": "착공",
             "type": "MILESTONE"
         },
         {
             "id": "m2",
-            "date": "2025-10-12",
+            "date": "2025-11-18",
             "name": "터파기 완료",
             "type": "MILESTONE"
         },
         {
             "id": "m3",
-            "date": "2025-12-13",
+            "date": "2025-10-20",
             "name": "기초 완료",
             "type": "MILESTONE"
         },
         {
             "id": "m4",
-            "date": "2026-03-25",
+            "date": "2026-01-26",
             "name": "지하골조 완료",
             "type": "MILESTONE"
         },
@@ -153,8 +153,18 @@
             "dependencies": []
         },
         {
-            "id": "cp-1764897442447",
+            "id": "group-1764898180708",
             "parentId": null,
+            "wbsLevel": 1,
+            "type": "GROUP",
+            "name": "KICT 가이드",
+            "startDate": "2025-12-08",
+            "endDate": "2025-12-27",
+            "dependencies": []
+        },
+        {
+            "id": "cp-1764897442447",
+            "parentId": "group-1764898180708",
             "wbsLevel": 1,
             "type": "CP",
             "name": "지하골조(벽체+슬래브)",
@@ -163,6 +173,48 @@
             "cp": {
                 "workDaysTotal": 21,
                 "nonWorkDaysTotal": 6.1
+            },
+            "dependencies": []
+        },
+        {
+            "id": "cp-1764898269917",
+            "parentId": "group-1764898180708",
+            "wbsLevel": 1,
+            "type": "CP",
+            "name": "지하골조(벽체1단)",
+            "startDate": "2025-12-22",
+            "endDate": "2026-01-03",
+            "cp": {
+                "workDaysTotal": 11,
+                "nonWorkDaysTotal": 4.1
+            },
+            "dependencies": []
+        },
+        {
+            "id": "cp-1764898461786",
+            "parentId": "group-1764898180708",
+            "wbsLevel": 1,
+            "type": "CP",
+            "name": "지하골조(세팅층)",
+            "startDate": "2026-01-28",
+            "endDate": "2026-02-22",
+            "cp": {
+                "workDaysTotal": 15.5,
+                "nonWorkDaysTotal": 10.799999999999999
+            },
+            "dependencies": []
+        },
+        {
+            "id": "cp-1764899229666",
+            "parentId": "group-1764898180708",
+            "wbsLevel": 1,
+            "type": "CP",
+            "name": "지상골조(일반층 / 마감층)",
+            "startDate": "2026-02-23",
+            "endDate": "2026-03-03",
+            "cp": {
+                "workDaysTotal": 8.5,
+                "nonWorkDaysTotal": 5
             },
             "dependencies": []
         },
@@ -274,6 +326,214 @@
             "name": "콘크리트 펌프차 타설",
             "startDate": "2025-12-24",
             "endDate": "2025-12-27",
+            "task": {
+                "netWorkDays": 1,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 3,
+                "indirectWorkNamePost": "양생"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764898285337",
+            "parentId": "cp-1764898269917",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "철근 현장조립",
+            "startDate": "2025-12-22",
+            "endDate": "2025-12-26",
+            "task": {
+                "netWorkDays": 4,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0.3,
+                "indirectWorkNamePost": "검측"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764898317102",
+            "parentId": "cp-1764898269917",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "유로폼 설치",
+            "startDate": "2025-12-23",
+            "endDate": "2025-12-30",
+            "task": {
+                "netWorkDays": 6,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0.8,
+                "indirectWorkNamePost": "보강 / 검측"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764898363672",
+            "parentId": "cp-1764898269917",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "콘크리트 펌프차 타설",
+            "startDate": "2025-12-31",
+            "endDate": "2026-01-03",
+            "task": {
+                "netWorkDays": 1,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 3,
+                "indirectWorkNamePost": "양생"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764898476800",
+            "parentId": "cp-1764898461786",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "갱폼 설치 및 해체",
+            "startDate": "2026-01-28",
+            "endDate": "2026-02-09",
+            "task": {
+                "netWorkDays": 5.5,
+                "indirectWorkDaysPre": 1,
+                "indirectWorkDaysPost": 5,
+                "indirectWorkNamePre": "앵커",
+                "indirectWorkNamePost": "작업발판"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764898602667",
+            "parentId": "cp-1764898461786",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "철근 현장조립",
+            "startDate": "2026-02-05",
+            "endDate": "2026-02-06",
+            "task": {
+                "netWorkDays": 1,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0.6,
+                "indirectWorkNamePost": "검측"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764898650146",
+            "parentId": "cp-1764898461786",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "알루미튬폼 설치 및 해체",
+            "startDate": "2026-02-07",
+            "endDate": "2026-02-14",
+            "task": {
+                "netWorkDays": 6,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0.6,
+                "indirectWorkNamePost": "검측"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764898692839",
+            "parentId": "cp-1764898461786",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "철근 현장조립",
+            "startDate": "2026-02-16",
+            "endDate": "2026-02-18",
+            "task": {
+                "netWorkDays": 2,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0.6
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764898735292",
+            "parentId": "cp-1764898461786",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "콘크리트 펌프차 타설",
+            "startDate": "2026-02-19",
+            "endDate": "2026-02-22",
+            "task": {
+                "netWorkDays": 1,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 3,
+                "indirectWorkNamePost": "양생"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764899257902",
+            "parentId": "cp-1764899229666",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "갱폼 설치 및 해체",
+            "startDate": "2026-02-23",
+            "endDate": "2026-02-26",
+            "task": {
+                "netWorkDays": 2.5,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0.5,
+                "indirectWorkNamePost": "검측"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764899484416",
+            "parentId": "cp-1764899229666",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "철근 현장 조립",
+            "startDate": "2026-02-24",
+            "endDate": "2026-02-25",
+            "task": {
+                "netWorkDays": 1,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0.5,
+                "indirectWorkNamePost": "검측"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764899514352",
+            "parentId": "cp-1764899229666",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "알루미늄폼 설치 및 해체",
+            "startDate": "2026-02-25",
+            "endDate": "2026-02-28",
+            "task": {
+                "netWorkDays": 2.5,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0.5,
+                "indirectWorkNamePost": "검측"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764899561397",
+            "parentId": "cp-1764899229666",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "철근 현장 조립",
+            "startDate": "2026-02-26",
+            "endDate": "2026-02-28",
+            "task": {
+                "netWorkDays": 1.5,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0.5,
+                "indirectWorkNamePost": "검측"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1764899632163",
+            "parentId": "cp-1764899229666",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "콘크리트 펌프차 타설",
+            "startDate": "2026-02-28",
+            "endDate": "2026-03-03",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
