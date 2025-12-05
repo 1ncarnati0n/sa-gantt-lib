@@ -423,7 +423,7 @@ export function GanttChart({
     // ====================================
 
     // 특정 날짜로 타임라인 스크롤
-    const scrollToDate = useCallback((targetDate: Date) => {
+    const scrollToDate = useCallback((targetDate: Date, align: 'left' | 'center' = 'left') => {
         const container = scrollRef.current;
         if (!container) return;
 
@@ -440,79 +440,65 @@ export function GanttChart({
         const viewportWidth = container.clientWidth;
         const timelineViewWidth = viewportWidth - sidebarWidth - 4;
 
-        // 바가 Timeline 가시 영역의 왼쪽 20% 지점에 보이도록 (최소 50px, 최대 100px)
-        const leftMargin = Math.min(100, Math.max(50, timelineViewWidth * 0.2));
+        let leftMargin = 0;
+        if (align === 'center') {
+            // 중앙 정렬
+            leftMargin = timelineViewWidth / 2;
+        } else {
+            // 왼쪽 정렬 (기본: 왼쪽 20% 지점, 최소 50px, 최대 100px)
+            leftMargin = Math.min(100, Math.max(50, timelineViewWidth * 0.2));
+        }
 
         container.scrollLeft = Math.max(0, x - leftMargin);
     }, [zoomLevel, tasks, milestones, sidebarWidth]);
 
     // 진행 중인 Task 중 가장 먼저 시작하는 Task로 스크롤 (Focusing 버튼용)
     const scrollToFirstTask = useCallback(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // 시간 정규화
-
-        // 시작일에서 5일 전으로 스크롤 (여유 있게 보기 위함)
-        const FOCUS_OFFSET_DAYS = 5;
-        const getOffsetDate = (date: Date) => {
-            const offsetDate = new Date(date);
-            offsetDate.setDate(offsetDate.getDate() - FOCUS_OFFSET_DAYS);
-            return offsetDate;
-        };
-
         if (viewMode === 'MASTER') {
-            // Master View: CP 중 진행 중인 것 찾기
-            const cpTasks = visibleTasks.filter(t => t.type === 'CP');
+            // Master View: 가장 빠른 마일스톤으로 이동 (없으면 진행 중인 CP)
+            if (milestones.length > 0) {
+                // 날짜순 정렬
+                const sortedMilestones = [...milestones].sort((a, b) => a.date.getTime() - b.date.getTime());
+                const firstMilestone = sortedMilestones[0];
+                scrollToDate(firstMilestone.date, 'left');
+            } else {
+                // 마일스톤이 없으면 기존 로직 (진행 중인 CP)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const cpTasks = visibleTasks.filter(t => t.type === 'CP');
+                const inProgressCPs = cpTasks.filter(cp => {
+                    const start = new Date(cp.startDate);
+                    const end = new Date(cp.endDate);
+                    start.setHours(0, 0, 0, 0);
+                    end.setHours(0, 0, 0, 0);
+                    return start <= today && today <= end;
+                });
 
-            // 진행 중인 CP 필터링 (startDate <= today <= endDate)
-            const inProgressCPs = cpTasks.filter(cp => {
-                const start = new Date(cp.startDate);
-                const end = new Date(cp.endDate);
-                start.setHours(0, 0, 0, 0);
-                end.setHours(0, 0, 0, 0);
-                return start <= today && today <= end;
-            });
-
-            if (inProgressCPs.length > 0) {
-                // 진행 중인 CP 중 가장 빠른 시작일
-                const targetCP = inProgressCPs.reduce((a, b) =>
-                    a.startDate < b.startDate ? a : b
-                );
-                scrollToDate(getOffsetDate(targetCP.startDate));
-            } else if (cpTasks.length > 0) {
-                // 진행 중인 CP가 없으면 가장 빠른 시작일의 CP로 폴백
-                const firstCP = cpTasks.reduce((a, b) =>
-                    a.startDate < b.startDate ? a : b
-                );
-                scrollToDate(getOffsetDate(firstCP.startDate));
+                if (inProgressCPs.length > 0) {
+                    const targetCP = inProgressCPs.reduce((a, b) => a.startDate < b.startDate ? a : b);
+                    scrollToDate(targetCP.startDate, 'left');
+                } else if (cpTasks.length > 0) {
+                    const firstCP = cpTasks.reduce((a, b) => a.startDate < b.startDate ? a : b);
+                    scrollToDate(firstCP.startDate, 'left');
+                }
             }
         } else if (viewMode === 'DETAIL' && activeCPId) {
-            // Detail View: 선택된 CP의 하위 task
+            // Detail View: 선택된 CP의 전체 기간 중앙으로 이동
             const childTasks = tasks.filter(t => t.parentId === activeCPId);
 
-            // 진행 중인 Task 필터링 (startDate <= today <= endDate)
-            const inProgressTasks = childTasks.filter(task => {
-                const start = new Date(task.startDate);
-                const end = new Date(task.endDate);
-                start.setHours(0, 0, 0, 0);
-                end.setHours(0, 0, 0, 0);
-                return start <= today && today <= end;
-            });
+            if (childTasks.length > 0) {
+                // 전체 기간 계산
+                const minStart = childTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, childTasks[0].startDate);
+                const maxEnd = childTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, childTasks[0].endDate);
 
-            if (inProgressTasks.length > 0) {
-                // 진행 중인 Task 중 가장 빠른 시작일
-                const targetTask = inProgressTasks.reduce((a, b) =>
-                    a.startDate < b.startDate ? a : b
-                );
-                scrollToDate(getOffsetDate(targetTask.startDate));
-            } else if (childTasks.length > 0) {
-                // 진행 중인 Task가 없으면 가장 빠른 시작일의 Task로 폴백
-                const firstTask = childTasks.reduce((a, b) =>
-                    a.startDate < b.startDate ? a : b
-                );
-                scrollToDate(getOffsetDate(firstTask.startDate));
+                // 중앙 날짜 계산
+                const centerTime = minStart.getTime() + (maxEnd.getTime() - minStart.getTime()) / 2;
+                const centerDate = new Date(centerTime);
+
+                scrollToDate(centerDate, 'center');
             }
         }
-    }, [viewMode, activeCPId, tasks, visibleTasks, scrollToDate]);
+    }, [viewMode, activeCPId, tasks, visibleTasks, milestones, scrollToDate]);
 
     const handleTaskClick = useCallback((task: ConstructionTask) => {
         if (viewMode === 'MASTER' && task.type === 'CP') {
@@ -523,8 +509,18 @@ export function GanttChart({
     // ====================================
     // Detail View 진입 시 자동 스크롤
     // ====================================
+    const lastScrolledCPId = useRef<string | null>(null);
+
+    // ViewMode가 DETAIL이 아닐 때 ref 초기화
     useEffect(() => {
-        if (viewMode === 'DETAIL' && activeCPId) {
+        if (viewMode !== 'DETAIL') {
+            lastScrolledCPId.current = null;
+        }
+    }, [viewMode]);
+
+    useEffect(() => {
+        if (viewMode === 'DETAIL' && activeCPId && activeCPId !== lastScrolledCPId.current) {
+            lastScrolledCPId.current = activeCPId;
             // 뷰 전환 후 렌더링이 완료되면 첫 번째 task로 스크롤
             const timer = setTimeout(() => {
                 scrollToFirstTask();

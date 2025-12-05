@@ -64,6 +64,8 @@ export function shallowEqualTasks(
             if (taskA.task.netWorkDays !== taskB.task.netWorkDays) return false;
             if (taskA.task.indirectWorkDaysPre !== taskB.task.indirectWorkDaysPre) return false;
             if (taskA.task.indirectWorkDaysPost !== taskB.task.indirectWorkDaysPost) return false;
+            if (taskA.task.indirectWorkNamePre !== taskB.task.indirectWorkNamePre) return false;
+            if (taskA.task.indirectWorkNamePost !== taskB.task.indirectWorkNamePost) return false;
         }
 
         // dependencies 배열 길이만 비교 (깊은 비교는 비용이 높음)

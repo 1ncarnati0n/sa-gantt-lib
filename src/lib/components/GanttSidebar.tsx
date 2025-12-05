@@ -352,6 +352,39 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             });
         }, [calculateOptimalWidth, setColumnWidths]);
 
+        // ====================================
+        // 초기 로드 및 뷰 변경 시 컬럼 너비 자동 최적화
+        // ====================================
+        const optimizedMaster = useRef(false);
+        const lastOptimizedCPId = useRef<string | null>(null);
+
+        useEffect(() => {
+            if (tasks.length === 0) return;
+
+            const optimizeColumns = () => {
+                const currentColumns = viewMode === 'MASTER' ? DEFAULT_MASTER_COLUMNS : DEFAULT_DETAIL_COLUMNS;
+                const newWidths = currentColumns.map((_, idx) => calculateOptimalWidth(idx));
+
+                if (viewMode === 'MASTER') {
+                    setMasterColumnWidths(newWidths);
+                    optimizedMaster.current = true;
+                } else {
+                    setDetailColumnWidths(newWidths);
+                    lastOptimizedCPId.current = activeCPId || null;
+                }
+            };
+
+            if (viewMode === 'MASTER') {
+                if (!optimizedMaster.current) {
+                    optimizeColumns();
+                }
+            } else if (viewMode === 'DETAIL') {
+                if (activeCPId !== lastOptimizedCPId.current) {
+                    optimizeColumns();
+                }
+            }
+        }, [tasks, viewMode, activeCPId, calculateOptimalWidth]);
+
         // 태스크 업데이트 핸들러 (Detail View에서 일수 편집)
         const handleDurationChange = useCallback((
             task: ConstructionTask,
@@ -612,15 +645,20 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         {/* Column Resizer (마지막 컬럼 제외) */}
                         {idx < columns.length - 1 && (
                             <div
-                                className={`absolute right-0 top-0 z-[5] h-full w-[5px] cursor-col-resize transition-colors ${resizingIndex === idx
-                                    ? 'bg-blue-500'
-                                    : 'hover:bg-blue-300'
-                                    }`}
+                                className="absolute right-0 top-0 z-10 h-full w-3 cursor-col-resize touch-none flex justify-center group"
                                 style={{ transform: 'translateX(50%)' }}
                                 onMouseDown={(e) => handleColumnResizeStart(e, idx)}
                                 onDoubleClick={(e) => handleColumnResizeDoubleClick(e, idx)}
                                 title="드래그하여 컬럼 너비 조절 / 더블클릭으로 내용에 맞게 자동 조절"
-                            />
+                            >
+                                {/* Visual Line */}
+                                <div
+                                    className={`h-full w-[2px] transition-colors ${resizingIndex === idx
+                                            ? 'bg-blue-500'
+                                            : 'bg-transparent group-hover:bg-blue-300'
+                                        }`}
+                                />
+                            </div>
                         )}
                         {/* Border */}
                         {idx < columns.length - 1 && (
