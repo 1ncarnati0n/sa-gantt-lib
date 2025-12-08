@@ -1,7 +1,7 @@
 'use client';
 
 import React, { forwardRef, useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth } from 'date-fns';
+import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth, differenceInDays } from 'date-fns';
 import {
     ConstructionTask,
     Milestone,
@@ -11,6 +11,7 @@ import {
     GANTT_LAYOUT,
     GANTT_COLORS,
     ZOOM_CONFIG,
+    GroupDragResult,
 } from '../types';
 import {
     isHoliday,
@@ -22,8 +23,37 @@ import {
 import { calculateCriticalPath } from '../utils/criticalPathUtils';
 import type { VirtualRow } from '../hooks/useGanttVirtualization';
 import { CriticalPathBar } from './CriticalPathBar';
+import { GroupSummaryBar } from './GroupSummaryBar';
+import { collectDescendantTasks } from '../utils/groupUtils';
 
 const { ROW_HEIGHT, HEADER_HEIGHT, MILESTONE_LANE_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
+
+// ============================================
+// 휴일 회피 헬퍼 함수
+// ============================================
+
+/**
+ * 드래그 방향에 따라 휴일을 피해 가장 가까운 작업일로 스냅
+ * @param date - 기준 날짜
+ * @param direction - 이동 방향 ('left' = 과거, 'right' = 미래)
+ * @param holidays - 휴일 목록
+ * @param settings - 캘린더 설정
+ */
+const snapToWorkingDay = (
+    date: Date,
+    direction: 'left' | 'right',
+    holidays: Date[],
+    settings: CalendarSettings
+): Date => {
+    let current = new Date(date);
+    const step = direction === 'right' ? 1 : -1;
+
+    while (isHoliday(current, holidays, settings)) {
+        current = addDays(current, step);
+    }
+
+    return current;
+};
 
 // ============================================
 // Sub Components
@@ -583,6 +613,8 @@ interface TaskBarProps {
     ) => void;
     /** 더블클릭 핸들러 (설정 모달 열기) */
     onDoubleClick?: () => void;
+    /** 그룹 드래그 중 이동할 일수 (그룹 드래그에 영향받는 Task에만 전달) */
+    groupDragDeltaDays?: number;
 }
 
 const TaskBar: React.FC<TaskBarProps> = ({
@@ -598,16 +630,20 @@ const TaskBar: React.FC<TaskBarProps> = ({
     dragInfo,
     onDragStart,
     onDoubleClick,
+    groupDragDeltaDays = 0,
 }) => {
     // GROUP은 바를 렌더링하지 않음
     if (task.type === 'GROUP') return null;
 
     const radius = 2;
     const isDragging = !!dragInfo;
+    const isGroupDragging = groupDragDeltaDays !== 0;
 
-    // 드래그 중이면 드래그된 날짜 사용
-    const effectiveStartDate = dragInfo?.startDate || task.startDate;
-    const effectiveEndDate = dragInfo?.endDate || task.endDate;
+    // 드래그 중이면 드래그된 날짜 사용 (개별 드래그 > 그룹 드래그 > 원본)
+    const effectiveStartDate = dragInfo?.startDate
+        || (isGroupDragging ? addDays(task.startDate, groupDragDeltaDays) : task.startDate);
+    const effectiveEndDate = dragInfo?.endDate
+        || (isGroupDragging ? addDays(task.endDate, groupDragDeltaDays) : task.endDate);
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
 
     if (isMasterView) {
@@ -1073,6 +1109,8 @@ interface GanttTimelineProps {
     onTaskUpdate?: (task: ConstructionTask) => void;
     /** Bar 드래그로 날짜/일수 변경 콜백 */
     onBarDrag?: (result: BarDragResult) => void;
+    /** Group Summary 바 드래그 콜백 */
+    onGroupDrag?: (result: GroupDragResult) => void;
     /** 마일스톤 업데이트 콜백 */
     onMilestoneUpdate?: (milestone: Milestone) => void;
     /** 마일스톤 더블클릭 콜백 */
@@ -1085,10 +1123,14 @@ interface GanttTimelineProps {
     totalHeight?: number;
     /** Critical Path 바 표시 여부 (Level 2에서만 동작) */
     showCriticalPath?: boolean;
+    /** 그룹 접기/펼치기 토글 콜백 */
+    onGroupToggle?: (taskId: string) => void;
+    /** 현재 활성 CP ID (Detail View에서 사용) */
+    activeCPId?: string | null;
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
-    ({ tasks, allTasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onMilestoneUpdate, onMilestoneDoubleClick, onTaskDoubleClick, virtualRows, totalHeight: virtualTotalHeight, showCriticalPath = true }, ref) => {
+    ({ tasks, allTasks, milestones, viewMode, zoomLevel, holidays, calendarSettings, onBarDrag, onGroupDrag, onMilestoneUpdate, onMilestoneDoubleClick, onTaskDoubleClick, virtualRows, totalHeight: virtualTotalHeight, showCriticalPath = true, onGroupToggle, activeCPId }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
 
@@ -1114,6 +1156,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             currentIndirectWorkDaysPre: number;
             currentNetWorkDays: number;
             currentIndirectWorkDaysPost: number;
+            // 마지막 드래그 방향 (휴일 회피용)
+            lastDeltaX: number;
         } | null>(null);
 
         // ====================================
@@ -1131,6 +1175,25 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         useEffect(() => {
             milestoneDragStateRef.current = milestoneDragState;
         }, [milestoneDragState]);
+
+        // ====================================
+        // 그룹 Summary 바 드래그 상태 관리
+        // ====================================
+        const [groupDragState, setGroupDragState] = useState<{
+            groupId: string;
+            startX: number;
+            originalStartDate: Date;
+            originalEndDate: Date;
+            affectedTasks: ConstructionTask[];
+            currentDeltaDays: number;
+            lastDeltaX: number;
+        } | null>(null);
+
+        const groupDragStateRef = useRef<typeof groupDragState>(null);
+
+        useEffect(() => {
+            groupDragStateRef.current = groupDragState;
+        }, [groupDragState]);
 
         // Calculate date range
         const { minDate, totalDays } = useMemo(() => {
@@ -1234,6 +1297,118 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             }
         }, [onMilestoneDoubleClick]);
 
+        // ====================================
+        // 그룹 Summary 바 드래그 핸들러
+        // ====================================
+        const handleGroupBarMouseDown = useCallback((
+            e: React.MouseEvent,
+            groupId: string,
+            taskData: {
+                startDate: Date;
+                endDate: Date;
+                affectedTaskIds: string[];
+            }
+        ) => {
+            if (!onGroupDrag) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            // 영향받는 Task들 수집
+            const affectedTasks = collectDescendantTasks(groupId, allTasks || tasks);
+
+            const newState = {
+                groupId,
+                startX: e.clientX,
+                originalStartDate: taskData.startDate,
+                originalEndDate: taskData.endDate,
+                affectedTasks,
+                currentDeltaDays: 0,
+                lastDeltaX: 0,
+            };
+
+            setGroupDragState(newState);
+            groupDragStateRef.current = newState;
+        }, [onGroupDrag, allTasks, tasks]);
+
+        const handleGroupMouseMove = useCallback((e: MouseEvent) => {
+            const state = groupDragStateRef.current;
+            if (!state || !onGroupDrag) return;
+
+            const deltaX = e.clientX - state.startX;
+            const deltaDays = Math.round(deltaX / pixelsPerDay);
+
+            setGroupDragState(prev => prev ? {
+                ...prev,
+                currentDeltaDays: deltaDays,
+                lastDeltaX: deltaX,
+            } : null);
+        }, [onGroupDrag, pixelsPerDay]);
+
+        const handleGroupMouseUp = useCallback(() => {
+            const state = groupDragStateRef.current;
+            if (!state || !onGroupDrag) {
+                setGroupDragState(null);
+                groupDragStateRef.current = null;
+                return;
+            }
+
+            if (state.currentDeltaDays !== 0) {
+                // 드래그 방향 결정 (휴일 회피 방향)
+                const dragDirection: 'left' | 'right' = state.lastDeltaX < 0 ? 'left' : 'right';
+
+                // 그룹의 새 시작일 계산
+                const newGroupStartDate = addDays(state.originalStartDate, state.currentDeltaDays);
+
+                // 휴일 회피 적용
+                let finalDeltaDays = state.currentDeltaDays;
+                if (isHoliday(newGroupStartDate, holidays, calendarSettings)) {
+                    const snappedStart = snapToWorkingDay(newGroupStartDate, dragDirection, holidays, calendarSettings);
+                    const adjustment = differenceInDays(snappedStart, newGroupStartDate);
+                    finalDeltaDays = state.currentDeltaDays + adjustment;
+                }
+
+                onGroupDrag({
+                    groupId: state.groupId,
+                    deltaDays: finalDeltaDays,
+                    affectedTaskIds: state.affectedTasks.map(t => t.id),
+                });
+            }
+
+            setGroupDragState(null);
+            groupDragStateRef.current = null;
+        }, [onGroupDrag, holidays, calendarSettings]);
+
+        // 그룹 드래그 이벤트 리스너 등록
+        useEffect(() => {
+            if (groupDragState) {
+                window.addEventListener('mousemove', handleGroupMouseMove);
+                window.addEventListener('mouseup', handleGroupMouseUp);
+                document.body.style.cursor = 'grabbing';
+
+                return () => {
+                    window.removeEventListener('mousemove', handleGroupMouseMove);
+                    window.removeEventListener('mouseup', handleGroupMouseUp);
+                    document.body.style.cursor = '';
+                };
+            }
+        }, [groupDragState, handleGroupMouseMove, handleGroupMouseUp]);
+
+        // 현재 그룹 드래그 deltaDays 가져오기
+        const getGroupDragDeltaDays = useCallback((groupId: string): number => {
+            if (groupDragState && groupDragState.groupId === groupId) {
+                return groupDragState.currentDeltaDays;
+            }
+            return 0;
+        }, [groupDragState]);
+
+        // Task가 그룹 드래그에 영향받는지 확인하고 deltaDays 반환
+        const getTaskGroupDragDeltaDays = useCallback((taskId: string): number => {
+            if (!groupDragState) return 0;
+            // 영향받는 Task 목록에 포함되어 있으면 deltaDays 반환
+            const isAffected = groupDragState.affectedTasks.some(t => t.id === taskId);
+            return isAffected ? groupDragState.currentDeltaDays : 0;
+        }, [groupDragState]);
+
         const handleBarMouseDown = useCallback((
             e: React.MouseEvent,
             taskId: string,
@@ -1264,6 +1439,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 currentIndirectWorkDaysPre: taskData.indirectWorkDaysPre,
                 currentNetWorkDays: taskData.netWorkDays,
                 currentIndirectWorkDaysPost: taskData.indirectWorkDaysPost,
+                lastDeltaX: 0,
             };
 
             setDragState(newDragState);
@@ -1385,6 +1561,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 currentIndirectWorkDaysPre: newPreDays,
                 currentNetWorkDays: newNetDays,
                 currentIndirectWorkDaysPost: newPostDays,
+                lastDeltaX: deltaX,
             } : null);
         }, [onBarDrag, pixelsPerDay]);
 
@@ -1396,10 +1573,28 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 return;
             }
 
+            // 드래그 방향 결정 (휴일 회피 방향)
+            const dragDirection: 'left' | 'right' = currentDragState.lastDeltaX < 0 ? 'left' : 'right';
+
+            // 최종 날짜 계산 (휴일 회피 적용)
+            let finalStartDate = currentDragState.currentStartDate;
+            let finalEndDate = currentDragState.currentEndDate;
+
+            // 'move' 타입일 때만 휴일 회피 처리
+            if (currentDragState.dragType === 'move') {
+                // 시작일이 휴일이면 드래그 방향으로 스냅
+                if (isHoliday(finalStartDate, holidays, calendarSettings)) {
+                    const snappedStart = snapToWorkingDay(finalStartDate, dragDirection, holidays, calendarSettings);
+                    const daysDiff = differenceInDays(snappedStart, finalStartDate);
+                    finalStartDate = snappedStart;
+                    finalEndDate = addDays(finalEndDate, daysDiff);
+                }
+            }
+
             // 변경이 있을 때만 콜백 호출
             const hasDateChange =
-                currentDragState.currentStartDate.getTime() !== currentDragState.originalStartDate.getTime() ||
-                currentDragState.currentEndDate.getTime() !== currentDragState.originalEndDate.getTime();
+                finalStartDate.getTime() !== currentDragState.originalStartDate.getTime() ||
+                finalEndDate.getTime() !== currentDragState.originalEndDate.getTime();
             const hasDaysChange =
                 currentDragState.currentIndirectWorkDaysPre !== currentDragState.originalIndirectWorkDaysPre ||
                 currentDragState.currentNetWorkDays !== currentDragState.originalNetWorkDays ||
@@ -1409,8 +1604,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 onBarDrag({
                     taskId: currentDragState.taskId,
                     dragType: currentDragState.dragType,
-                    newStartDate: currentDragState.currentStartDate,
-                    newEndDate: currentDragState.currentEndDate,
+                    newStartDate: finalStartDate,
+                    newEndDate: finalEndDate,
                     newIndirectWorkDaysPre: currentDragState.currentIndirectWorkDaysPre,
                     newIndirectWorkDaysPost: currentDragState.currentIndirectWorkDaysPost,
                     newNetWorkDays: currentDragState.currentNetWorkDays,
@@ -1424,7 +1619,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             if (document.activeElement instanceof HTMLElement) {
                 document.activeElement.blur();
             }
-        }, [onBarDrag]);
+        }, [onBarDrag, holidays, calendarSettings]);
 
         // 전역 마우스 이벤트 리스너
         useEffect(() => {
@@ -1611,6 +1806,25 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             if (!task) return null;
 
                             const y = row.start + (ROW_HEIGHT - BAR_HEIGHT) / 2 + MILESTONE_LANE_HEIGHT;
+
+                            // Detail View에서 GROUP 타입이면 GroupSummaryBar 렌더링
+                            if (!isMasterView && task.type === 'GROUP') {
+                                return (
+                                    <GroupSummaryBar
+                                        key={`group-${row.key}`}
+                                        group={task}
+                                        allTasks={allTasks || tasks}
+                                        y={y}
+                                        minDate={minDate}
+                                        pixelsPerDay={pixelsPerDay}
+                                        isDraggable={!!onGroupDrag}
+                                        currentDeltaDays={getGroupDragDeltaDays(task.id)}
+                                        onDragStart={handleGroupBarMouseDown}
+                                        onToggle={onGroupToggle}
+                                    />
+                                );
+                            }
+
                             return (
                                 <TaskBar
                                     key={row.key}
@@ -1624,6 +1838,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     calendarSettings={calendarSettings}
                                     isDraggable={!isMasterView && !!onBarDrag}
                                     dragInfo={getDragInfo(task.id)}
+                                    groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     onDragStart={handleBarMouseDown}
                                     onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
                                         ? () => onTaskDoubleClick(task)
@@ -1636,12 +1851,13 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                     {/* Critical Path Bar (Level 2에서만 표시) - 스크롤 영역 내부 */}
                     {!isMasterView && showCriticalPath && (
                         <CriticalPathBar
-                            tasks={tasks}
+                            tasks={allTasks || tasks}
                             holidays={holidays}
                             calendarSettings={calendarSettings}
                             minDate={minDate}
                             pixelsPerDay={pixelsPerDay}
                             totalWidth={chartWidth}
+                            activeCPId={activeCPId}
                         />
                     )}
                 </div>

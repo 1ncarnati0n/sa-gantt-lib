@@ -524,6 +524,32 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             console.log('Tasks copied:', tasksToCopy.length);
         }, [selectedTaskIds, allTasks]);
 
+        // 복사본 이름 생성 함수 (숫자 자동 증가)
+        const generateCopyName = useCallback((originalName: string, existingTasks: ConstructionTask[]): string => {
+            const existingNames = new Set(existingTasks.map(t => t.name));
+
+            // 이름 끝에 숫자가 있는지 확인 (예: "작업 11")
+            const match = originalName.match(/^(.+?)\s*(\d+)$/);
+
+            if (match) {
+                // 숫자로 끝나는 경우: 다음 숫자 찾기
+                const baseName = match[1].trim();
+                let nextNum = parseInt(match[2], 10) + 1;
+
+                while (existingNames.has(`${baseName} ${nextNum}`)) {
+                    nextNum++;
+                }
+                return `${baseName} ${nextNum}`;
+            } else {
+                // 숫자로 끝나지 않는 경우: 1부터 시작
+                let num = 1;
+                while (existingNames.has(`${originalName} ${num}`)) {
+                    num++;
+                }
+                return `${originalName} ${num}`;
+            }
+        }, []);
+
         // 붙여넣기 핸들러
         const handlePaste = useCallback(() => {
             if (clipboardTasks.length === 0 || !onTaskCreate) return;
@@ -557,11 +583,13 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     newParentId = task.parentId;
                 }
 
+                // 최상위 항목(직접 선택된 항목)에만 숫자 추가
+                const isTopLevel = !task.parentId || !copiedIds.has(task.parentId);
                 const newTask: Partial<ConstructionTask> = {
                     ...task,
                     id: idMap.get(task.id),
                     parentId: newParentId,
-                    name: `${task.name} (복사본)`,
+                    name: isTopLevel ? generateCopyName(task.name, allTasks) : task.name,
                     dependencies: [], // 종속성은 초기화
                 };
 
@@ -569,7 +597,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             });
 
             console.log('Tasks pasted:', clipboardTasks.length);
-        }, [clipboardTasks, onTaskCreate, viewMode, activeCPId]);
+        }, [clipboardTasks, onTaskCreate, viewMode, activeCPId, generateCopyName, allTasks]);
 
         // ====================================
         // 멀티선택 핸들러

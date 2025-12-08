@@ -309,8 +309,8 @@ export const calculateCriticalPath = (
         startDate: minDate,
         endDate: maxDate,
         totalDays,
-        workDays: Math.round(totalWorkDays * 10) / 10,      // 소수점 첫째자리
-        nonWorkDays: Math.round(totalNonWorkDays * 10) / 10, // 소수점 첫째자리
+        workDays: Math.round(totalWorkDays * 2) / 2,      // 0.5 단위
+        nonWorkDays: Math.round(totalNonWorkDays * 2) / 2, // 0.5 단위
         netWorkDaysTotal,
         indirectWorkDaysTotal,
         dailyBreakdown,

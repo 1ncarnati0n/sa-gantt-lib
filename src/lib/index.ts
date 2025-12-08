@@ -34,6 +34,7 @@ export { GanttSidebar } from './components/GanttSidebar';
 export { GanttTimeline } from './components/GanttTimeline';
 export { TaskEditModal } from './components/TaskEditModal';
 export { CriticalPathBar } from './components/CriticalPathBar';
+export { GroupSummaryBar } from './components/GroupSummaryBar';
 export { GanttErrorBoundary } from './components/GanttErrorBoundary';
 export type { BarDragResult } from './components/GanttTimeline';
 
@@ -82,7 +83,9 @@ export type {
     // Data Types
     CPData,
     TaskData,
+    GroupData,
     TaskDates,
+    GroupDragResult,
     
     // Enum Types
     WbsLevel,
@@ -174,6 +177,12 @@ export {
     shallowEqual,
     shallowEqualHistoryState,
 } from './utils/comparisonUtils';
+
+// Group Utilities
+export {
+    collectDescendantTasks,
+    calculateGroupDateRange,
+} from './utils/groupUtils';
 
 // Type Guards
 export {

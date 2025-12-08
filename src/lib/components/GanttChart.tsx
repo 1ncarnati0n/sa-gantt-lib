@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { GanttSidebar } from './GanttSidebar';
 import { GanttTimeline, BarDragResult } from './GanttTimeline';
 import { MilestoneEditModal } from './MilestoneEditModal';
@@ -15,6 +15,7 @@ import {
     GANTT_LAYOUT,
     ZOOM_CONFIG,
     CalendarSettings,
+    GroupDragResult,
 } from '../types';
 import { calculateDateRange, dateToX } from '../utils/dateUtils';
 
@@ -60,6 +61,7 @@ export function GanttChart({
     onTaskGroup,
     onTaskUngroup,
     onTaskMove,
+    onGroupDrag,
     onViewChange,
     onMilestoneCreate,
     onMilestoneUpdate,
@@ -560,6 +562,43 @@ export function GanttChart({
         }
     }, [tasks, onTaskUpdate, onError]);
 
+    // Group Summary 바 드래그로 그룹 내 모든 Task 이동 핸들러
+    const handleGroupDrag = useCallback(async (result: GroupDragResult) => {
+        if (!onTaskUpdate && !onGroupDrag) return;
+
+        try {
+            // onGroupDrag가 있으면 직접 호출 (외부에서 일괄 처리)
+            if (onGroupDrag) {
+                await onGroupDrag(result);
+                return;
+            }
+
+            // onGroupDrag가 없고 onTaskUpdate가 있으면 개별 Task 업데이트
+            if (onTaskUpdate) {
+                for (const taskId of result.affectedTaskIds) {
+                    const task = tasks.find(t => t.id === taskId);
+                    if (!task) continue;
+
+                    // 달력일 기준 이동 (휴일 포함)
+                    const updatedTask: ConstructionTask = {
+                        ...task,
+                        startDate: addDays(task.startDate, result.deltaDays),
+                        endDate: addDays(task.endDate, result.deltaDays),
+                    };
+
+                    await onTaskUpdate(updatedTask);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update group tasks:', error);
+            onError?.(error as Error, {
+                action: 'bar_drag',
+                taskId: result.groupId,
+                details: { affectedTaskIds: result.affectedTaskIds },
+            });
+        }
+    }, [tasks, onTaskUpdate, onGroupDrag, onError]);
+
     // ====================================
     // 렌더링
     // ====================================
@@ -806,11 +845,14 @@ export function GanttChart({
                         calendarSettings={calendarSettings}
                         onTaskUpdate={onTaskUpdate}
                         onBarDrag={handleBarDrag}
+                        onGroupDrag={handleGroupDrag}
                         onMilestoneUpdate={onMilestoneUpdate}
                         onMilestoneDoubleClick={handleMilestoneDoubleClick}
                         onTaskDoubleClick={handleTaskDoubleClick}
                         virtualRows={virtualRows}
                         totalHeight={totalHeight}
+                        onGroupToggle={toggleTask}
+                        activeCPId={activeCPId}
                     />
                 </div>
 

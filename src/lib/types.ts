@@ -57,10 +57,10 @@ export const GANTT_COLORS = {
 // ============================================
 
 export const GANTT_LAYOUT = {
-    ROW_HEIGHT: 40,
+    ROW_HEIGHT: 34,
     HEADER_HEIGHT: 80,
     MILESTONE_LANE_HEIGHT: 40,
-    BAR_HEIGHT: 24,
+    BAR_HEIGHT: 18,
     SIDEBAR_WIDTH: 500,
     SIDEBAR_MIN_WIDTH: 300,
     SIDEBAR_MAX_WIDTH: 800,
@@ -148,6 +148,11 @@ export interface CPData {
     nonWorkDaysTotal: number;         // 비작업일수 (Teal)
 }
 
+/** GROUP 전용 데이터 (진행도 관리) */
+export interface GroupData {
+    progress?: number;                // 진행도 (0-100), 수동 입력
+}
+
 /** Level 2 전용 데이터 (주공정표 - Task Detail) */
 export interface TaskData {
     netWorkDays: number;              // 순작업일 (Red) - 휴일 제외, 가운데 위치
@@ -187,6 +192,7 @@ export interface ConstructionTask {
     // Level별 데이터 (Optional)
     cp?: CPData;                      // Level 1 전용
     task?: TaskData;                  // Level 2 전용
+    group?: GroupData;                // GROUP 타입 전용
 
     // 종속성
     dependencies: Dependency[];
@@ -267,7 +273,8 @@ export interface GanttChartProps {
     onTaskGroup?: (taskIds: string[]) => void | Promise<void>;
     onTaskUngroup?: (groupId: string) => void | Promise<void>;
     onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void | Promise<void>;
-    
+    onGroupDrag?: (result: GroupDragResult) => void | Promise<void>;
+
     // 마일스톤 이벤트 핸들러
     onMilestoneCreate?: (milestone: Partial<Milestone>) => void | Promise<void>;
     onMilestoneUpdate?: (milestone: Milestone) => void | Promise<void>;
@@ -395,6 +402,13 @@ export interface CriticalPathDay {
     hasIndirectWork: boolean;        // 간접작업 존재 여부
     isHoliday: boolean;              // 휴일 여부
     contributingTaskIds: string[];   // 해당일에 기여하는 Task ID들
+}
+
+/** Group Summary 바 드래그 결과 */
+export interface GroupDragResult {
+    groupId: string;                  // 드래그한 그룹 ID
+    deltaDays: number;                // 이동한 일수 (양수: 오른쪽, 음수: 왼쪽)
+    affectedTaskIds: string[];        // 영향받은 하위 Task ID 목록
 }
 
 /** Critical Path 요약 정보 */

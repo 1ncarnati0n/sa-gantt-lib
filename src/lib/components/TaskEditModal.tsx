@@ -110,10 +110,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
     const preInputRef = useRef<HTMLInputElement>(null);
 
-    // 문자열을 숫자로 파싱 (소수점 첫째자리까지)
+    // 문자열을 숫자로 파싱 (0.5 단위로 반올림)
     const parseToNumber = (str: string): number => {
         const parsed = parseFloat(str) || 0;
-        return Math.round(parsed * 10) / 10;
+        return Math.round(parsed * 2) / 2;
     };
 
     // 숫자 값 계산용
@@ -267,10 +267,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         let sanitized = parts.length > 2
             ? parts[0] + '.' + parts.slice(1).join('')
             : cleaned;
-        // 소수점 첫째자리까지만 허용
-        if (parts.length === 2 && parts[1].length > 1) {
-            sanitized = parts[0] + '.' + parts[1].substring(0, 1);
-        }
         setter(sanitized);
     };
 
@@ -348,7 +344,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                         value={indirectWorkDaysPreStr}
                                         onChange={(e) => handleNumberChange(setIndirectWorkDaysPreStr, e.target.value)}
                                         onKeyDown={handleKeyDown}
-                                        placeholder="0.1 단위"
+                                        placeholder="0.5 단위"
                                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>
@@ -385,7 +381,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     value={netWorkDaysStr}
                                     onChange={(e) => handleNumberChange(setNetWorkDaysStr, e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="0.1 단위"
+                                    placeholder="0.5 단위"
                                     className="w-full max-w-[120px] rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                                 />
                             </div>
@@ -448,7 +444,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                         value={indirectWorkDaysPostStr}
                                         onChange={(e) => handleNumberChange(setIndirectWorkDaysPostStr, e.target.value)}
                                         onKeyDown={handleKeyDown}
-                                        placeholder="0.1 단위"
+                                        placeholder="0.5 단위"
                                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>
