@@ -1,0 +1,438 @@
+'use client';
+
+import { useRef, useCallback, useMemo, useState, useEffect } from 'react';
+import { addDays } from 'date-fns';
+import { GanttSidebar } from '../GanttSidebar';
+import { GanttTimeline, BarDragResult } from '../GanttTimeline';
+import { MilestoneEditModal } from '../MilestoneEditModal';
+import { TaskEditModal } from '../TaskEditModal';
+import { useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion } from '../../store/useGanttStore';
+import { useGanttVirtualization } from '../../hooks/useGanttVirtualization';
+import {
+    GanttChartProps,
+    ConstructionTask,
+    Milestone,
+    CalendarSettings,
+    GroupDragResult,
+} from '../../types';
+
+// Sub-components
+import { GanttHeader } from './GanttHeader';
+
+// Hooks
+import { useGanttInit, useScrollToDate, useSidebarResize } from './hooks';
+
+export type { BarDragResult };
+
+const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
+    workOnSaturdays: false,
+    workOnSundays: false,
+    workOnHolidays: false,
+};
+
+export function GanttChart({
+    tasks,
+    milestones = [],
+    holidays = [],
+    calendarSettings = DEFAULT_CALENDAR_SETTINGS,
+    initialView = 'MASTER',
+    initialZoomLevel = 'MONTH',
+    initialExpandedIds,
+    onTaskUpdate,
+    onTaskCreate,
+    onTaskDelete,
+    onTaskReorder,
+    onTaskGroup,
+    onTaskUngroup,
+    onTaskMove,
+    onGroupDrag,
+    onViewChange,
+    onMilestoneCreate,
+    onMilestoneUpdate,
+    onMilestoneDelete,
+    onSave,
+    onReset,
+    hasUnsavedChanges,
+    saveStatus,
+    onExport,
+    onImport,
+    onError,
+    className,
+    style,
+}: GanttChartProps) {
+    // Store State & Actions
+    const { viewMode, activeCPId, zoomLevel } = useGanttViewState();
+    const { setViewMode, setZoomLevel } = useGanttViewActions();
+    const { sidebarWidth, setSidebarWidth } = useGanttSidebar();
+    const { expandedTaskIds, toggleTask, expandAll, collapseAll } = useGanttExpansion();
+
+    // Refs
+    const containerRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Local States
+    const [isAddingTask, setIsAddingTask] = useState(false);
+    const [isAddingCP, setIsAddingCP] = useState(false);
+    const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isNewMilestone, setIsNewMilestone] = useState(false);
+    const [editingTask, setEditingTask] = useState<ConstructionTask | null>(null);
+    const [isTaskEditModalOpen, setIsTaskEditModalOpen] = useState(false);
+    const [sidebarTotalWidth, setSidebarTotalWidth] = useState<number | null>(null);
+
+    // Initialize
+    useGanttInit({
+        tasks,
+        initialView,
+        initialZoomLevel,
+        initialExpandedIds,
+        setViewMode,
+        setZoomLevel,
+        expandAll,
+        collapseAll,
+    });
+
+    // Parent → Children 맵
+    const childrenMap = useMemo(() => {
+        const map = new Map<string | null, ConstructionTask[]>();
+        tasks.forEach(task => {
+            const parentId = task.parentId;
+            if (!map.has(parentId)) {
+                map.set(parentId, []);
+            }
+            map.get(parentId)!.push(task);
+        });
+        return map;
+    }, [tasks]);
+
+    // 뷰에 따른 태스크 필터링
+    const visibleTasks = useMemo(() => {
+        if (viewMode === 'MASTER') {
+            const visible: ConstructionTask[] = [];
+            const collectVisible = (parentId: string | null) => {
+                const children = childrenMap.get(parentId) || [];
+                children.forEach(task => {
+                    if (task.wbsLevel !== 1) return;
+                    if (parentId === null || expandedTaskIds.has(parentId)) {
+                        visible.push(task);
+                        if (task.type === 'GROUP') {
+                            collectVisible(task.id);
+                        }
+                    }
+                });
+            };
+            collectVisible(null);
+            return visible;
+        } else {
+            const visible: ConstructionTask[] = [];
+            const collectVisible = (parentId: string | null) => {
+                const children = childrenMap.get(parentId) || [];
+                children.forEach(task => {
+                    if (task.wbsLevel !== 2) return;
+                    if (parentId === activeCPId || expandedTaskIds.has(parentId!)) {
+                        visible.push(task);
+                        if (task.type === 'GROUP') {
+                            collectVisible(task.id);
+                        }
+                    }
+                });
+            };
+            collectVisible(activeCPId!);
+            return visible;
+        }
+    }, [childrenMap, viewMode, activeCPId, expandedTaskIds]);
+
+    // Virtualization
+    const { virtualRows, totalHeight } = useGanttVirtualization({
+        containerRef: scrollRef,
+        count: visibleTasks.length,
+    });
+
+    // Sidebar Resize
+    const { isResizing, handleResizeStart, handleResizeDoubleClick } = useSidebarResize({
+        sidebarWidth,
+        setSidebarWidth,
+        viewMode,
+        sidebarTotalWidth,
+    });
+
+    // Scroll
+    const { scrollToFirstTask } = useScrollToDate({
+        scrollRef,
+        viewMode,
+        activeCPId,
+        zoomLevel,
+        sidebarWidth,
+        tasks,
+        visibleTasks,
+        milestones,
+    });
+
+    // Handlers
+    const handleViewChange = useCallback((mode: 'MASTER' | 'DETAIL', cpId?: string) => {
+        setViewMode(mode, cpId);
+        onViewChange?.(mode, cpId);
+    }, [setViewMode, onViewChange]);
+
+    const handleTaskClick = useCallback((task: ConstructionTask) => {
+        if (viewMode === 'MASTER' && task.type === 'CP') {
+            handleViewChange('DETAIL', task.id);
+        }
+    }, [viewMode, handleViewChange]);
+
+    const handleMilestoneDoubleClick = useCallback((milestone: Milestone) => {
+        setEditingMilestone(milestone);
+        setIsNewMilestone(false);
+        setIsEditModalOpen(true);
+    }, []);
+
+    const handleStartAddMilestone = useCallback(() => {
+        const newMilestone: Milestone = {
+            id: `milestone-${Date.now()}`,
+            name: '',
+            date: new Date(),
+            description: '',
+        };
+        setEditingMilestone(newMilestone);
+        setIsNewMilestone(true);
+        setIsEditModalOpen(true);
+    }, []);
+
+    const handleCloseEditModal = useCallback(() => {
+        setIsEditModalOpen(false);
+        setEditingMilestone(null);
+        setIsNewMilestone(false);
+    }, []);
+
+    const handleMilestoneSave = useCallback((updatedMilestone: Milestone) => {
+        if (isNewMilestone && onMilestoneCreate) {
+            onMilestoneCreate(updatedMilestone);
+        } else if (onMilestoneUpdate) {
+            onMilestoneUpdate(updatedMilestone);
+        }
+        handleCloseEditModal();
+    }, [isNewMilestone, onMilestoneCreate, onMilestoneUpdate, handleCloseEditModal]);
+
+    const handleMilestoneDelete = useCallback((milestoneId: string) => {
+        if (onMilestoneDelete) {
+            onMilestoneDelete(milestoneId);
+        }
+        handleCloseEditModal();
+    }, [onMilestoneDelete, handleCloseEditModal]);
+
+    const handleTaskDoubleClick = useCallback((task: ConstructionTask) => {
+        setEditingTask(task);
+        setIsTaskEditModalOpen(true);
+    }, []);
+
+    const handleCloseTaskEditModal = useCallback(() => {
+        setIsTaskEditModalOpen(false);
+        setEditingTask(null);
+    }, []);
+
+    const handleTaskEditSave = useCallback((updatedTask: ConstructionTask) => {
+        if (onTaskUpdate) {
+            onTaskUpdate(updatedTask);
+        }
+    }, [onTaskUpdate]);
+
+    const handleTaskEditDelete = useCallback((taskId: string) => {
+        if (onTaskDelete) {
+            onTaskDelete(taskId);
+        }
+        handleCloseTaskEditModal();
+    }, [onTaskDelete, handleCloseTaskEditModal]);
+
+    // tasks가 변경될 때 editingTask 동기화
+    useEffect(() => {
+        if (editingTask && isTaskEditModalOpen) {
+            const updatedTask = tasks.find(t => t.id === editingTask.id);
+            if (updatedTask) {
+                setEditingTask(updatedTask);
+            }
+        }
+    }, [tasks]);
+
+    // Bar Drag Handler
+    const handleBarDrag = useCallback(async (result: BarDragResult) => {
+        if (!onTaskUpdate) return;
+
+        try {
+            const task = tasks.find(t => t.id === result.taskId);
+            if (!task || !task.task) return;
+
+            const updatedTask: ConstructionTask = {
+                ...task,
+                startDate: result.newStartDate,
+                endDate: result.newEndDate,
+                task: {
+                    ...task.task,
+                    indirectWorkDaysPre: result.newIndirectWorkDaysPre,
+                    indirectWorkDaysPost: result.newIndirectWorkDaysPost,
+                    netWorkDays: result.newNetWorkDays,
+                },
+            };
+
+            await onTaskUpdate(updatedTask);
+        } catch (error) {
+            console.error('Failed to update task:', error);
+            onError?.(error as Error, { action: 'bar_drag', taskId: result.taskId });
+        }
+    }, [tasks, onTaskUpdate, onError]);
+
+    // Group Drag Handler
+    const handleGroupDrag = useCallback(async (result: GroupDragResult) => {
+        if (!onTaskUpdate && !onGroupDrag) return;
+
+        try {
+            if (onGroupDrag) {
+                await onGroupDrag(result);
+                return;
+            }
+
+            if (onTaskUpdate) {
+                for (const taskId of result.affectedTaskIds) {
+                    const task = tasks.find(t => t.id === taskId);
+                    if (!task) continue;
+
+                    const updatedTask: ConstructionTask = {
+                        ...task,
+                        startDate: addDays(task.startDate, result.deltaDays),
+                        endDate: addDays(task.endDate, result.deltaDays),
+                    };
+
+                    await onTaskUpdate(updatedTask);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update group tasks:', error);
+            onError?.(error as Error, {
+                action: 'bar_drag',
+                taskId: result.groupId,
+                details: { affectedTaskIds: result.affectedTaskIds },
+            });
+        }
+    }, [tasks, onTaskUpdate, onGroupDrag, onError]);
+
+    return (
+        <div
+            ref={containerRef}
+            className={`flex h-full w-full flex-col bg-gray-50 ${className || ''}`}
+            style={style}
+        >
+            <GanttHeader
+                viewMode={viewMode}
+                zoomLevel={zoomLevel}
+                activeCPId={activeCPId}
+                isAddingTask={isAddingTask}
+                isAddingCP={isAddingCP}
+                hasUnsavedChanges={hasUnsavedChanges}
+                saveStatus={saveStatus}
+                onViewChange={handleViewChange}
+                onZoomChange={setZoomLevel}
+                onStartAddTask={() => setIsAddingTask(true)}
+                onStartAddCP={() => setIsAddingCP(true)}
+                onStartAddMilestone={handleStartAddMilestone}
+                onScrollToFirst={scrollToFirstTask}
+                onSave={onSave}
+                onReset={onReset}
+                onExport={onExport}
+                onImport={onImport}
+                canCreateTask={!!onTaskCreate}
+                canCreateMilestone={!!onMilestoneCreate}
+            />
+
+            <div ref={scrollRef} className="relative flex flex-1 overflow-auto">
+                <div
+                    className="sticky left-0 z-10 flex shrink-0 relative"
+                    style={{ width: sidebarWidth + 4 }}
+                >
+                    <div
+                        className="flex shrink-0 flex-col bg-white overflow-hidden"
+                        style={{ width: sidebarWidth }}
+                    >
+                        <GanttSidebar
+                            tasks={visibleTasks}
+                            allTasks={tasks}
+                            viewMode={viewMode}
+                            expandedIds={expandedTaskIds}
+                            onToggle={toggleTask}
+                            onTaskClick={handleTaskClick}
+                            onTaskUpdate={onTaskUpdate}
+                            onTaskCreate={onTaskCreate}
+                            onTaskReorder={onTaskReorder}
+                            onTaskGroup={onTaskGroup}
+                            onTaskUngroup={onTaskUngroup}
+                            onTaskDelete={onTaskDelete}
+                            onTaskMove={onTaskMove}
+                            activeCPId={activeCPId}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            virtualRows={virtualRows}
+                            totalHeight={totalHeight}
+                            onTotalWidthChange={setSidebarTotalWidth}
+                            isAddingTask={isAddingTask}
+                            onCancelAddTask={() => setIsAddingTask(false)}
+                            isAddingCP={isAddingCP}
+                            onCancelAddCP={() => setIsAddingCP(false)}
+                            onTaskDoubleClick={handleTaskDoubleClick}
+                        />
+                    </div>
+
+                    <div
+                        className={`absolute top-0 right-0 h-full w-1 cursor-col-resize z-20 transition-colors ${isResizing
+                            ? 'bg-blue-500'
+                            : 'bg-gray-200 hover:bg-gray-300'
+                            }`}
+                        onMouseDown={handleResizeStart}
+                        onDoubleClick={handleResizeDoubleClick}
+                        title="드래그하여 너비 조절 / 더블클릭으로 초기화"
+                    />
+                </div>
+
+                <div className="relative flex flex-1 flex-col bg-white">
+                    <GanttTimeline
+                        tasks={visibleTasks}
+                        allTasks={tasks}
+                        milestones={milestones}
+                        viewMode={viewMode}
+                        zoomLevel={zoomLevel}
+                        holidays={holidays}
+                        calendarSettings={calendarSettings}
+                        onTaskUpdate={onTaskUpdate}
+                        onBarDrag={handleBarDrag}
+                        onGroupDrag={handleGroupDrag}
+                        onMilestoneUpdate={onMilestoneUpdate}
+                        onMilestoneDoubleClick={handleMilestoneDoubleClick}
+                        onTaskDoubleClick={handleTaskDoubleClick}
+                        virtualRows={virtualRows}
+                        totalHeight={totalHeight}
+                        onGroupToggle={toggleTask}
+                        activeCPId={activeCPId}
+                    />
+                </div>
+
+                {isResizing && (
+                    <div className="fixed inset-0 z-50 cursor-col-resize" />
+                )}
+            </div>
+
+            <MilestoneEditModal
+                milestone={editingMilestone}
+                isOpen={isEditModalOpen}
+                isNew={isNewMilestone}
+                onClose={handleCloseEditModal}
+                onSave={handleMilestoneSave}
+                onDelete={handleMilestoneDelete}
+            />
+
+            <TaskEditModal
+                task={editingTask}
+                isOpen={isTaskEditModalOpen}
+                onClose={handleCloseTaskEditModal}
+                onSave={handleTaskEditSave}
+                onDelete={onTaskDelete ? handleTaskEditDelete : undefined}
+            />
+        </div>
+    );
+}

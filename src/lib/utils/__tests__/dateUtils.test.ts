@@ -67,15 +67,25 @@ describe('dateUtils', () => {
         it('should add working days skipping weekends', () => {
             const startDate = parseISO('2024-05-06'); // 월요일
             const result = addWorkingDays(startDate, 5, holidays, calendarSettings);
-            // 월화수목금 (5일) -> 다음 월요일
+            // 월(1)+화(2)+수(3)+목(4)+금(5) -> 금요일 (5/10)
+            expect(result.getDay()).toBe(5); // 금요일
+            expect(result.getDate()).toBe(10);
+        });
+
+        it('should skip weekends when crossing them', () => {
+            const startDate = parseISO('2024-05-03'); // 금요일
+            const result = addWorkingDays(startDate, 2, holidays, calendarSettings);
+            // 금(1) -> 토일 제외 -> 월(2)
             expect(result.getDay()).toBe(1); // 월요일
+            expect(result.getDate()).toBe(6);
         });
 
         it('should skip holidays', () => {
-            const startDate = parseISO('2024-05-03'); // 금요일
-            const result = addWorkingDays(startDate, 1, holidays, calendarSettings);
-            // 금요일 + 1일 (토일 제외) -> 월요일
-            expect(result.getDay()).toBe(1);
+            const startDate = parseISO('2024-06-05'); // 수요일 (6/6 현충일 전날)
+            const result = addWorkingDays(startDate, 2, holidays, calendarSettings);
+            // 수(1) -> 목(휴일 6/6 제외) -> 금(2)
+            expect(result.getDay()).toBe(5); // 금요일
+            expect(result.getDate()).toBe(7);
         });
     });
 

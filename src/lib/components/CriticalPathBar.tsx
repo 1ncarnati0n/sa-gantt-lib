@@ -139,6 +139,7 @@ interface CriticalPathBarProps {
     minDate: Date;
     pixelsPerDay: number;
     totalWidth: number;
+    activeCPId?: string | null;
 }
 
 export const CriticalPathBar: React.FC<CriticalPathBarProps> = ({
@@ -148,14 +149,30 @@ export const CriticalPathBar: React.FC<CriticalPathBarProps> = ({
     minDate,
     pixelsPerDay,
     totalWidth,
+    activeCPId,
 }) => {
     const [hoveredDay, setHoveredDay] = useState<CriticalPathDay | null>(null);
     const [tooltipX, setTooltipX] = useState(0);
 
-    // Critical Path 계산
+    // activeCPId의 자손인지 확인하는 헬퍼 함수
+    const isDescendantOf = (task: ConstructionTask, ancestorId: string): boolean => {
+        let currentParentId = task.parentId;
+        while (currentParentId) {
+            if (currentParentId === ancestorId) return true;
+            const parent = tasks.find(t => t.id === currentParentId);
+            if (!parent) break;
+            currentParentId = parent.parentId;
+        }
+        return false;
+    };
+
+    // Critical Path 계산 (activeCPId가 있으면 해당 CP의 하위 Task만 필터링)
     const summary: CriticalPathSummary = useMemo(() => {
-        return calculateCriticalPath(tasks, holidays, calendarSettings);
-    }, [tasks, holidays, calendarSettings]);
+        const targetTasks = activeCPId
+            ? tasks.filter(t => isDescendantOf(t, activeCPId))
+            : tasks;
+        return calculateCriticalPath(targetTasks, holidays, calendarSettings);
+    }, [tasks, activeCPId, holidays, calendarSettings]);
 
     // 호버 핸들러
     const handleDayHover = (day: CriticalPathDay | null, x: number) => {
