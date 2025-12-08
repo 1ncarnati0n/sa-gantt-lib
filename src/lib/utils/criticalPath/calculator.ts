@@ -254,8 +254,9 @@ export const calculateCriticalPath = (
             // 나머지는 비작업일 (간접작업 또는 빈 공간)
             nonWorkDayValue = Math.max(0, 1 - netWorkValue);
         } else if (indirectWorkValue > 0) {
-            // 간접작업만 있음 → 비작업일
-            nonWorkDayValue = indirectWorkValue;
+            // 간접작업만 있음 → 하루 전체가 비작업일
+            // (순작업이 없으면 간접작업 구간 + 나머지 구간 모두 비작업)
+            nonWorkDayValue = 1;
             workDayValue = 0;
         } else {
             // 아무 작업 없음 → 비작업일

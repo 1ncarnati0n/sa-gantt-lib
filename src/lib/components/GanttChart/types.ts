@@ -17,6 +17,8 @@ export interface GanttHeaderProps {
     onStartAddCP?: () => void;
     onStartAddMilestone?: () => void;
     onScrollToFirst: () => void;
+    onCollapseAll?: () => void;
+    onExpandAll?: () => void;
     onSave?: () => void | Promise<void>;
     onReset?: () => void;
     onExport?: () => void;

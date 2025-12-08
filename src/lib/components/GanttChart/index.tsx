@@ -334,6 +334,13 @@ export function GanttChart({
                 onStartAddCP={() => setIsAddingCP(true)}
                 onStartAddMilestone={handleStartAddMilestone}
                 onScrollToFirst={scrollToFirstTask}
+                onCollapseAll={collapseAll}
+                onExpandAll={() => {
+                    const groupIds = tasks
+                        .filter(t => t.type === 'GROUP')
+                        .map(t => t.id);
+                    expandAll(groupIds);
+                }}
                 onSave={onSave}
                 onReset={onReset}
                 onExport={onExport}

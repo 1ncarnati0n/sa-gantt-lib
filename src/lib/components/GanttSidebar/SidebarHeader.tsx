@@ -7,6 +7,7 @@ const { HEADER_HEIGHT } = GANTT_LAYOUT;
 
 export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
     viewMode,
+    activeCPName,
     columns,
     resizingIndex,
     selectedTaskIds,
@@ -76,14 +77,14 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
                     {col.label}
                     {idx < columns.length - 1 && (
                         <div
-                            className="absolute right-0 top-0 z-10 h-full w-3 cursor-col-resize touch-none flex justify-center group"
-                            style={{ transform: 'translateX(50%)' }}
+                            className="absolute right-0 top-0 z-10 h-full w-3 touch-none flex justify-center group"
+                            style={{ transform: 'translateX(50%)', cursor: 'col-resize' }}
                             onMouseDown={(e) => onColumnResizeStart(e, idx)}
                             onDoubleClick={(e) => onColumnResizeDoubleClick(e, idx)}
                             title="드래그하여 컬럼 너비 조절 / 더블클릭으로 내용에 맞게 자동 조절"
                         >
                             <div
-                                className={`h-full w-[2px] transition-colors ${resizingIndex === idx
+                                className={`h-full w-[2px] transition-colors pointer-events-none ${resizingIndex === idx
                                     ? 'bg-blue-500'
                                     : 'bg-transparent group-hover:bg-blue-300'
                                     }`}
@@ -91,7 +92,7 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
                         </div>
                     )}
                     {idx < columns.length - 1 && (
-                        <div className="absolute right-0 top-0 h-full w-px bg-gray-200" />
+                        <div className="absolute right-0 top-0 h-full w-px bg-gray-200 pointer-events-none" />
                     )}
                 </div>
             ))}
@@ -105,7 +106,9 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
         >
             <div className="flex flex-1 items-center justify-between px-4">
                 <span className="font-bold text-gray-700">
-                    {viewMode === 'MASTER' ? '공구 공정표 (Level 1)' : '주공정표 (Level 2)'}
+                    {viewMode === 'MASTER'
+                        ? '공구 공정표 (Level 1)'
+                        : `주공정표 (Level 2): ${activeCPName || ''}`}
                 </span>
                 {renderGroupButtons()}
             </div>

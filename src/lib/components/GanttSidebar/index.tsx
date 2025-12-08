@@ -215,6 +215,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             <div className="flex h-full flex-col bg-white select-none">
                 <SidebarHeader
                     viewMode={viewMode}
+                    activeCPName={allTasks.find(t => t.id === activeCPId)?.name}
                     columns={columns}
                     resizingIndex={resizingIndex}
                     selectedTaskIds={selectedTaskIds}
