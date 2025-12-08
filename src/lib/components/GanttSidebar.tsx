@@ -336,7 +336,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
 
             // 최소 너비 적용, 최대 너비 제한 없음 (콘텐츠에 맞춤)
             return Math.max(minWidth, Math.ceil(maxWidth));
-        }, [tasks, viewMode, baseColumns, measureTextWidth, getMasterGroupDepth, getGroupDepth]);
+        }, [tasks, viewMode, baseColumns, measureTextWidth, getMasterGroupDepth, getGroupDepth, cpSummaryMap]);
 
         // 더블클릭으로 컬럼 너비 자동 최적화
         const handleColumnResizeDoubleClick = useCallback((e: React.MouseEvent, columnIndex: number) => {
@@ -358,8 +358,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // ====================================
         // 초기 로드 및 뷰 변경 시 컬럼 너비 자동 최적화
         // ====================================
-        const optimizedMaster = useRef(false);
-        const lastOptimizedCPId = useRef<string | null>(null);
+        const lastOptimizedKey = useRef({ master: '', detail: '' });
 
         useEffect(() => {
             if (tasks.length === 0) return;
@@ -370,23 +369,28 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
 
                 if (viewMode === 'MASTER') {
                     setMasterColumnWidths(newWidths);
-                    optimizedMaster.current = true;
+                    // allTasks.length + cpSummaryMap.size를 키로 사용해 재최적화 방지
+                    lastOptimizedKey.current.master = `${allTasks.length}-${cpSummaryMap.size}`;
                 } else {
                     setDetailColumnWidths(newWidths);
-                    lastOptimizedCPId.current = activeCPId || null;
+                    lastOptimizedKey.current.detail = `${activeCPId}-${tasks.length}`;
                 }
             };
 
             if (viewMode === 'MASTER') {
-                if (!optimizedMaster.current) {
+                // Master View: allTasks 개수 또는 cpSummaryMap이 변경되면 재최적화
+                const currentKey = `${allTasks.length}-${cpSummaryMap.size}`;
+                if (lastOptimizedKey.current.master !== currentKey && cpSummaryMap.size > 0) {
                     optimizeColumns();
                 }
             } else if (viewMode === 'DETAIL') {
-                if (activeCPId !== lastOptimizedCPId.current) {
+                // Detail View: activeCPId가 변경되거나 tasks 개수가 변경되면 재최적화
+                const currentKey = `${activeCPId}-${tasks.length}`;
+                if (lastOptimizedKey.current.detail !== currentKey) {
                     optimizeColumns();
                 }
             }
-        }, [tasks, viewMode, activeCPId, calculateOptimalWidth]);
+        }, [tasks, allTasks.length, viewMode, activeCPId, calculateOptimalWidth, cpSummaryMap.size]);
 
         // 태스크 업데이트 핸들러 (Detail View에서 일수 편집)
         const handleDurationChange = useCallback((
@@ -572,6 +576,9 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         // ====================================
 
         const handleRowClick = useCallback((e: React.MouseEvent, task: ConstructionTask, rowIndex: number) => {
+            // 이벤트 버블링 방지 (빈 공간 클릭 선택 해제와 충돌 방지)
+            e.stopPropagation();
+
             // 드래그 중이면 무시
             if (draggedTaskId) return;
 
@@ -844,7 +851,14 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                     )}
 
                     {/* Body - overflow 제거 (GanttChart에서 통합 스크롤) */}
-                    <div ref={ref} className="relative flex-1">
+                    <div
+                        ref={ref}
+                        className="relative flex-1"
+                        onClick={() => {
+                            // 빈 공간 클릭 시 선택 해제 (row 클릭은 stopPropagation으로 막힘)
+                            setSelectedTaskIds(new Set());
+                        }}
+                    >
                         {/* Milestone Lane Spacer */}
                         <div
                             className="flex items-center border-b border-gray-200 bg-gray-50/50"
@@ -869,6 +883,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                     ? totalHeight
                                     : tasks.length * ROW_HEIGHT + 100,
                                 position: 'relative',
+                            }}
+                            onClick={() => {
+                                // 빈 공간 클릭 시 선택 해제
+                                setSelectedTaskIds(new Set());
                             }}
                         >
                             {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
@@ -1076,7 +1094,14 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 )}
 
                 {/* Body - overflow 제거 (GanttChart에서 통합 스크롤) */}
-                <div ref={ref} className="relative flex-1">
+                <div
+                    ref={ref}
+                    className="relative flex-1"
+                    onClick={() => {
+                        // 빈 공간 클릭 시 선택 해제 (row 클릭은 stopPropagation으로 막힘)
+                        setSelectedTaskIds(new Set());
+                    }}
+                >
                     {/* Milestone Lane Spacer */}
                     <div
                         className="flex items-center border-b border-gray-200 bg-gray-50/50"
@@ -1101,6 +1126,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 ? totalHeight
                                 : tasks.length * ROW_HEIGHT + 100,
                             position: 'relative',
+                        }}
+                        onClick={() => {
+                            // 빈 공간 클릭 시 선택 해제
+                            setSelectedTaskIds(new Set());
                         }}
                     >
                         {(isVirtualized ? virtualRows : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }))).map((row) => {
