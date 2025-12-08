@@ -21,8 +21,8 @@ export const calculateMilestoneLabels = (
     if (milestones.length === 0) return [];
 
     const LABEL_PADDING = 25;
-    const CHAR_WIDTH = 12;
-    const MIN_GAP = 8;
+    const CHAR_WIDTH = 14;    // 12 → 14 (한글 너비 반영)
+    const MIN_GAP = 12;       // 8 → 12 (여유 간격 확보)
 
     const milestonesWithX = milestones.map(m => ({
         milestone: m,
@@ -32,39 +32,46 @@ export const calculateMilestoneLabels = (
     })).sort((a, b) => a.x - b.x);
 
     const result: MilestoneWithLayout[] = [];
-    const leftLabelEndX: number[] = [];
-    const rightLabelRanges: Array<{ start: number; end: number }> = [];
+    // 모든 라벨 범위를 통합 관리 (왼쪽/오른쪽 구분 없이)
+    const occupiedRanges: Array<{ start: number; end: number }> = [];
+
+    // 범위 충돌 검사 함수
+    const hasCollision = (start: number, end: number): boolean => {
+        return occupiedRanges.some(
+            range => !(end < range.start - MIN_GAP || start > range.end + MIN_GAP)
+        );
+    };
 
     for (const item of milestonesWithX) {
         const labelWidth = item.labelWidth;
+
+        // 왼쪽 배치 범위 계산
         const leftLabelStart = item.x - labelWidth;
         const leftLabelEnd = item.x - MIN_GAP;
 
-        const leftCollision = leftLabelEndX.some(endX => leftLabelStart < endX + MIN_GAP);
-
-        if (!leftCollision) {
-            leftLabelEndX.push(leftLabelEnd);
+        // 왼쪽 배치 시도
+        if (!hasCollision(leftLabelStart, leftLabelEnd)) {
+            occupiedRanges.push({ start: leftLabelStart, end: leftLabelEnd });
             result.push({
                 milestone: item.milestone,
                 x: item.x,
                 labelLevel: 0,
             });
         } else {
+            // 오른쪽 배치 범위 계산
             const rightLabelStart = item.x + MIN_GAP;
             const rightLabelEnd = item.x + labelWidth;
 
-            const rightCollision = rightLabelRanges.some(
-                range => !(rightLabelEnd < range.start || rightLabelStart > range.end)
-            );
-
-            if (!rightCollision) {
-                rightLabelRanges.push({ start: rightLabelStart, end: rightLabelEnd });
+            // 오른쪽 배치 시도 (모든 기존 라벨과 충돌 검사)
+            if (!hasCollision(rightLabelStart, rightLabelEnd)) {
+                occupiedRanges.push({ start: rightLabelStart, end: rightLabelEnd });
                 result.push({
                     milestone: item.milestone,
                     x: item.x,
                     labelLevel: 1,
                 });
             } else {
+                // 양쪽 모두 충돌 시 아래 배치
                 result.push({
                     milestone: item.milestone,
                     x: item.x,

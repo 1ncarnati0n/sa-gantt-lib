@@ -17,6 +17,8 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
     onStartAddCP,
     onStartAddMilestone,
     onScrollToFirst,
+    onCollapseAll,
+    onExpandAll,
     onSave,
     onReset,
     onExport,
@@ -82,6 +84,35 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 >
                     Focusing
                 </button>
+
+                {(onCollapseAll || onExpandAll) && (
+                    <div className="flex rounded bg-gray-100 p-0.5 gap-0.5">
+                        {onExpandAll && (
+                            <button
+                                onClick={onExpandAll}
+                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                                title="모든 그룹 펼치기"
+                            >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                                펼치기
+                            </button>
+                        )}
+                        {onCollapseAll && (
+                            <button
+                                onClick={onCollapseAll}
+                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                                title="모든 그룹 접기"
+                            >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                                </svg>
+                                접기
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 <div className="flex rounded bg-gray-100 p-1">
                     {(viewMode === 'MASTER'

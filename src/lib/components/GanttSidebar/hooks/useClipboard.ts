@@ -53,7 +53,7 @@ export const useClipboard = ({
             const task = allTasks.find(t => t.id === taskId);
             if (task && !tasksToCopy.some(t => t.id === task.id)) {
                 tasksToCopy.push({ ...task });
-                if (task.type === 'GROUP') {
+                if (task.type === 'GROUP' || task.type === 'CP') {
                     allTasks.filter(t => t.parentId === taskId)
                         .forEach(child => collectTasksRecursively(child.id));
                 }
