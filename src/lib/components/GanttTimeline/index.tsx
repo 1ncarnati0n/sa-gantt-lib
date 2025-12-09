@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useMemo, useCallback } from 'react';
+import { forwardRef, useMemo, useCallback, useState } from 'react';
 import { addDays, getDay } from 'date-fns';
 import {
     ConstructionTask,
@@ -13,7 +13,7 @@ import {
     ZOOM_CONFIG,
     GroupDragResult,
 } from '../../types';
-import { calculateDateRange } from '../../utils/dateUtils';
+import { calculateDateRange, xToDate } from '../../utils/dateUtils';
 import type { VirtualRow } from '../../hooks/useGanttVirtualization';
 
 // Sub-components
@@ -22,6 +22,7 @@ import { TimelineGrid } from './TimelineGrid';
 import { MilestoneMarker, calculateMilestoneLabels } from './MilestoneMarker';
 import { SvgDefs } from './SvgDefs';
 import { TaskBar } from './TaskBar';
+import { TimelineContextMenu } from './TimelineContextMenu';
 
 // Hooks
 import { useBarDrag } from './hooks/useBarDrag';
@@ -58,6 +59,8 @@ interface GanttTimelineProps {
     showCriticalPath?: boolean;
     onGroupToggle?: (taskId: string) => void;
     activeCPId?: string | null;
+    onContextMenuAddTask?: (date: Date) => void;
+    onContextMenuAddMilestone?: (date: Date) => void;
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
@@ -79,20 +82,40 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         showCriticalPath = true,
         onGroupToggle,
         activeCPId,
+        onContextMenuAddTask,
+        onContextMenuAddMilestone,
     }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
         const isVirtualized = virtualRows && virtualRows.length > 0;
+
+        // 컨텍스트 메뉴 상태
+        const [contextMenu, setContextMenu] = useState<{
+            x: number;
+            y: number;
+            clickedDate: Date;
+        } | null>(null);
 
         // Calculate date range
         const { minDate, totalDays } = useMemo(() => {
             return calculateDateRange(tasks, milestones, 60);
         }, [tasks, milestones]);
 
+        // viewMode에 따라 마일스톤 필터링
+        const filteredMilestones = useMemo(() => {
+            if (isMasterView) {
+                // Master View: MASTER 또는 타입 미지정 마일스톤만
+                return milestones.filter(m => !m.milestoneType || m.milestoneType === 'MASTER');
+            } else {
+                // Detail View: 모든 마일스톤 표시 (MASTER + DETAIL)
+                return milestones;
+            }
+        }, [milestones, isMasterView]);
+
         // 마일스톤 레이아웃 계산 (충돌 감지 적용)
         const milestoneLayouts = useMemo(() => {
-            return calculateMilestoneLabels(milestones, minDate, pixelsPerDay);
-        }, [milestones, minDate, pixelsPerDay]);
+            return calculateMilestoneLabels(filteredMilestones, minDate, pixelsPerDay);
+        }, [filteredMilestones, minDate, pixelsPerDay]);
 
         const chartWidth = totalDays * pixelsPerDay;
         const chartHeight = isVirtualized
@@ -141,6 +164,35 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             }
         }, [onMilestoneDoubleClick]);
 
+        // 타임라인 우클릭 핸들러
+        const handleContextMenu = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+            // 컨텍스트 메뉴 콜백이 없으면 기본 동작
+            if (!onContextMenuAddTask && !onContextMenuAddMilestone) return;
+
+            e.preventDefault();
+
+            // SVG 요소의 위치 계산
+            const svg = e.currentTarget;
+            const rect = svg.getBoundingClientRect();
+
+            // 클릭한 X 좌표 (SVG 내부 좌표)
+            const svgX = e.clientX - rect.left;
+
+            // X 좌표를 날짜로 변환
+            const clickedDate = xToDate(svgX, minDate, pixelsPerDay);
+
+            setContextMenu({
+                x: e.clientX,
+                y: e.clientY,
+                clickedDate,
+            });
+        }, [minDate, pixelsPerDay, onContextMenuAddTask, onContextMenuAddMilestone]);
+
+        // 컨텍스트 메뉴 닫기 핸들러 (memoized)
+        const handleContextMenuClose = useCallback(() => {
+            setContextMenu(null);
+        }, []);
+
         // Row data (virtualized or full)
         const rowData = isVirtualized
             ? virtualRows!
@@ -158,7 +210,12 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         calendarSettings={calendarSettings}
                     />
 
-                    <svg width={chartWidth} height={chartHeight} className="block bg-white">
+                    <svg
+                        width={chartWidth}
+                        height={chartHeight}
+                        className="block bg-white"
+                        onContextMenu={handleContextMenu}
+                    >
                         <SvgDefs />
 
                         {/* Layer 1: 배경 */}
@@ -323,6 +380,19 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             pixelsPerDay={pixelsPerDay}
                             totalWidth={chartWidth}
                             activeCPId={activeCPId}
+                        />
+                    )}
+
+                    {/* 컨텍스트 메뉴 */}
+                    {contextMenu && onContextMenuAddMilestone && (
+                        <TimelineContextMenu
+                            x={contextMenu.x}
+                            y={contextMenu.y}
+                            clickedDate={contextMenu.clickedDate}
+                            viewMode={viewMode}
+                            onAddTask={onContextMenuAddTask}
+                            onAddMilestone={onContextMenuAddMilestone}
+                            onClose={handleContextMenuClose}
                         />
                     )}
                 </div>

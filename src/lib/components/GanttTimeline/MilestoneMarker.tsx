@@ -96,9 +96,14 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
     onMouseDown,
     onDoubleClick,
 }) => {
-    const size = 12;
+    // milestoneType에 따른 스타일 결정
+    const isDetail = milestone.milestoneType === 'DETAIL';
+    const size = isDetail ? 9 : 12;  // DETAIL은 작은 마커
     const y = MILESTONE_LANE_HEIGHT / 2;
     const currentX = isDragging && dragX !== undefined ? dragX : x;
+
+    const markerColor = isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.milestone;
+    const dragColor = isDetail ? '#D97706' : '#3B82F6';  // Detail: amber-600, Master: blue-500
 
     let textX: number;
     let textY: number;
@@ -147,7 +152,7 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
                 y1={0}
                 x2={0}
                 y2={1000}
-                stroke={isDragging ? '#3B82F6' : '#9CA3AF'}
+                stroke={isDragging ? dragColor : (isDetail ? '#FCD34D' : '#9CA3AF')}
                 strokeWidth={isDragging ? 3 : 2}
                 strokeDasharray="4, 4"
                 className={isDragging ? 'opacity-100' : 'opacity-80'}
@@ -156,9 +161,7 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
             {/* Triangle Symbol */}
             <path
                 d={`M ${-size / 2} ${-size / 2} L ${size / 2} ${-size / 2} L 0 ${size / 2} Z`}
-                fill={isDragging ? '#3B82F6' : GANTT_COLORS.milestone}
-                stroke="white"
-                strokeWidth={1}
+                fill={isDragging ? dragColor : markerColor}
                 className="drop-shadow-sm transition-transform duration-150 group-hover:scale-[1.3]"
                 style={{
                     transformOrigin: 'center',
@@ -181,7 +184,13 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
                 x={textX}
                 y={textY}
                 textAnchor={textAnchor}
-                className={`select-none text-[11px] font-bold transition-colors ${isDragging ? 'fill-blue-700' : 'fill-gray-600 group-hover:fill-blue-700'}`}
+                className={`select-none text-[11px] transition-colors ${
+                    isDetail ? 'font-medium' : 'font-bold'
+                } ${
+                    isDragging
+                        ? (isDetail ? 'fill-amber-700' : 'fill-blue-700')
+                        : (isDetail ? 'fill-amber-600 group-hover:fill-amber-700' : 'fill-gray-600 group-hover:fill-blue-700')
+                }`}
             >
                 {milestone.name}
             </text>

@@ -18,7 +18,8 @@ export const GANTT_COLORS = {
     blue: '#448AFF',          // 간접작업일 (Indirect Work)
 
     // Common Colors
-    milestone: '#4B5563',     // 마일스톤
+    milestone: '#4B5563',     // Master 마일스톤 (회색)
+    milestoneDetail: '#F59E0B',  // Detail 마일스톤 (주황색)
     dependency: '#9CA3AF',    // 연결선
     grid: '#E5E7EB',          // 그리드 라인
     weekend: '#f3f4f6',       // 주말 배경

@@ -18,6 +18,7 @@ export type {
     TaskData,
     ConstructionTask,
     Milestone,
+    MilestoneType,
     DateRange,
     Point,
     Rect,

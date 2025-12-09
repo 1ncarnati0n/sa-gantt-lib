@@ -38,16 +38,68 @@
 
 ## 🛠️ 기술 스택
 
-| 분류 | 기술 |
-|------|-----|
-| Core | React 18/19, TypeScript 5 |
-| Build | Vite 5, vite-plugin-dts |
-| Styling | TailwindCSS 4, PostCSS |
-| State | Zustand 5 |
-| Virtualization | @tanstack/react-virtual |
-| Date | date-fns |
-| Chart | D3.js |
-| Icons | lucide-react |
+### Core Framework
+
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| React | ^18.0.0 \|\| ^19.0.0 | UI 컴포넌트 라이브러리 (peerDependency) |
+| TypeScript | ^5.0.0 | 정적 타입 시스템 |
+
+### Build & Bundle
+
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| Vite | ^5.2.0 | 빌드 도구 및 개발 서버 |
+| vite-plugin-dts | ^3.9.1 | TypeScript 선언 파일(.d.ts) 자동 생성 |
+| PostCSS | ^8.4.38 | CSS 후처리기 |
+| Autoprefixer | ^10.4.19 | 벤더 프리픽스 자동 추가 |
+
+### Styling
+
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| TailwindCSS | ^4.0.0 | 유틸리티 기반 CSS 프레임워크 |
+| @tailwindcss/postcss | ^4.1.17 | Tailwind PostCSS 통합 |
+| clsx | ^2.1.1 | 조건부 className 결합 |
+| tailwind-merge | ^3.4.0 | Tailwind 클래스 충돌 해결 |
+
+### State Management
+
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| Zustand | ^5.0.8 | 경량 상태 관리 라이브러리 |
+
+### UI & Visualization
+
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| D3.js | ^7.9.0 | 데이터 시각화 및 SVG 조작 |
+| @tanstack/react-virtual | ^3.13.12 | 가상화 스크롤 (대용량 데이터 최적화) |
+| lucide-react | ^0.554.0 | 아이콘 라이브러리 |
+
+### Date & Time
+
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| date-fns | ^4.1.0 | 날짜 계산 및 포맷팅 |
+
+### Testing
+
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| Vitest | ^1.6.1 | 단위 테스트 프레임워크 |
+| @vitest/coverage-v8 | ^1.6.1 | 코드 커버리지 리포트 |
+| @testing-library/react | ^16.3.0 | React 컴포넌트 테스트 유틸리티 |
+| @testing-library/jest-dom | ^6.9.1 | DOM 매처 확장 |
+| jsdom | ^27.0.1 | 브라우저 환경 시뮬레이션 |
+
+### Module Format
+
+| 포맷 | 출력 파일 | 용도 |
+|------|----------|------|
+| ES Module | `dist/index.es.js` | 모던 번들러 지원 (Vite, Webpack 5+) |
+| UMD | `dist/index.umd.js` | CommonJS 및 브라우저 직접 사용 |
+| TypeScript | `dist/index.d.ts` | 타입 정의 파일 |
 
 ---
 

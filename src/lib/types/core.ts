@@ -110,11 +110,15 @@ export interface ConstructionTask {
 // 마일스톤 인터페이스
 // ============================================
 
+/** 마일스톤 타입 (MASTER: Master View용, DETAIL: Detail View용) */
+export type MilestoneType = 'MASTER' | 'DETAIL';
+
 export interface Milestone {
     id: string;
     date: Date;
     name: string;
     description?: string;
+    milestoneType?: MilestoneType;  // 기본값: 'MASTER'
 }
 
 // ============================================

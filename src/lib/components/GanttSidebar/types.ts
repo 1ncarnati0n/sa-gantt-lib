@@ -37,6 +37,7 @@ export interface GanttSidebarProps {
 
 export interface SidebarHeaderProps {
     viewMode: ViewMode;
+    activeGroupName?: string;
     activeCPName?: string;
     columns: ColumnConfig[];
     resizingIndex: number | null;
