@@ -94,6 +94,7 @@ export function shallowEqualMilestones(
         if (msA.name !== msB.name) return false;
         if (!datesEqual(msA.date, msB.date)) return false;
         if (msA.description !== msB.description) return false;
+        if (msA.milestoneType !== msB.milestoneType) return false;
     }
 
     return true;

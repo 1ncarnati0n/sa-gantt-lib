@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { format } from 'date-fns';
-import { X, Calendar, FileText, Type, Trash2 } from 'lucide-react';
-import { Milestone } from '../types';
+import { X, Calendar, FileText, Type, Trash2, Layers } from 'lucide-react';
+import { Milestone, MilestoneType } from '../types';
 
 interface MilestoneEditModalProps {
     milestone: Milestone | null;
@@ -94,6 +94,7 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [dateStr, setDateStr] = useState('');
+    const [milestoneType, setMilestoneType] = useState<MilestoneType>('MASTER');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,8 +104,9 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
             setName(milestone.name);
             setDescription(milestone.description || '');
             setDateStr(format(milestone.date, 'yyyy-MM-dd'));
+            setMilestoneType(milestone.milestoneType || 'MASTER');
             setShowDeleteConfirm(false);
-            
+
             // 모달 열릴 때 이름 입력란에 포커스
             setTimeout(() => {
                 nameInputRef.current?.focus();
@@ -129,6 +131,18 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, showDeleteConfirm, onClose]);
 
+    // 변경 감지: 현재 상태와 milestone props 비교
+    const hasChanges = useMemo(() => {
+        if (!milestone || !isOpen) return false;
+
+        return (
+            name !== milestone.name ||
+            description !== (milestone.description || '') ||
+            dateStr !== format(milestone.date, 'yyyy-MM-dd') ||
+            milestoneType !== (milestone.milestoneType || 'MASTER')
+        );
+    }, [milestone, isOpen, name, description, dateStr, milestoneType]);
+
     const handleSave = () => {
         if (!milestone || !name.trim()) return;
 
@@ -137,10 +151,11 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
             name: name.trim(),
             description: description.trim() || undefined,
             date: new Date(dateStr),
+            milestoneType,
         };
 
         onSave(updatedMilestone);
-        onClose();
+        // 모달은 닫지 않음 - hasChanges가 false가 되면 "닫기" 버튼으로 변경
     };
 
     const handleDeleteClick = () => {
@@ -228,6 +243,44 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
                             />
                         </div>
 
+                        {/* 마일스톤 타입 */}
+                        <div>
+                            <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                                <Layers size={14} />
+                                표시 위치
+                            </label>
+                            <div className="flex gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="milestoneType"
+                                        value="MASTER"
+                                        checked={milestoneType === 'MASTER'}
+                                        onChange={() => setMilestoneType('MASTER')}
+                                        className="h-4 w-4 text-gray-600 focus:ring-gray-500"
+                                    />
+                                    <span className="text-sm text-gray-700">
+                                        <span className="inline-block h-2 w-2 rounded-full bg-gray-500 mr-1.5" />
+                                        Master View
+                                    </span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="milestoneType"
+                                        value="DETAIL"
+                                        checked={milestoneType === 'DETAIL'}
+                                        onChange={() => setMilestoneType('DETAIL')}
+                                        className="h-4 w-4 text-amber-500 focus:ring-amber-500"
+                                    />
+                                    <span className="text-sm text-gray-700">
+                                        <span className="inline-block h-2 w-2 rounded-full bg-amber-500 mr-1.5" />
+                                        Detail View
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
                         {/* 설명 */}
                         <div>
                             <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700">
@@ -259,20 +312,18 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
                             )}
                         </div>
                         
-                        {/* 취소/저장 버튼 (오른쪽) */}
+                        {/* 저장/닫기 토글 버튼 (오른쪽) */}
                         <div className="flex gap-2">
                             <button
-                                onClick={onClose}
-                                className="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                                onClick={hasChanges ? handleSave : onClose}
+                                disabled={hasChanges && !name.trim()}
+                                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                                    hasChanges
+                                        ? 'bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed'
+                                        : 'bg-gray-500 text-white hover:bg-gray-600'
+                                }`}
                             >
-                                취소
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={!name.trim()}
-                                className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                            >
-                                저장
+                                {hasChanges ? '저장' : '닫기'}
                             </button>
                         </div>
                     </div>

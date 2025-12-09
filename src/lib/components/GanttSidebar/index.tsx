@@ -210,12 +210,37 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             ? virtualRows!
             : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }));
 
+        // Active CP와 상위 그룹 정보 계산
+        const { activeGroupName, activeCPName } = useMemo(() => {
+            if (!activeCPId) return { activeGroupName: undefined, activeCPName: undefined };
+
+            const activeCP = allTasks.find(t => t.id === activeCPId);
+            if (!activeCP) return { activeGroupName: undefined, activeCPName: undefined };
+
+            const cpName = activeCP.name;
+
+            // CP의 parentId로 상위 GROUP 찾기
+            if (!activeCP.parentId) {
+                console.log('[GanttSidebar] activeCP has no parentId:', activeCP);
+                return { activeGroupName: undefined, activeCPName: cpName };
+            }
+
+            const parentGroup = allTasks.find(t => t.id === activeCP.parentId);
+            console.log('[GanttSidebar] parentGroup:', parentGroup?.name, 'for CP:', cpName);
+
+            return {
+                activeGroupName: parentGroup?.name,
+                activeCPName: cpName,
+            };
+        }, [activeCPId, allTasks]);
+
         // Common container render
         const renderContainer = (content: React.ReactNode) => (
             <div className="flex h-full flex-col bg-white select-none">
                 <SidebarHeader
                     viewMode={viewMode}
-                    activeCPName={allTasks.find(t => t.id === activeCPId)?.name}
+                    activeGroupName={activeGroupName}
+                    activeCPName={activeCPName}
                     columns={columns}
                     resizingIndex={resizingIndex}
                     selectedTaskIds={selectedTaskIds}

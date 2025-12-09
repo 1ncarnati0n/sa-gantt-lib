@@ -198,6 +198,42 @@ export function GanttChart({
         setIsEditModalOpen(true);
     }, []);
 
+    // 컨텍스트 메뉴에서 Task 추가 (날짜 지정)
+    const handleContextMenuAddTask = useCallback((date: Date) => {
+        if (!activeCPId || !onTaskCreate) return;
+
+        const newTask: Partial<ConstructionTask> = {
+            id: `task-${Date.now()}`,
+            parentId: activeCPId,
+            wbsLevel: 2,
+            type: 'TASK',
+            name: '새 공정',
+            startDate: date,
+            endDate: date,
+            task: {
+                netWorkDays: 1,
+                indirectWorkDaysPre: 0,
+                indirectWorkDaysPost: 0,
+            },
+            dependencies: [],
+        };
+        onTaskCreate(newTask);
+    }, [activeCPId, onTaskCreate]);
+
+    // 컨텍스트 메뉴에서 마일스톤 추가 (날짜 지정)
+    const handleContextMenuAddMilestone = useCallback((date: Date) => {
+        const newMilestone: Milestone = {
+            id: `milestone-${Date.now()}`,
+            name: '',
+            date: date,
+            description: '',
+            milestoneType: viewMode === 'MASTER' ? 'MASTER' : 'DETAIL',
+        };
+        setEditingMilestone(newMilestone);
+        setIsNewMilestone(true);
+        setIsEditModalOpen(true);
+    }, [viewMode]);
+
     const handleCloseEditModal = useCallback(() => {
         setIsEditModalOpen(false);
         setEditingMilestone(null);
@@ -207,11 +243,13 @@ export function GanttChart({
     const handleMilestoneSave = useCallback((updatedMilestone: Milestone) => {
         if (isNewMilestone && onMilestoneCreate) {
             onMilestoneCreate(updatedMilestone);
+            // 새 마일스톤 저장 후 isNew를 false로 변경 (삭제 버튼 활성화)
+            setIsNewMilestone(false);
         } else if (onMilestoneUpdate) {
             onMilestoneUpdate(updatedMilestone);
         }
-        handleCloseEditModal();
-    }, [isNewMilestone, onMilestoneCreate, onMilestoneUpdate, handleCloseEditModal]);
+        // 모달 닫기는 MilestoneEditModal 내부에서 처리
+    }, [isNewMilestone, onMilestoneCreate, onMilestoneUpdate]);
 
     const handleMilestoneDelete = useCallback((milestoneId: string) => {
         if (onMilestoneDelete) {
@@ -244,6 +282,8 @@ export function GanttChart({
     }, [onTaskDelete, handleCloseTaskEditModal]);
 
     // tasks가 변경될 때 editingTask 동기화
+    // 의도적으로 tasks만 의존성으로 설정 - 저장 후 hasChanges 계산을 위해
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (editingTask && isTaskEditModalOpen) {
             const updatedTask = tasks.find(t => t.id === editingTask.id);
@@ -252,6 +292,18 @@ export function GanttChart({
             }
         }
     }, [tasks]);
+
+    // milestones가 변경될 때 editingMilestone 동기화
+    // 의도적으로 milestones만 의존성으로 설정 - 저장 후 hasChanges 계산을 위해
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        if (editingMilestone && isEditModalOpen) {
+            const updatedMilestone = milestones.find(m => m.id === editingMilestone.id);
+            if (updatedMilestone) {
+                setEditingMilestone(updatedMilestone);
+            }
+        }
+    }, [milestones]);
 
     // Bar Drag Handler
     const handleBarDrag = useCallback(async (result: BarDragResult) => {
@@ -416,6 +468,14 @@ export function GanttChart({
                         totalHeight={totalHeight}
                         onGroupToggle={toggleTask}
                         activeCPId={activeCPId}
+                        onContextMenuAddTask={
+                            viewMode === 'DETAIL' && activeCPId && onTaskCreate
+                                ? handleContextMenuAddTask
+                                : undefined
+                        }
+                        onContextMenuAddMilestone={
+                            onMilestoneCreate ? handleContextMenuAddMilestone : undefined
+                        }
                     />
                 </div>
 
