@@ -30,7 +30,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
     // GROUP은 바를 렌더링하지 않음
     if (task.type === 'GROUP') return null;
 
-    const radius = 2;
+    const radius = 0;
     const isDragging = !!dragInfo;
     const isGroupDragging = groupDragDeltaDays !== 0;
 

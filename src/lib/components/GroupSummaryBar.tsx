@@ -9,7 +9,7 @@ import { calculateGroupDateRange, collectDescendantTasks } from '../utils/groupU
 const { BAR_HEIGHT } = GANTT_LAYOUT;
 
 // Summary 바 스타일 상수
-const SUMMARY_BAR_HEIGHT = 10;
+const SUMMARY_BAR_HEIGHT = 9;
 const SUMMARY_BAR_COLOR = '#9CA3AF';      // gray-400
 const PROGRESS_COLOR = '#6B7280';         // gray-500
 
@@ -123,10 +123,11 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
                 />
             )}
 
-            {/* 그룹명 (바 위에 표시) */}
+            {/* 그룹명 (바 위에 표시 - 중앙 정렬) */}
             <text
-                x={0}
+                x={totalWidth / 2}
                 y={barY - 3}
+                textAnchor="middle"
                 className="fill-gray-600 font-medium"
                 style={{ fontSize: '10px' }}
             >

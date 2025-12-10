@@ -98,7 +98,7 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
 }) => {
     // milestoneType에 따른 스타일 결정
     const isDetail = milestone.milestoneType === 'DETAIL';
-    const size = isDetail ? 9 : 12;  // DETAIL은 작은 마커
+    const size = isDetail ? 8 : 11;  // DETAIL은 작은 마커
     const y = MILESTONE_LANE_HEIGHT / 2;
     const currentX = isDragging && dragX !== undefined ? dragX : x;
 
@@ -153,9 +153,9 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
                 x2={0}
                 y2={1000}
                 stroke={isDragging ? dragColor : (isDetail ? '#FCD34D' : '#9CA3AF')}
-                strokeWidth={isDragging ? 3 : 2}
-                strokeDasharray="4, 4"
-                className={isDragging ? 'opacity-100' : 'opacity-80'}
+                strokeWidth={isDragging ? 2 : 1.2}
+                strokeDasharray="4, 5"
+                className={isDragging ? 'opacity-100' : 'opacity-90'}
             />
 
             {/* Triangle Symbol */}
@@ -184,13 +184,11 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
                 x={textX}
                 y={textY}
                 textAnchor={textAnchor}
-                className={`select-none text-[11px] transition-colors ${
-                    isDetail ? 'font-medium' : 'font-bold'
-                } ${
-                    isDragging
+                className={`select-none text-[11px] transition-colors ${isDetail ? 'font-medium' : 'font-bold'
+                    } ${isDragging
                         ? (isDetail ? 'fill-amber-700' : 'fill-blue-700')
                         : (isDetail ? 'fill-amber-600 group-hover:fill-amber-700' : 'fill-gray-600 group-hover:fill-blue-700')
-                }`}
+                    }`}
             >
                 {milestone.name}
             </text>
