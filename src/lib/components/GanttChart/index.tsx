@@ -47,6 +47,11 @@ export function GanttChart({
     onTaskMove,
     onGroupDrag,
     onViewChange,
+    // 앵커 종속성 Props
+    anchorDependencies = [],
+    onAnchorDependencyCreate,
+    onAnchorDependencyDelete,
+    onAnchorDependencyDrag,
     onMilestoneCreate,
     onMilestoneUpdate,
     onMilestoneDelete,
@@ -476,6 +481,10 @@ export function GanttChart({
                         onContextMenuAddMilestone={
                             onMilestoneCreate ? handleContextMenuAddMilestone : undefined
                         }
+                        anchorDependencies={anchorDependencies}
+                        onAnchorDependencyCreate={onAnchorDependencyCreate}
+                        onAnchorDependencyDelete={onAnchorDependencyDelete}
+                        onAnchorDependencyDrag={onAnchorDependencyDrag}
                     />
                 </div>
 

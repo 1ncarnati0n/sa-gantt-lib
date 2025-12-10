@@ -77,6 +77,9 @@ export interface GroupDragState {
     lastDeltaX: number;
 }
 
+/** TaskBar 렌더링 모드 */
+export type TaskBarRenderMode = 'full' | 'bar' | 'label';
+
 /** TaskBar Props */
 export interface TaskBarProps {
     task: ConstructionTask;
@@ -84,6 +87,8 @@ export interface TaskBarProps {
     minDate: Date;
     pixelsPerDay: number;
     isMasterView: boolean;
+    /** 렌더링 모드: 'full' (기본), 'bar' (바만), 'label' (라벨만) */
+    renderMode?: TaskBarRenderMode;
     allTasks?: ConstructionTask[];
     holidays?: Date[];
     calendarSettings?: CalendarSettings;
@@ -103,6 +108,16 @@ export interface TaskBarProps {
     ) => void;
     onDoubleClick?: () => void;
     groupDragDeltaDays?: number;
+    // 앵커 종속성 관련 Props
+    dependencyDragDeltaDays?: number;
+    onDependencyDragStart?: (
+        e: React.MouseEvent,
+        taskId: string,
+        taskData: { startDate: Date; endDate: Date }
+    ) => boolean | void;
+    hasDependency?: boolean;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
 }
 
 /** MilestoneMarker Props */

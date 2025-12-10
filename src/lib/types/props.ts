@@ -10,6 +10,8 @@ import type {
     ZoomLevel,
     DropPosition,
     GroupDragResult,
+    AnchorDependency,
+    AnchorDependencyDragResult,
 } from './core';
 import type { CalendarSettings } from './calendar';
 import type { GanttErrorContext } from './ui';
@@ -45,6 +47,12 @@ export interface GanttChartProps {
     onTaskUngroup?: (groupId: string) => void | Promise<void>;
     onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void | Promise<void>;
     onGroupDrag?: (result: GroupDragResult) => void | Promise<void>;
+
+    // 앵커 종속성 이벤트 핸들러
+    anchorDependencies?: AnchorDependency[];
+    onAnchorDependencyCreate?: (dependency: AnchorDependency) => void | Promise<void>;
+    onAnchorDependencyDelete?: (depId: string) => void | Promise<void>;
+    onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void | Promise<void>;
 
     // 마일스톤 이벤트 핸들러
     onMilestoneCreate?: (milestone: Partial<Milestone>) => void | Promise<void>;

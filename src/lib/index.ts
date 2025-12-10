@@ -120,6 +120,10 @@ export type {
     CriticalPathDay,
     CriticalPathSummary,
 
+    // Anchor Dependency Types
+    AnchorDependency,
+    AnchorDependencyDragResult,
+
     // Error Types
     GanttErrorContext,
 } from './types';

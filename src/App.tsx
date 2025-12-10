@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { parseISO, format } from 'date-fns';
-import { GanttChart, ConstructionTask, Milestone, CalendarSettings, calculateDualCalendarDates, AnchorPoint, DependencyType, DropPosition, Dependency } from './lib';
+import { GanttChart, ConstructionTask, Milestone, CalendarSettings, calculateDualCalendarDates, AnchorPoint, DependencyType, DropPosition, Dependency, AnchorDependency } from './lib';
 import { useHistory } from './lib/hooks/useHistory';
 import mockData from './data/mock.json';
 
@@ -45,6 +45,7 @@ declare global {
 interface AppState {
   tasks: ConstructionTask[];
   milestones: Milestone[];
+  anchorDependencies: AnchorDependency[];
 }
 
 // ============================================
@@ -238,7 +239,7 @@ const parseMockData = (): AppState => {
     dependencies: (t.dependencies as Dependency[]) || [],
   }));
 
-  return { milestones, tasks };
+  return { milestones, tasks, anchorDependencies: [] };
 };
 
 // 초기 상태 로드 함수
@@ -251,6 +252,7 @@ const loadInitialState = (): AppState => {
     return {
       tasks: storedTasks,
       milestones: storedMilestones || [],
+      anchorDependencies: [],
     };
   }
 
@@ -293,9 +295,9 @@ function App() {
     canRedo,
     reset: resetHistory,
     historyLength,
-  } = useHistory<AppState>({ tasks: [], milestones: [] });
+  } = useHistory<AppState>({ tasks: [], milestones: [], anchorDependencies: [] });
 
-  const { tasks, milestones } = appState;
+  const { tasks, milestones, anchorDependencies } = appState;
 
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -528,13 +530,12 @@ function App() {
         throw new Error('가져올 수 있는 태스크가 없습니다.');
       }
 
-      // 상태 업데이트
-      const newState: AppState = {
+      // 상태 업데이트 (기존 anchorDependencies 유지)
+      setAppState(prev => ({
         tasks: importedTasks,
         milestones: importedMilestones,
-      };
-
-      setAppState(newState);
+        anchorDependencies: prev.anchorDependencies,
+      }));
 
       // localStorage에도 저장
       saveTasksToStorage(importedTasks);
@@ -970,6 +971,29 @@ function App() {
     }
   }, [setAppState]);
 
+  // ====================================
+  // 앵커 종속성 핸들러
+  // ====================================
+  const handleAnchorDependencyCreate = useCallback((dep: AnchorDependency) => {
+    setAppState(prev => {
+      console.log('Anchor dependency created:', dep);
+      return {
+        ...prev,
+        anchorDependencies: [...prev.anchorDependencies, dep],
+      };
+    });
+  }, [setAppState]);
+
+  const handleAnchorDependencyDelete = useCallback((depId: string) => {
+    setAppState(prev => {
+      console.log('Anchor dependency deleted:', depId);
+      return {
+        ...prev,
+        anchorDependencies: prev.anchorDependencies.filter(d => d.id !== depId),
+      };
+    });
+  }, [setAppState]);
+
   if (tasks.length === 0) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-gray-100">
@@ -1064,6 +1088,9 @@ function App() {
           onMilestoneCreate={handleMilestoneCreate}
           onMilestoneUpdate={handleMilestoneUpdate}
           onMilestoneDelete={handleMilestoneDelete}
+          anchorDependencies={anchorDependencies}
+          onAnchorDependencyCreate={handleAnchorDependencyCreate}
+          onAnchorDependencyDelete={handleAnchorDependencyDelete}
           onSave={handleSave}
           onReset={handleReset}
           hasUnsavedChanges={hasUnsavedChanges}

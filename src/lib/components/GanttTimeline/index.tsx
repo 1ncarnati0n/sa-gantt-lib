@@ -12,6 +12,8 @@ import {
     GANTT_COLORS,
     ZOOM_CONFIG,
     GroupDragResult,
+    AnchorDependency,
+    AnchorDependencyDragResult,
 } from '../../types';
 import { calculateDateRange, xToDate } from '../../utils/dateUtils';
 import type { VirtualRow } from '../../hooks/useGanttVirtualization';
@@ -23,11 +25,15 @@ import { MilestoneMarker, calculateMilestoneLabels } from './MilestoneMarker';
 import { SvgDefs } from './SvgDefs';
 import { TaskBar } from './TaskBar';
 import { TimelineContextMenu } from './TimelineContextMenu';
+import { DependencyLines, ConnectionPreviewLine, InBarConnectionLines } from './DependencyLines';
+import { AnchorPoints, getAnchorPosition } from './AnchorPoints';
 
 // Hooks
 import { useBarDrag } from './hooks/useBarDrag';
 import { useMilestoneDrag } from './hooks/useMilestoneDrag';
 import { useGroupDrag } from './hooks/useGroupDrag';
+import { useAnchorConnection } from './hooks/useAnchorConnection';
+import { useDependencyDrag } from './hooks/useDependencyDrag';
 
 // External components
 import { CriticalPathBar } from '../CriticalPathBar';
@@ -61,6 +67,11 @@ interface GanttTimelineProps {
     activeCPId?: string | null;
     onContextMenuAddTask?: (date: Date) => void;
     onContextMenuAddMilestone?: (date: Date) => void;
+    // 앵커 종속성 관련 Props
+    anchorDependencies?: AnchorDependency[];
+    onAnchorDependencyCreate?: (dependency: AnchorDependency) => void;
+    onAnchorDependencyDelete?: (depId: string) => void;
+    onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void;
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
@@ -84,6 +95,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         activeCPId,
         onContextMenuAddTask,
         onContextMenuAddMilestone,
+        anchorDependencies = [],
+        onAnchorDependencyCreate,
+        onAnchorDependencyDelete,
+        onAnchorDependencyDrag,
     }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
@@ -95,6 +110,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             y: number;
             clickedDate: Date;
         } | null>(null);
+
 
         // Calculate date range
         const { minDate, totalDays } = useMemo(() => {
@@ -158,6 +174,44 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             onGroupDrag,
         });
 
+        // ====================================
+        // Anchor Dependency Hooks
+        // ====================================
+        const {
+            connectingFrom,
+            hoveredAnchor,
+            selectedDepId,
+            hoveredDepId,
+            isConnecting,
+            handleAnchorClick,
+            handleAnchorHover,
+            handleDependencyClick,
+            handleDependencyHover,
+            cancelConnection: _cancelConnection,
+            clearSelection,
+        } = useAnchorConnection({
+            dependencies: anchorDependencies,
+            onDependencyCreate: onAnchorDependencyCreate,
+            onDependencyDelete: onAnchorDependencyDelete,
+        });
+
+        const {
+            taskHasDependency,
+            handleDependencyBarMouseDown,
+            getTaskDeltaDays: getDependencyDragDeltaDays,
+            isDraggingTask: _isDependencyDraggingTask,
+        } = useDependencyDrag({
+            pixelsPerDay,
+            holidays,
+            calendarSettings,
+            allTasks: allTasks || tasks,
+            dependencies: anchorDependencies,
+            onDependencyDrag: onAnchorDependencyDrag,
+        });
+
+        // 호버된 태스크 ID 상태 (앵커 표시용)
+        const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+
         const handleMilestoneDoubleClick = useCallback((milestone: Milestone) => {
             if (onMilestoneDoubleClick) {
                 onMilestoneDoubleClick(milestone);
@@ -193,6 +247,19 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             setContextMenu(null);
         }, []);
 
+        // 종속성 삭제 핸들러
+        const handleDepDelete = useCallback((depId: string) => {
+            onAnchorDependencyDelete?.(depId);
+        }, [onAnchorDependencyDelete]);
+
+        // SVG 빈 공간 클릭 시 선택 해제
+        const handleSvgClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+            // 클릭된 요소가 SVG 자체일 때만 선택 해제 (task bar, anchor, dependency line 등이 아닐 때)
+            if (e.target === e.currentTarget) {
+                clearSelection();
+            }
+        }, [clearSelection]);
+
         // Row data (virtualized or full)
         const rowData = isVirtualized
             ? virtualRows!
@@ -215,6 +282,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         height={chartHeight}
                         className="block bg-white"
                         onContextMenu={handleContextMenu}
+                        onClick={handleSvgClick}
                     >
                         <SvgDefs />
 
@@ -322,7 +390,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             strokeWidth={1}
                         />
 
-                        {/* Layer 4: 태스크 바 */}
+                        {/* Layer 4: 태스크 바 (bar만) */}
                         {rowData.map((row) => {
                             const task = tasks[row.index];
                             if (!task) return null;
@@ -355,19 +423,129 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
                                     isMasterView={isMasterView}
+                                    renderMode="bar"
                                     allTasks={allTasks || tasks}
                                     holidays={holidays}
                                     calendarSettings={calendarSettings}
                                     isDraggable={!isMasterView && !!onBarDrag}
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
+                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
                                     onDragStart={handleBarMouseDown}
+                                    onDependencyDragStart={handleDependencyBarMouseDown}
+                                    hasDependency={taskHasDependency(task.id)}
                                     onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
                                         ? () => onTaskDoubleClick(task)
                                         : undefined}
+                                    onMouseEnter={() => setHoveredTaskId(task.id)}
+                                    onMouseLeave={() => setHoveredTaskId(null)}
                                 />
                             );
                         })}
+
+                        {/* Layer 5: 종속성 선 */}
+                        {!isMasterView && anchorDependencies.length > 0 && (
+                            <DependencyLines
+                                tasks={tasks}
+                                dependencies={anchorDependencies}
+                                minDate={minDate}
+                                pixelsPerDay={pixelsPerDay}
+                                selectedDepId={selectedDepId}
+                                hoveredDepId={hoveredDepId}
+                                onDependencyClick={handleDependencyClick}
+                                onDependencyHover={handleDependencyHover}
+                                holidays={holidays}
+                                calendarSettings={calendarSettings}
+                            />
+                        )}
+
+                        {/* Layer 5.5: 바 내 앵커 연결선 (들어오는 끝점 → 나가는 시작점) */}
+                        {!isMasterView && anchorDependencies.length > 0 && (
+                            <InBarConnectionLines
+                                tasks={tasks}
+                                dependencies={anchorDependencies}
+                                minDate={minDate}
+                                pixelsPerDay={pixelsPerDay}
+                                holidays={holidays}
+                                calendarSettings={calendarSettings}
+                            />
+                        )}
+
+                        {/* Layer 6: 앵커 포인트 */}
+                        {!isMasterView && rowData.map((row) => {
+                            const task = tasks[row.index];
+                            if (!task || task.type !== 'TASK') return null;
+
+                            const isTaskHovered = hoveredTaskId === task.id;
+
+                            return (
+                                <AnchorPoints
+                                    key={`anchor-${row.key}`}
+                                    task={task}
+                                    rowIndex={row.index}
+                                    minDate={minDate}
+                                    pixelsPerDay={pixelsPerDay}
+                                    isHovered={isTaskHovered}
+                                    isConnecting={isConnecting}
+                                    connectingFrom={connectingFrom}
+                                    dependencies={anchorDependencies}
+                                    onAnchorClick={handleAnchorClick}
+                                    onAnchorHover={handleAnchorHover}
+                                    holidays={holidays}
+                                    calendarSettings={calendarSettings}
+                                />
+                            );
+                        })}
+
+                        {/* Layer 6.5: 태스크 라벨 (종속선 위에 표시) */}
+                        {rowData.map((row) => {
+                            const task = tasks[row.index];
+                            if (!task) return null;
+                            // GROUP은 별도 처리 (GroupSummaryBar에서 라벨 포함)
+                            if (!isMasterView && task.type === 'GROUP') return null;
+
+                            const y = row.start + (ROW_HEIGHT - BAR_HEIGHT) / 2 + MILESTONE_LANE_HEIGHT;
+
+                            return (
+                                <TaskBar
+                                    key={`label-${row.key}`}
+                                    task={task}
+                                    y={y}
+                                    minDate={minDate}
+                                    pixelsPerDay={pixelsPerDay}
+                                    isMasterView={isMasterView}
+                                    renderMode="label"
+                                    allTasks={allTasks || tasks}
+                                    holidays={holidays}
+                                    calendarSettings={calendarSettings}
+                                    dragInfo={getDragInfo(task.id)}
+                                    groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
+                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
+                                />
+                            );
+                        })}
+
+                        {/* Layer 7: 연결 프리뷰 선 */}
+                        {!isMasterView && connectingFrom && hoveredAnchor && connectingFrom.taskId !== hoveredAnchor.taskId && (() => {
+                            const sourceTask = tasks.find(t => t.id === connectingFrom.taskId);
+                            const targetTask = tasks.find(t => t.id === hoveredAnchor.taskId);
+                            const sourceIndex = tasks.findIndex(t => t.id === connectingFrom.taskId);
+                            const targetIndex = tasks.findIndex(t => t.id === hoveredAnchor.taskId);
+
+                            if (!sourceTask || !targetTask || sourceIndex < 0 || targetIndex < 0) return null;
+
+                            const sourcePos = getAnchorPosition(sourceTask, connectingFrom.dayIndex, sourceIndex, minDate, pixelsPerDay, holidays, calendarSettings);
+                            const targetPos = getAnchorPosition(targetTask, hoveredAnchor.dayIndex, targetIndex, minDate, pixelsPerDay, holidays, calendarSettings);
+
+                            return (
+                                <ConnectionPreviewLine
+                                    sourceX={sourcePos.x}
+                                    sourceY={sourcePos.y}
+                                    targetX={targetPos.x}
+                                    targetY={targetPos.y}
+                                />
+                            );
+                        })()}
                     </svg>
 
                     {/* Critical Path Bar (Level 2에서만 표시) */}
@@ -393,6 +571,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             onAddTask={onContextMenuAddTask}
                             onAddMilestone={onContextMenuAddMilestone}
                             onClose={handleContextMenuClose}
+                            selectedDependencyId={selectedDepId}
+                            onDeleteDependency={onAnchorDependencyDelete ? handleDepDelete : undefined}
                         />
                     )}
                 </div>

@@ -13,6 +13,8 @@ export type {
     TaskType,
     DropPosition,
     Dependency,
+    AnchorDependency,
+    AnchorDependencyDragResult,
     CPData,
     GroupData,
     TaskData,
