@@ -18,6 +18,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
     minDate,
     pixelsPerDay,
     isMasterView,
+    renderMode = 'full',
     allTasks = [],
     holidays = [],
     calendarSettings,
@@ -26,18 +27,31 @@ export const TaskBar: React.FC<TaskBarProps> = ({
     onDragStart,
     onDoubleClick,
     groupDragDeltaDays = 0,
+    dependencyDragDeltaDays = 0,
+    onDependencyDragStart,
+    hasDependency = false,
+    onMouseEnter,
+    onMouseLeave,
 }) => {
+    const showBar = renderMode === 'full' || renderMode === 'bar';
+    const showLabel = renderMode === 'full' || renderMode === 'label';
     // GROUP은 바를 렌더링하지 않음
     if (task.type === 'GROUP') return null;
 
     const radius = 0;
     const isDragging = !!dragInfo;
     const isGroupDragging = groupDragDeltaDays !== 0;
+    const isDependencyDragging = dependencyDragDeltaDays !== 0;
 
+    // 드래그 우선순위: dragInfo > dependencyDrag > groupDrag > 기본
     const effectiveStartDate = dragInfo?.startDate
-        || (isGroupDragging ? addDays(task.startDate, groupDragDeltaDays) : task.startDate);
+        || (isDependencyDragging ? addDays(task.startDate, dependencyDragDeltaDays)
+        : isGroupDragging ? addDays(task.startDate, groupDragDeltaDays)
+        : task.startDate);
     const effectiveEndDate = dragInfo?.endDate
-        || (isGroupDragging ? addDays(task.endDate, groupDragDeltaDays) : task.endDate);
+        || (isDependencyDragging ? addDays(task.endDate, dependencyDragDeltaDays)
+        : isGroupDragging ? addDays(task.endDate, groupDragDeltaDays)
+        : task.endDate);
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
 
     if (isMasterView) {
@@ -75,34 +89,40 @@ export const TaskBar: React.FC<TaskBarProps> = ({
 
         return (
             <g transform={`translate(${startX}, ${y})`} className="group cursor-pointer">
-                <rect
-                    x={0}
-                    y={0}
-                    width={workWidth}
-                    height={BAR_HEIGHT}
-                    fill={GANTT_COLORS.vermilion}
-                    rx={radius}
-                    ry={radius}
-                    className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
-                />
-                <rect
-                    x={workWidth}
-                    y={0}
-                    width={nonWorkWidth}
-                    height={BAR_HEIGHT}
-                    fill={GANTT_COLORS.teal}
-                    rx={radius}
-                    ry={radius}
-                    className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
-                />
-                <text
-                    x={-8}
-                    y={BAR_HEIGHT / 2 + 4}
-                    textAnchor="end"
-                    className="pointer-events-none select-none text-[11px] font-bold fill-gray-700"
-                >
-                    {task.name}
-                </text>
+                {showBar && (
+                    <>
+                        <rect
+                            x={0}
+                            y={0}
+                            width={workWidth}
+                            height={BAR_HEIGHT}
+                            fill={GANTT_COLORS.vermilion}
+                            rx={radius}
+                            ry={radius}
+                            className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
+                        />
+                        <rect
+                            x={workWidth}
+                            y={0}
+                            width={nonWorkWidth}
+                            height={BAR_HEIGHT}
+                            fill={GANTT_COLORS.teal}
+                            rx={radius}
+                            ry={radius}
+                            className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
+                        />
+                    </>
+                )}
+                {showLabel && (
+                    <text
+                        x={-8}
+                        y={BAR_HEIGHT / 2 + 4}
+                        textAnchor="end"
+                        className="pointer-events-none select-none text-[11px] font-bold fill-gray-700"
+                    >
+                        {task.name}
+                    </text>
+                )}
             </g>
         );
     } else {
@@ -154,24 +174,28 @@ export const TaskBar: React.FC<TaskBarProps> = ({
         return (
             <g
                 transform={`translate(${startX}, ${y})`}
-                className={`group ${isDragging ? 'opacity-90' : ''} ${onDoubleClick ? 'cursor-pointer' : ''}`}
+                className={`group ${isDragging || isDependencyDragging ? 'opacity-90' : ''} ${onDoubleClick ? 'cursor-pointer' : ''}`}
                 onDoubleClick={onDoubleClick}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
             >
                 {/* Pre Indirect Work (Blue) */}
                 {effectivePreDays > 0 && (
                     <>
-                        <rect
-                            x={preX}
-                            y={0}
-                            width={preWidth}
-                            height={BAR_HEIGHT}
-                            fill={GANTT_COLORS.blue}
-                            rx={radius}
-                            ry={radius}
-                            className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                            style={{ pointerEvents: 'none' }}
-                        />
-                        {indirectWorkNamePre && (
+                        {showBar && (
+                            <rect
+                                x={preX}
+                                y={0}
+                                width={preWidth}
+                                height={BAR_HEIGHT}
+                                fill={GANTT_COLORS.blue}
+                                rx={radius}
+                                ry={radius}
+                                className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                                style={{ pointerEvents: 'none' }}
+                            />
+                        )}
+                        {showLabel && indirectWorkNamePre && (
                             <text
                                 x={preX + preWidth / 2}
                                 y={BAR_HEIGHT + 11}
@@ -185,7 +209,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                 )}
 
                 {/* Net Work (Red) */}
-                {effectiveNetDays > 0 && (
+                {showBar && effectiveNetDays > 0 && (
                     <>
                         <rect
                             x={netX}
@@ -215,18 +239,20 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                 {/* Post Indirect Work (Blue) */}
                 {effectivePostDays > 0 && (
                     <>
-                        <rect
-                            x={postX}
-                            y={0}
-                            width={postWidth}
-                            height={BAR_HEIGHT}
-                            fill={GANTT_COLORS.blue}
-                            rx={radius}
-                            ry={radius}
-                            className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                            style={{ pointerEvents: 'none' }}
-                        />
-                        {indirectWorkNamePost && (
+                        {showBar && (
+                            <rect
+                                x={postX}
+                                y={0}
+                                width={postWidth}
+                                height={BAR_HEIGHT}
+                                fill={GANTT_COLORS.blue}
+                                rx={radius}
+                                ry={radius}
+                                className={`drop-shadow-sm transition-opacity ${isDragging ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                                style={{ pointerEvents: 'none' }}
+                            />
+                        )}
+                        {showLabel && indirectWorkNamePost && (
                             <text
                                 x={postX + postWidth / 2}
                                 y={BAR_HEIGHT + 11}
@@ -240,7 +266,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                 )}
 
                 {/* Drag Handles */}
-                {isDraggable && effectiveNetDays > 0 && (
+                {showBar && isDraggable && effectiveNetDays > 0 && (
                     <rect
                         x={netX + boundaryHandleWidth}
                         y={0}
@@ -248,13 +274,24 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                         height={BAR_HEIGHT}
                         fill="transparent"
                         className="cursor-grab active:cursor-grabbing"
-                        onMouseDown={(e) => onDragStart?.(e, task.id, 'move', taskData)}
+                        onMouseDown={(e) => {
+                            // 종속성이 있으면 종속성 드래그 우선 시도
+                            if (hasDependency && onDependencyDragStart) {
+                                const handled = onDependencyDragStart(e, task.id, {
+                                    startDate: effectiveStartDate,
+                                    endDate: effectiveEndDate,
+                                });
+                                if (handled) return;
+                            }
+                            // 일반 드래그
+                            onDragStart?.(e, task.id, 'move', taskData);
+                        }}
                     >
-                        <title>전체 이동 (드래그)</title>
+                        <title>{hasDependency ? '연결된 태스크와 함께 이동' : '전체 이동'} (드래그)</title>
                     </rect>
                 )}
 
-                {isDraggable && (
+                {showBar && isDraggable && (
                     <rect
                         x={-handleWidth / 2}
                         y={0}
@@ -268,7 +305,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                     </rect>
                 )}
 
-                {isDraggable && effectivePreDays > 0 && effectiveNetDays > 0 && (
+                {showBar && isDraggable && effectivePreDays > 0 && effectiveNetDays > 0 && (
                     <rect
                         x={preWidth - boundaryHandleWidth / 2}
                         y={0}
@@ -282,7 +319,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                     </rect>
                 )}
 
-                {isDraggable && effectivePostDays > 0 && effectiveNetDays > 0 && (
+                {showBar && isDraggable && effectivePostDays > 0 && effectiveNetDays > 0 && (
                     <rect
                         x={postX - boundaryHandleWidth / 2}
                         y={0}
@@ -296,7 +333,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                     </rect>
                 )}
 
-                {isDraggable && (
+                {showBar && isDraggable && (
                     <rect
                         x={barWidth - handleWidth / 2}
                         y={0}
@@ -311,7 +348,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                 )}
 
                 {/* Visual handle indicators */}
-                {isDraggable && (
+                {showBar && isDraggable && (
                     <>
                         <rect
                             x={1}
@@ -357,17 +394,19 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                 )}
 
                 {/* Label */}
-                <text
-                    x={-8}
-                    y={BAR_HEIGHT / 2 + 4}
-                    textAnchor="end"
-                    className="pointer-events-none select-none text-[11px] font-medium fill-gray-700"
-                >
-                    {task.name}
-                </text>
+                {showLabel && (
+                    <text
+                        x={-8}
+                        y={BAR_HEIGHT / 2 + 4}
+                        textAnchor="end"
+                        className="pointer-events-none select-none text-[11px] font-medium fill-gray-700"
+                    >
+                        {task.name}
+                    </text>
+                )}
 
                 {/* Drag preview */}
-                {isDragging && (
+                {showLabel && isDragging && (
                     <g>
                         <text
                             x={barWidth / 2}

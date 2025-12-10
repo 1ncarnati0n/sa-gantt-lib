@@ -43,6 +43,23 @@ export interface Dependency {
     targetAnchor?: AnchorPoint;       // 도착 지점
 }
 
+/** 앵커 기반 종속성 (양방향 연결 이동 지원) */
+export interface AnchorDependency {
+    id: string;
+    sourceTaskId: string;             // 출발 태스크 ID
+    targetTaskId: string;             // 도착 태스크 ID
+    sourceDayIndex: number;           // 출발 앵커 위치 (태스크 시작 기준 오프셋, 0.5 단위)
+    targetDayIndex: number;           // 도착 앵커 위치 (태스크 시작 기준 오프셋, 0.5 단위)
+    lag?: number;                     // 지연 일수 (음수 가능)
+}
+
+/** 앵커 종속성 드래그 결과 */
+export interface AnchorDependencyDragResult {
+    sourceTaskId: string;             // 드래그 시작한 태스크 ID
+    deltaDays: number;                // 이동한 일수
+    affectedTaskIds: string[];        // 함께 이동한 연결된 태스크 ID 목록
+}
+
 // ============================================
 // 태스크 데이터 인터페이스
 // ============================================

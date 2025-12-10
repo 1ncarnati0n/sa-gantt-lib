@@ -48,5 +48,81 @@ export const SvgDefs: React.FC = () => (
                 strokeWidth="3"
             />
         </pattern>
+
+        {/* 종속성 화살표 마커 - 기본 (검은색) */}
+        <marker
+            id="dependency-arrow"
+            markerWidth="5"
+            markerHeight="5"
+            refX="4"
+            refY="2.5"
+            orient="auto"
+        >
+            <path
+                d="M0.5,0.5 L4,2.5 L0.5,4.5"
+                fill="none"
+                stroke="#111827"
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </marker>
+
+        {/* 종속성 화살표 마커 - 선택됨 */}
+        <marker
+            id="dependency-arrow-selected"
+            markerWidth="5"
+            markerHeight="5"
+            refX="4"
+            refY="2.5"
+            orient="auto"
+        >
+            <path
+                d="M0.5,0.5 L4,2.5 L0.5,4.5"
+                fill="none"
+                stroke="#3B82F6"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </marker>
+
+        {/* 종속성 화살표 마커 - 연결 중 (프리뷰) */}
+        <marker
+            id="dependency-arrow-connecting"
+            markerWidth="5"
+            markerHeight="5"
+            refX="4"
+            refY="2.5"
+            orient="auto"
+        >
+            <path
+                d="M0.5,0.5 L4,2.5 L0.5,4.5"
+                fill="none"
+                stroke="#10B981"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </marker>
+
+        {/* 종속성 화살표 마커 - 호버 (진한 검은색) */}
+        <marker
+            id="dependency-arrow-hover"
+            markerWidth="5"
+            markerHeight="5"
+            refX="4"
+            refY="2.5"
+            orient="auto"
+        >
+            <path
+                d="M0.5,0.5 L4,2.5 L0.5,4.5"
+                fill="none"
+                stroke="#000000"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </marker>
     </defs>
 );
