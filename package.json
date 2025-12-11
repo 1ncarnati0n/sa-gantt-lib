@@ -18,7 +18,9 @@
     "scripts": {
         "dev": "vite",
         "build": "tsc && vite build",
+        "build:demo": "DEMO=true vite build",
         "preview": "vite preview",
+        "preview:demo": "vite preview --outDir dist-demo",
         "lint": "eslint",
         "test": "vitest",
         "test:ui": "vitest --ui"
