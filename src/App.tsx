@@ -54,6 +54,7 @@ interface AppState {
 const STORAGE_KEYS = {
   TASKS: 'sa-gantt-tasks',
   MILESTONES: 'sa-gantt-milestones',
+  ANCHOR_DEPENDENCIES: 'sa-gantt-anchor-dependencies',
 };
 
 // ============================================
@@ -78,6 +79,11 @@ const serializeMilestones = (milestones: Milestone[]): string => {
     date: format(m.date, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
   }));
   return JSON.stringify(serialized);
+};
+
+// AnchorDependency를 저장 가능한 형태로 직렬화 (날짜 없음 - 단순)
+const serializeAnchorDependencies = (deps: AnchorDependency[]): string => {
+  return JSON.stringify(deps);
 };
 
 // ============================================
@@ -109,6 +115,18 @@ const serializeMilestonesForExport = (milestones: Milestone[]) => {
     type: 'MILESTONE',
     ...(m.milestoneType ? { milestoneType: m.milestoneType } : {}),
     ...(m.description ? { description: m.description } : {}),
+  }));
+};
+
+// AnchorDependency를 mock.json 형식으로 직렬화
+const serializeAnchorDependenciesForExport = (deps: AnchorDependency[]) => {
+  return deps.map(d => ({
+    id: d.id,
+    sourceTaskId: d.sourceTaskId,
+    targetTaskId: d.targetTaskId,
+    sourceDayIndex: d.sourceDayIndex,
+    targetDayIndex: d.targetDayIndex,
+    ...(d.lag !== undefined && d.lag !== 0 ? { lag: d.lag } : {}),
   }));
 };
 
@@ -167,6 +185,20 @@ const isValidMilestoneData = (data: unknown): data is Record<string, unknown> & 
   );
 };
 
+// 타입 가드: AnchorDependency 데이터 검증
+const isValidAnchorDependencyData = (data: unknown): data is AnchorDependency => {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    typeof obj.id === 'string' &&
+    typeof obj.sourceTaskId === 'string' &&
+    typeof obj.targetTaskId === 'string' &&
+    typeof obj.sourceDayIndex === 'number' &&
+    typeof obj.targetDayIndex === 'number' &&
+    (obj.lag === undefined || typeof obj.lag === 'number')
+  );
+};
+
 // localStorage에서 Milestones 로드
 const loadMilestonesFromStorage = (): Milestone[] | null => {
   try {
@@ -211,10 +243,40 @@ const saveMilestonesToStorage = (milestones: Milestone[]): void => {
   }
 };
 
+// localStorage에서 AnchorDependencies 로드
+const loadAnchorDependenciesFromStorage = (): AnchorDependency[] | null => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.ANCHOR_DEPENDENCIES);
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      console.error('Invalid anchor dependencies data format: expected array');
+      return null;
+    }
+
+    return parsed.filter(isValidAnchorDependencyData);
+  } catch (error) {
+    console.error('Failed to load anchor dependencies from localStorage:', error);
+    return null;
+  }
+};
+
+// localStorage에 AnchorDependencies 저장
+const saveAnchorDependenciesToStorage = (deps: AnchorDependency[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ANCHOR_DEPENDENCIES, serializeAnchorDependencies(deps));
+    console.log('Anchor dependencies saved to localStorage');
+  } catch (error) {
+    console.error('Failed to save anchor dependencies to localStorage:', error);
+  }
+};
+
 // localStorage 데이터 초기화 (mock.json으로 리셋)
 export const resetStorageToMock = (): void => {
   localStorage.removeItem(STORAGE_KEYS.TASKS);
   localStorage.removeItem(STORAGE_KEYS.MILESTONES);
+  localStorage.removeItem(STORAGE_KEYS.ANCHOR_DEPENDENCIES);
   console.log('Storage reset. Refresh to load mock data.');
 };
 
@@ -239,20 +301,27 @@ const parseMockData = (): AppState => {
     dependencies: (t.dependencies as Dependency[]) || [],
   }));
 
-  return { milestones, tasks, anchorDependencies: [] };
+  // anchorDependencies 파싱 (하위 호환성 - 없으면 빈 배열)
+  const anchorDependencies: AnchorDependency[] =
+    Array.isArray((mockData as { anchorDependencies?: unknown[] }).anchorDependencies)
+      ? (mockData as { anchorDependencies: unknown[] }).anchorDependencies.filter(isValidAnchorDependencyData)
+      : [];
+
+  return { milestones, tasks, anchorDependencies };
 };
 
 // 초기 상태 로드 함수
 const loadInitialState = (): AppState => {
   const storedTasks = loadTasksFromStorage();
   const storedMilestones = loadMilestonesFromStorage();
+  const storedDependencies = loadAnchorDependenciesFromStorage();
 
   if (storedTasks && storedTasks.length > 0) {
     console.log('Loaded from localStorage');
     return {
       tasks: storedTasks,
       milestones: storedMilestones || [],
-      anchorDependencies: [],
+      anchorDependencies: storedDependencies || [],
     };
   }
 
@@ -262,6 +331,7 @@ const loadInitialState = (): AppState => {
   // mock 데이터를 localStorage에 저장
   saveTasksToStorage(mockState.tasks);
   saveMilestonesToStorage(mockState.milestones);
+  saveAnchorDependenciesToStorage(mockState.anchorDependencies);
 
   return mockState;
 };
@@ -354,7 +424,7 @@ function App() {
   }, [undo, redo, canUndo, canRedo]);
 
   // ====================================
-  // 변경사항 감지 (tasks 또는 milestones 변경 시)
+  // 변경사항 감지 (tasks, milestones, anchorDependencies 변경 시)
   // ====================================
   useEffect(() => {
     // 초기 로드 시에는 변경사항으로 표시하지 않음
@@ -362,7 +432,7 @@ function App() {
 
     setHasUnsavedChanges(true);
     setSaveStatus('idle');
-  }, [tasks, milestones, isLoaded]);
+  }, [tasks, milestones, anchorDependencies, isLoaded]);
 
   // ====================================
   // 수동 저장 핸들러
@@ -376,6 +446,7 @@ function App() {
       // 저장 실행
       saveTasksToStorage(tasks);
       saveMilestonesToStorage(milestones);
+      saveAnchorDependenciesToStorage(anchorDependencies);
 
       // 저장 완료 표시
       setTimeout(() => {
@@ -392,7 +463,7 @@ function App() {
       setSaveStatus('idle');
       alert('저장 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
-  }, [tasks, milestones, hasUnsavedChanges]);
+  }, [tasks, milestones, anchorDependencies, hasUnsavedChanges]);
 
   // 초기화 핸들러 (mock.json으로 리셋)
   const handleReset = useCallback(() => {
@@ -410,6 +481,7 @@ function App() {
       // localStorage에 저장
       saveTasksToStorage(mockState.tasks);
       saveMilestonesToStorage(mockState.milestones);
+      saveAnchorDependenciesToStorage(mockState.anchorDependencies);
 
       setHasUnsavedChanges(false);
       setSaveStatus('idle');
@@ -430,6 +502,7 @@ function App() {
       const exportData = {
         milestones: serializeMilestonesForExport(milestones),
         tasks: serializeTasksForExport(tasks),
+        anchorDependencies: serializeAnchorDependenciesForExport(anchorDependencies),
       };
 
       // JSON 문자열로 변환 (가독성을 위해 들여쓰기 적용)
@@ -486,7 +559,7 @@ function App() {
       console.error('Failed to export data:', error);
       alert('내보내기 중 오류가 발생했습니다.');
     }
-  }, [tasks, milestones]);
+  }, [tasks, milestones, anchorDependencies]);
 
   // ====================================
   // 가져오기 핸들러 (JSON 파일 업로드)
@@ -526,26 +599,33 @@ function App() {
           date: parseISO(m.date as string),
         }));
 
+      // AnchorDependencies 파싱 (있으면)
+      const importedDependencies: AnchorDependency[] =
+        Array.isArray(importedData.anchorDependencies)
+          ? importedData.anchorDependencies.filter(isValidAnchorDependencyData)
+          : [];
+
       if (importedTasks.length === 0) {
         throw new Error('가져올 수 있는 태스크가 없습니다.');
       }
 
-      // 상태 업데이트 (기존 anchorDependencies 유지)
-      setAppState(prev => ({
+      // 상태 업데이트 (import 데이터의 anchorDependencies 사용)
+      setAppState({
         tasks: importedTasks,
         milestones: importedMilestones,
-        anchorDependencies: prev.anchorDependencies,
-      }));
+        anchorDependencies: importedDependencies,
+      });
 
       // localStorage에도 저장
       saveTasksToStorage(importedTasks);
       saveMilestonesToStorage(importedMilestones);
+      saveAnchorDependenciesToStorage(importedDependencies);
 
       setHasUnsavedChanges(false);
       setSaveStatus('idle');
 
-      console.log('Data imported successfully:', importedTasks.length, 'tasks,', importedMilestones.length, 'milestones');
-      alert(`가져오기 완료: ${importedTasks.length}개의 태스크, ${importedMilestones.length}개의 마일스톤`);
+      console.log('Data imported successfully:', importedTasks.length, 'tasks,', importedMilestones.length, 'milestones,', importedDependencies.length, 'dependencies');
+      alert(`가져오기 완료: ${importedTasks.length}개의 태스크, ${importedMilestones.length}개의 마일스톤, ${importedDependencies.length}개의 종속성`);
     } catch (error) {
       console.error('Failed to import data:', error);
       alert(error instanceof Error ? error.message : '가져오기 중 오류가 발생했습니다. 파일 형식을 확인해주세요.');
@@ -903,11 +983,17 @@ function App() {
         // 삭제 실행
         let newTasks = prev.tasks.filter(t => !allIdsToDelete.includes(t.id));
 
+        // 삭제된 태스크와 연결된 종속성 정리
+        const newDependencies = prev.anchorDependencies.filter(dep =>
+          !allIdsToDelete.includes(dep.sourceTaskId) &&
+          !allIdsToDelete.includes(dep.targetTaskId)
+        );
+
         // Level 1 태스크의 cp 재계산
         newTasks = recalculateCPData(newTasks);
 
         console.log('Task deleted:', taskId, '(total deleted:', allIdsToDelete.length, ')');
-        return { ...prev, tasks: newTasks };
+        return { ...prev, tasks: newTasks, anchorDependencies: newDependencies };
       });
     } catch (error) {
       console.error('Failed to delete task:', error);
