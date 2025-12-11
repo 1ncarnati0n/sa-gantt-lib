@@ -3,20 +3,27 @@ import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
 
+// 빌드 모드 감지: DEMO=true 면 데모 앱 빌드, 아니면 라이브러리 빌드
+const isDemo = process.env.DEMO === 'true';
+
 export default defineConfig({
     plugins: [
         react(),
-        dts({
+        // 데모 빌드 시에는 dts 플러그인 비활성화
+        ...(!isDemo ? [dts({
             include: ['src/lib'],
             insertTypesEntry: true,
-        }),
+        })] : []),
     ],
     server: {
         hmr: {
             overlay: false,
         },
     },
-    build: {
+    // 데모 빌드 시에는 라이브러리 설정 제외
+    build: isDemo ? {
+        outDir: 'dist-demo',
+    } : {
         lib: {
             entry: resolve(__dirname, 'src/lib/index.ts'),
             name: 'SaGanttLib',
