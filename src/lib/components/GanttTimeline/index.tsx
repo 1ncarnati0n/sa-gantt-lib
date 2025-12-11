@@ -456,6 +456,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 onDependencyHover={handleDependencyHover}
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
+                                getTaskDeltaDays={getDependencyDragDeltaDays}
                             />
                         )}
 
@@ -468,6 +469,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 pixelsPerDay={pixelsPerDay}
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
+                                getTaskDeltaDays={getDependencyDragDeltaDays}
                             />
                         )}
 

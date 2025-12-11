@@ -19,6 +19,8 @@ interface DependencyLinesProps {
     onDependencyHover?: (depId: string | null) => void;
     holidays?: Date[];
     calendarSettings?: CalendarSettings;
+    /** 드래그 중인 태스크의 델타 일수를 반환하는 함수 */
+    getTaskDeltaDays?: (taskId: string) => number;
 }
 
 interface DependencyPathInfo {
@@ -32,6 +34,7 @@ interface DependencyPathInfo {
 
 /**
  * 앵커 좌표 계산 (작업일 기준 dayIndex → 달력일 변환)
+ * @param deltaDays 드래그 중인 경우 적용할 델타 일수 (기본값 0)
  */
 const getAnchorCoords = (
     task: ConstructionTask,
@@ -40,9 +43,10 @@ const getAnchorCoords = (
     minDate: Date,
     pixelsPerDay: number,
     holidays: Date[] = [],
-    calendarSettings?: CalendarSettings
+    calendarSettings?: CalendarSettings,
+    deltaDays: number = 0
 ): { x: number; y: number } => {
-    const startOffset = differenceInDays(task.startDate, minDate);
+    const startOffset = differenceInDays(task.startDate, minDate) + deltaDays;
     const calendarOffset = workingDayToCalendarOffset(task, workingDayIndex, holidays, calendarSettings);
     const x = (startOffset + calendarOffset) * pixelsPerDay;
 
@@ -98,6 +102,7 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
     onDependencyHover,
     holidays,
     calendarSettings,
+    getTaskDeltaDays,
 }) => {
     // 태스크 ID → 인덱스 맵
     const taskIndexMap = useMemo(() => {
@@ -135,7 +140,11 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                     return null;
                 }
 
-                // dayIndex 기반 좌표 계산 (휴일 보정 포함)
+                // 드래그 중인 태스크의 델타 일수 가져오기
+                const sourceDelta = getTaskDeltaDays?.(dep.sourceTaskId) ?? 0;
+                const targetDelta = getTaskDeltaDays?.(dep.targetTaskId) ?? 0;
+
+                // dayIndex 기반 좌표 계산 (휴일 보정 + 드래그 델타 포함)
                 const sourceCoords = getAnchorCoords(
                     sourceTask,
                     dep.sourceDayIndex,
@@ -143,7 +152,8 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                     minDate,
                     pixelsPerDay,
                     holidays,
-                    calendarSettings
+                    calendarSettings,
+                    sourceDelta
                 );
                 const targetCoords = getAnchorCoords(
                     targetTask,
@@ -152,7 +162,8 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                     minDate,
                     pixelsPerDay,
                     holidays,
-                    calendarSettings
+                    calendarSettings,
+                    targetDelta
                 );
 
                 const path = createDependencyPath(
@@ -172,7 +183,7 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                 };
             })
             .filter((p): p is DependencyPathInfo => p !== null);
-    }, [dependencies, taskMap, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings]);
+    }, [dependencies, taskMap, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings, getTaskDeltaDays]);
 
     return (
         <g className="dependency-lines">
@@ -272,6 +283,8 @@ interface InBarConnectionLinesProps {
     pixelsPerDay: number;
     holidays?: Date[];
     calendarSettings?: CalendarSettings;
+    /** 드래그 중인 태스크의 델타 일수를 반환하는 함수 */
+    getTaskDeltaDays?: (taskId: string) => number;
 }
 
 export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
@@ -281,6 +294,7 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
     pixelsPerDay,
     holidays,
     calendarSettings,
+    getTaskDeltaDays,
 }) => {
     // 태스크 ID → 인덱스 맵
     const taskIndexMap = useMemo(() => {
@@ -304,6 +318,9 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
             const rowIndex = taskIndexMap.get(task.id);
             if (rowIndex === undefined) return;
 
+            // 드래그 중인 태스크의 델타 일수 가져오기
+            const deltaDays = getTaskDeltaDays?.(task.id) ?? 0;
+
             // 이 태스크로 들어오는 종속성의 targetDayIndex 찾기
             const incomingAnchors = dependencies
                 .filter((dep) => dep.targetTaskId === task.id)
@@ -325,7 +342,8 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
                             minDate,
                             pixelsPerDay,
                             holidays,
-                            calendarSettings
+                            calendarSettings,
+                            deltaDays
                         );
                         const toCoords = getAnchorCoords(
                             task,
@@ -334,7 +352,8 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
                             minDate,
                             pixelsPerDay,
                             holidays,
-                            calendarSettings
+                            calendarSettings,
+                            deltaDays
                         );
 
                         connections.push({
@@ -349,7 +368,7 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
         });
 
         return connections;
-    }, [tasks, dependencies, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings]);
+    }, [tasks, dependencies, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings, getTaskDeltaDays]);
 
     if (inBarConnections.length === 0) return null;
 
