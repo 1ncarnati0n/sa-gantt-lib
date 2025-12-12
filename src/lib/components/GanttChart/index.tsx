@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useCallback, useMemo, useState, useEffect } from 'react';
-import { addDays } from 'date-fns';
+import { addDays, differenceInDays } from 'date-fns';
+import { isHoliday, snapToWorkingDay } from '../../utils/dateUtils';
 import { GanttSidebar } from '../GanttSidebar';
 import { GanttTimeline, BarDragResult } from '../GanttTimeline';
 import { MilestoneEditModal } from '../MilestoneEditModal';
@@ -348,14 +349,28 @@ export function GanttChart({
             }
 
             if (onTaskUpdate) {
+                const dragDirection: 'left' | 'right' = result.deltaDays >= 0 ? 'right' : 'left';
+
                 for (const taskId of result.affectedTaskIds) {
                     const task = tasks.find(t => t.id === taskId);
                     if (!task) continue;
 
+                    // 1. 새 시작일 계산
+                    let newStartDate = addDays(task.startDate, result.deltaDays);
+
+                    // 2. 휴일이면 드래그 방향에 따라 스냅
+                    if (isHoliday(newStartDate, holidays, calendarSettings)) {
+                        newStartDate = snapToWorkingDay(newStartDate, dragDirection, holidays, calendarSettings);
+                    }
+
+                    // 3. 종료일은 시작일 기준으로 동일한 기간 유지
+                    const duration = differenceInDays(task.endDate, task.startDate);
+                    const newEndDate = addDays(newStartDate, duration);
+
                     const updatedTask: ConstructionTask = {
                         ...task,
-                        startDate: addDays(task.startDate, result.deltaDays),
-                        endDate: addDays(task.endDate, result.deltaDays),
+                        startDate: newStartDate,
+                        endDate: newEndDate,
                     };
 
                     await onTaskUpdate(updatedTask);
@@ -369,7 +384,7 @@ export function GanttChart({
                 details: { affectedTaskIds: result.affectedTaskIds },
             });
         }
-    }, [tasks, onTaskUpdate, onGroupDrag, onError]);
+    }, [tasks, onTaskUpdate, onGroupDrag, onError, holidays, calendarSettings]);
 
     return (
         <div

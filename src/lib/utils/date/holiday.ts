@@ -135,3 +135,44 @@ export const getHolidayOffsetsInDateRange = (
 
     return result;
 };
+
+// ============================================
+// 휴일 회피 (드래그 스냅)
+// ============================================
+
+/**
+ * 드래그 방향에 따라 휴일을 피해 가장 가까운 작업일로 스냅
+ *
+ * @param date - 스냅할 날짜
+ * @param direction - 드래그 방향 ('left': 이전 작업일, 'right': 다음 작업일)
+ * @param holidays - 공휴일 목록
+ * @param settings - 캘린더 설정
+ * @returns 가장 가까운 작업일
+ *
+ * @example
+ * ```ts
+ * // 일요일(휴일)에서 다음 작업일로 스냅
+ * const workingDay = snapToWorkingDay(
+ *   new Date('2024-05-05'), // 일요일
+ *   'right',
+ *   [],
+ *   { workOnSaturdays: false, workOnSundays: false, workOnHolidays: false }
+ * );
+ * // 2024-05-06 (월요일) 반환
+ * ```
+ */
+export const snapToWorkingDay = (
+    date: Date,
+    direction: 'left' | 'right',
+    holidays: Date[],
+    settings: CalendarSettings
+): Date => {
+    let current = new Date(date);
+    const step = direction === 'right' ? 1 : -1;
+
+    while (isHoliday(current, holidays, settings)) {
+        current = addDays(current, step);
+    }
+
+    return current;
+};
