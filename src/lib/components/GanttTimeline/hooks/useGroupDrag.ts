@@ -94,12 +94,24 @@ export const useGroupDrag = ({
         const deltaX = e.clientX - state.startX;
         const deltaDays = Math.round(deltaX / pixelsPerDay);
 
+        // 드래그 방향 결정
+        const dragDirection: 'left' | 'right' = deltaX < 0 ? 'left' : 'right';
+
+        let adjustedDeltaDays = deltaDays;
+        const tentativeStart = addDays(state.originalStartDate, deltaDays);
+
+        // 휴일이면 드래그 방향에 따라 스냅
+        if (isHoliday(tentativeStart, holidays, calendarSettings)) {
+            const snappedStart = snapToWorkingDay(tentativeStart, dragDirection, holidays, calendarSettings);
+            adjustedDeltaDays = differenceInDays(snappedStart, state.originalStartDate);
+        }
+
         setGroupDragState(prev => prev ? {
             ...prev,
-            currentDeltaDays: deltaDays,
+            currentDeltaDays: adjustedDeltaDays,
             lastDeltaX: deltaX,
         } : null);
-    }, [onGroupDrag, pixelsPerDay]);
+    }, [onGroupDrag, pixelsPerDay, holidays, calendarSettings]);
 
     const handleGroupMouseUp = useCallback(() => {
         const state = groupDragStateRef.current;

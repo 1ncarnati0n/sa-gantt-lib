@@ -213,6 +213,53 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
         );
     };
 
+    // 종속성 선 경로상에 있는 앵커인지 확인 (중간 앵커 비활성화)
+    // 동일 task 내에서 종속성의 source와 target dayIndex 사이의 앵커들
+    const connectedAnchorRanges = useMemo(() => {
+        const ranges: { from: number; to: number }[] = [];
+
+        dependencies.forEach(dep => {
+            // 이 task 내에서 시작하고 끝나는 종속성 (In-bar connection)
+            if (dep.sourceTaskId === task.id && dep.targetTaskId === task.id) {
+                const minDay = Math.min(dep.sourceDayIndex, dep.targetDayIndex);
+                const maxDay = Math.max(dep.sourceDayIndex, dep.targetDayIndex);
+                ranges.push({ from: minDay, to: maxDay });
+            }
+
+            // 들어오는 종속성의 target과 나가는 종속성의 source 사이
+            // (task를 통과하는 종속성 체인)
+        });
+
+        // InBarConnectionLines에서 그리는 범위도 추가
+        // 들어오는 종속성(target)과 나가는 종속성(source) 사이의 연결선
+        const incomingAnchors = dependencies
+            .filter(dep => dep.targetTaskId === task.id)
+            .map(dep => dep.targetDayIndex);
+        const outgoingAnchors = dependencies
+            .filter(dep => dep.sourceTaskId === task.id)
+            .map(dep => dep.sourceDayIndex);
+
+        // 연결이 필요한 쌍 찾기 (들어오는 앵커 -> 나가는 앵커)
+        incomingAnchors.forEach(inDay => {
+            outgoingAnchors.forEach(outDay => {
+                if (inDay !== outDay) {
+                    const minDay = Math.min(inDay, outDay);
+                    const maxDay = Math.max(inDay, outDay);
+                    ranges.push({ from: minDay, to: maxDay });
+                }
+            });
+        });
+
+        return ranges;
+    }, [dependencies, task.id]);
+
+    // 앵커가 종속성 경로상에 있는지 확인 (중간 지점)
+    const isInDependencyPath = (dayIndex: number): boolean => {
+        return connectedAnchorRanges.some(
+            range => dayIndex > range.from && dayIndex < range.to
+        );
+    };
+
     // 앵커 표시 조건
     const shouldShowAnchors = isHovered || isConnecting;
 
@@ -226,21 +273,24 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
             {anchors.map((anchorPos) => {
                 const isConnectingStart = isConnectingFromThis(anchorPos.dayIndex);
                 const isConnected = isAnchorConnected(anchorPos.dayIndex);
+                const isPathBlocked = isInDependencyPath(anchorPos.dayIndex);
+                // 연결된 앵커 또는 경로상의 앵커는 비활성화
+                const isDisabled = isConnected || isPathBlocked;
                 const isVisible = shouldShowAnchors || isConnected;
 
                 return (
                     <g key={`anchor-${task.id}-${anchorPos.dayIndex}`}>
-                        {/* 클릭 영역 (이미 연결된 앵커는 상호작용 비활성화) */}
+                        {/* 클릭 영역 (비활성화된 앵커는 상호작용 비활성화) */}
                         <circle
                             cx={anchorPos.x}
                             cy={anchorPos.y}
                             r={10}
                             fill="transparent"
-                            style={{ cursor: isConnected ? 'default' : 'pointer' }}
-                            onClick={isConnected ? undefined : () => onAnchorClick?.(task.id, anchorPos.dayIndex)}
-                            onMouseEnter={isConnected ? undefined : () => onAnchorHover?.(task.id, anchorPos.dayIndex)}
-                            onMouseLeave={isConnected ? undefined : () => onAnchorHover?.(task.id, null)}
-                            pointerEvents={isConnected ? 'none' : 'auto'}
+                            style={{ cursor: isDisabled ? 'default' : 'pointer' }}
+                            onClick={isDisabled ? undefined : () => onAnchorClick?.(task.id, anchorPos.dayIndex)}
+                            onMouseEnter={isDisabled ? undefined : () => onAnchorHover?.(task.id, anchorPos.dayIndex)}
+                            onMouseLeave={isDisabled ? undefined : () => onAnchorHover?.(task.id, null)}
+                            pointerEvents={isDisabled ? 'none' : 'auto'}
                         />
                         {/* 앵커 원 (조건부 표시) */}
                         <circle
@@ -252,25 +302,27 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                                     ? '#10B981' // 연결 시작점: 초록
                                     : isConnected
                                         ? '#111827' // 연결됨: 검은 점
-                                        : 'white'
+                                        : isPathBlocked
+                                            ? '#9CA3AF' // 경로상: 회색
+                                            : 'white'
                             }
                             stroke={
                                 isConnectingStart
                                     ? '#10B981'
-                                    : isConnected
-                                        ? 'none' // 연결됨: 아웃라인 없음
+                                    : isDisabled
+                                        ? 'none' // 비활성화: 아웃라인 없음
                                         : GANTT_COLORS.dependency
                             }
-                            strokeWidth={isConnected ? 0 : 1.5}
-                            opacity={isVisible ? 1 : 0}
+                            strokeWidth={isDisabled ? 0 : 1.5}
+                            opacity={isVisible ? 1 : (isPathBlocked && shouldShowAnchors) ? 0.4 : 0}
                             style={{
-                                cursor: isConnected ? 'default' : 'pointer',
+                                cursor: isDisabled ? 'default' : 'pointer',
                                 transition: 'all 0.15s ease',
-                                pointerEvents: isConnected ? 'none' : 'auto',
+                                pointerEvents: isDisabled ? 'none' : 'auto',
                             }}
-                            onClick={isConnected ? undefined : () => onAnchorClick?.(task.id, anchorPos.dayIndex)}
-                            onMouseEnter={isConnected ? undefined : () => onAnchorHover?.(task.id, anchorPos.dayIndex)}
-                            onMouseLeave={isConnected ? undefined : () => onAnchorHover?.(task.id, null)}
+                            onClick={isDisabled ? undefined : () => onAnchorClick?.(task.id, anchorPos.dayIndex)}
+                            onMouseEnter={isDisabled ? undefined : () => onAnchorHover?.(task.id, anchorPos.dayIndex)}
+                            onMouseLeave={isDisabled ? undefined : () => onAnchorHover?.(task.id, null)}
                         />
                     </g>
                 );

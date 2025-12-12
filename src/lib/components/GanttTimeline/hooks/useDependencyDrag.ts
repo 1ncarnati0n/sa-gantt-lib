@@ -7,6 +7,7 @@ import {
     buildDependencyGraph,
     collectConnectedTaskGroup,
     hasAnyDependency,
+    calculateChainedDeltaDays,
 } from '../../../utils/dependencyGraph';
 import type {
     ConstructionTask,
@@ -24,6 +25,8 @@ interface DependencyDragState {
     connectedTasks: ConstructionTask[];
     currentDeltaDays: number;
     lastDeltaX: number;
+    /** 겹침 방지를 위한 task별 개별 deltaDays */
+    taskDeltaMap: Map<string, number>;
 }
 
 /**
@@ -121,6 +124,7 @@ export const useDependencyDrag = ({
                 connectedTasks,
                 currentDeltaDays: 0,
                 lastDeltaX: 0,
+                taskDeltaMap: new Map(), // 초기에는 빈 맵
             };
 
             setDragState(newState);
@@ -140,17 +144,45 @@ export const useDependencyDrag = ({
             const deltaX = e.clientX - state.startX;
             const deltaDays = Math.round(deltaX / pixelsPerDay);
 
+            // 드래그 방향 결정 (왼쪽 드래그면 'left', 오른쪽이면 'right')
+            const dragDirection: 'left' | 'right' = deltaX < 0 ? 'left' : 'right';
+
+            // 기준 태스크의 새 시작일 계산
+            let snappedDeltaDays = deltaDays;
+            const newStartDate = addDays(state.originalStartDate, deltaDays);
+
+            // 휴일이면 드래그 방향에 따라 스냅
+            if (isHoliday(newStartDate, holidays, calendarSettings)) {
+                const snappedStart = snapToWorkingDay(
+                    newStartDate,
+                    dragDirection,  // 왼쪽이면 왼쪽으로, 오른쪽이면 오른쪽으로
+                    holidays,
+                    calendarSettings
+                );
+                snappedDeltaDays = differenceInDays(snappedStart, state.originalStartDate);
+            }
+
+            // 겹침 방지를 위한 task별 개별 deltaDays 계산 (스냅된 값 사용)
+            const taskDeltaMap = calculateChainedDeltaDays(
+                state.sourceTaskId,
+                snappedDeltaDays,
+                state.connectedTaskIds,
+                dependencyGraph,
+                allTasks
+            );
+
             setDragState((prev) =>
                 prev
                     ? {
                           ...prev,
-                          currentDeltaDays: deltaDays,
+                          currentDeltaDays: snappedDeltaDays,
                           lastDeltaX: deltaX,
+                          taskDeltaMap,
                       }
                     : null
             );
         },
-        [onDependencyDrag, pixelsPerDay]
+        [onDependencyDrag, pixelsPerDay, dependencyGraph, allTasks, holidays, calendarSettings]
     );
 
     // 마우스 업 핸들러
@@ -218,12 +250,13 @@ export const useDependencyDrag = ({
         [dragState]
     );
 
-    // 특정 태스크의 드래그 델타 일수 가져오기
+    // 특정 태스크의 드래그 델타 일수 가져오기 (겹침 방지 적용)
     const getTaskDeltaDays = useCallback(
         (taskId: string): number => {
             if (!dragState) return 0;
             if (!dragState.connectedTaskIds.includes(taskId)) return 0;
-            return dragState.currentDeltaDays;
+            // taskDeltaMap에서 개별 조정된 deltaDays 반환
+            return dragState.taskDeltaMap.get(taskId) ?? dragState.currentDeltaDays;
         },
         [dragState]
     );

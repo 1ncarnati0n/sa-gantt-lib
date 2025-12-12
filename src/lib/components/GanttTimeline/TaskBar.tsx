@@ -405,6 +405,21 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                     </text>
                 )}
 
+                {/* 드래그 중 건너뛴 휴일 영역 표시 */}
+                {isDragging && dragInfo?.skippedHolidayDays && dragInfo.skippedHolidayDays > 0 && (
+                    <rect
+                        x={dragInfo.dragDirection === 'left'
+                            ? barWidth  // 왼쪽 드래그: 휴일이 task 오른쪽에 있음
+                            : -dragInfo.skippedHolidayDays * pixelsPerDay  // 오른쪽 드래그: 휴일이 task 왼쪽에 있음
+                        }
+                        y={0}
+                        width={dragInfo.skippedHolidayDays * pixelsPerDay}
+                        height={BAR_HEIGHT}
+                        fill="url(#holidayHatchPattern)"
+                        className="pointer-events-none opacity-70"
+                    />
+                )}
+
                 {/* Drag preview */}
                 {showLabel && isDragging && (
                     <g>

@@ -25,6 +25,9 @@ interface BarDragState {
     currentIndirectWorkDaysPost: number;
     // 마지막 드래그 방향 (휴일 회피용)
     lastDeltaX: number;
+    // 스킵된 휴일 정보 (빗금 표시용)
+    skippedHolidayDays: number;
+    dragDirection: 'left' | 'right';
 }
 
 /**
@@ -98,6 +101,8 @@ export const useBarDrag = ({
             currentNetWorkDays: taskData.netWorkDays,
             currentIndirectWorkDaysPost: taskData.indirectWorkDaysPost,
             lastDeltaX: 0,
+            skippedHolidayDays: 0,
+            dragDirection: 'right',
         };
 
         setDragState(newDragState);
@@ -117,9 +122,27 @@ export const useBarDrag = ({
         let newNetDays = currentDragState.originalNetWorkDays;
         let newPostDays = currentDragState.originalIndirectWorkDaysPost;
 
+        let skippedDays = 0;
+        let direction: 'left' | 'right' = deltaX < 0 ? 'left' : 'right';
+
         if (currentDragState.dragType === 'move') {
-            newStartDate = addDays(currentDragState.originalStartDate, deltaDays);
-            newEndDate = addDays(currentDragState.originalEndDate, deltaDays);
+            // 드래그 방향 결정 (handleMouseUp과 동일한 로직)
+            const dragDirection: 'left' | 'right' = deltaX < 0 ? 'left' : 'right';
+            direction = dragDirection;
+
+            let adjustedDeltaDays = deltaDays;
+            const tentativeStart = addDays(currentDragState.originalStartDate, deltaDays);
+
+            // 휴일이면 드래그 방향에 따라 스냅
+            if (isHoliday(tentativeStart, holidays, calendarSettings)) {
+                const snappedStart = snapToWorkingDay(tentativeStart, dragDirection, holidays, calendarSettings);
+                adjustedDeltaDays = differenceInDays(snappedStart, currentDragState.originalStartDate);
+                // 스킵된 휴일 일수 계산
+                skippedDays = Math.abs(adjustedDeltaDays - deltaDays);
+            }
+
+            newStartDate = addDays(currentDragState.originalStartDate, adjustedDeltaDays);
+            newEndDate = addDays(currentDragState.originalEndDate, adjustedDeltaDays);
         } else if (currentDragState.dragType === 'move-net') {
             const maxPreIncrease = currentDragState.originalIndirectWorkDaysPost;
             const maxPreDecrease = currentDragState.originalIndirectWorkDaysPre;
@@ -183,8 +206,10 @@ export const useBarDrag = ({
             currentNetWorkDays: newNetDays,
             currentIndirectWorkDaysPost: newPostDays,
             lastDeltaX: deltaX,
+            skippedHolidayDays: skippedDays,
+            dragDirection: direction,
         } : null);
-    }, [onBarDrag, pixelsPerDay]);
+    }, [onBarDrag, pixelsPerDay, holidays, calendarSettings]);
 
     const handleMouseUp = useCallback(() => {
         const currentDragState = dragStateRef.current;
@@ -270,6 +295,8 @@ export const useBarDrag = ({
                 indirectWorkDaysPre: dragState.currentIndirectWorkDaysPre,
                 indirectWorkDaysPost: dragState.currentIndirectWorkDaysPost,
                 netWorkDays: dragState.currentNetWorkDays,
+                skippedHolidayDays: dragState.skippedHolidayDays,
+                dragDirection: dragState.dragDirection,
             };
         }
         return null;

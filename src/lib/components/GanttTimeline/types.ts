@@ -20,6 +20,9 @@ export interface DragInfo {
     indirectWorkDaysPre: number;
     indirectWorkDaysPost: number;
     netWorkDays: number;
+    // 스킵된 휴일 영역 정보 (빗금 표시용)
+    skippedHolidayDays?: number;
+    dragDirection?: 'left' | 'right';
 }
 
 /** Bar 드래그 결과 콜백 파라미터 */
