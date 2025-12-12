@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { format, addDays } from 'date-fns';
 import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
 import { dateToX, getTaskCalendarSettings, getHolidayOffsetsInDateRange } from '../../utils/dateUtils';
@@ -40,18 +40,33 @@ export const TaskBar: React.FC<TaskBarProps> = ({
 
     const radius = 0;
     const isDragging = !!dragInfo;
-    const isGroupDragging = groupDragDeltaDays !== 0;
-    const isDependencyDragging = dependencyDragDeltaDays !== 0;
 
+    // 성능 최적화: effectiveDates 메모이제이션
     // 드래그 우선순위: dragInfo > dependencyDrag > groupDrag > 기본
-    const effectiveStartDate = dragInfo?.startDate
-        || (isDependencyDragging ? addDays(task.startDate, dependencyDragDeltaDays)
-        : isGroupDragging ? addDays(task.startDate, groupDragDeltaDays)
-        : task.startDate);
-    const effectiveEndDate = dragInfo?.endDate
-        || (isDependencyDragging ? addDays(task.endDate, dependencyDragDeltaDays)
-        : isGroupDragging ? addDays(task.endDate, groupDragDeltaDays)
-        : task.endDate);
+    const { effectiveStartDate, effectiveEndDate } = useMemo(() => {
+        // 1. 직접 드래그 중
+        if (dragInfo) {
+            return { effectiveStartDate: dragInfo.startDate, effectiveEndDate: dragInfo.endDate };
+        }
+        // 2. 종속성 드래그 중
+        if (dependencyDragDeltaDays !== 0) {
+            return {
+                effectiveStartDate: addDays(task.startDate, dependencyDragDeltaDays),
+                effectiveEndDate: addDays(task.endDate, dependencyDragDeltaDays),
+            };
+        }
+        // 3. 그룹 드래그 중
+        if (groupDragDeltaDays !== 0) {
+            return {
+                effectiveStartDate: addDays(task.startDate, groupDragDeltaDays),
+                effectiveEndDate: addDays(task.endDate, groupDragDeltaDays),
+            };
+        }
+        // 4. 기본값
+        return { effectiveStartDate: task.startDate, effectiveEndDate: task.endDate };
+    }, [task.startDate, task.endDate, dragInfo, dependencyDragDeltaDays, groupDragDeltaDays]);
+
+    const isDependencyDragging = dependencyDragDeltaDays !== 0;
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
 
     if (isMasterView) {

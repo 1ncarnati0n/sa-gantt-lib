@@ -90,3 +90,33 @@ export const setupDragListeners = (
         document.body.style.userSelect = '';
     };
 };
+
+// ============================================
+// 최종 휴일 스냅 유틸리티
+// ============================================
+
+/**
+ * 드래그 완료 시 최종 휴일 스냅 적용
+ * 현재 useGroupDrag, useDependencyDrag, useBarDrag에서 중복되던 로직을 통합
+ *
+ * @param date 검사할 날짜
+ * @param direction 드래그 방향 ('left' | 'right')
+ * @param holidays 휴일 목록
+ * @param calendarSettings 캘린더 설정
+ * @returns adjustedDate: 조정된 날짜, adjustment: 조정된 일수
+ */
+export const applyFinalHolidaySnap = (
+    date: Date,
+    direction: 'left' | 'right',
+    holidays: Date[],
+    calendarSettings: CalendarSettings
+): { adjustedDate: Date; adjustment: number } => {
+    if (!isHoliday(date, holidays, calendarSettings)) {
+        return { adjustedDate: date, adjustment: 0 };
+    }
+
+    const snappedDate = snapToWorkingDay(date, direction, holidays, calendarSettings);
+    const adjustment = differenceInDays(snappedDate, date);
+
+    return { adjustedDate: snappedDate, adjustment };
+};

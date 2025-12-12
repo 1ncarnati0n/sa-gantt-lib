@@ -182,6 +182,11 @@ export interface GroupDragResult {
     groupId: string;                  // 드래그한 그룹 ID
     deltaDays: number;                // 이동한 일수 (양수: 오른쪽, 음수: 왼쪽)
     affectedTaskIds: string[];        // 영향받은 하위 Task ID 목록
+    /** 각 task의 새 날짜 정보 (하위 Task 업데이트용) */
+    taskUpdates?: Array<{
+        taskId: string;
+        newStartDate: Date;
+    }>;
 }
 
 /** Critical Path 요약 정보 */

@@ -2,9 +2,109 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Clock, Type, Trash2, Calendar } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ConstructionTask, TaskData } from '../types';
+
+// ============================================
+// 공통 스타일 상수
+// ============================================
+const INPUT_BASE = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 bg-white";
+const FOCUS_BLUE = "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+const FOCUS_RED = "focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20";
+const FOCUS_GREEN = "focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20";
+const SECTION_CARD = "rounded-lg bg-gray-50/80 p-4";
+const SECTION_TITLE = "text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3";
+
+// ============================================
+// 내부 컴포넌트: WorkDayCheckbox
+// ============================================
+interface WorkDayCheckboxProps {
+    label: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+}
+
+const WorkDayCheckbox: React.FC<WorkDayCheckboxProps> = ({
+    label,
+    checked,
+    onChange,
+}) => (
+    <label className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+        <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <span className="font-medium">{label}</span>
+    </label>
+);
+
+// ============================================
+// 내부 컴포넌트: CompactInputRow
+// ============================================
+interface CompactInputRowProps {
+    label: string;
+    daysValue: string;
+    nameValue?: string;
+    onDaysChange: React.Dispatch<React.SetStateAction<string>>;
+    onNameChange?: (value: string) => void;
+    onKeyDown: (e: React.KeyboardEvent) => void;
+    onNumberChange: (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => void;
+    daysInputRef?: React.RefObject<HTMLInputElement | null>;
+    color?: 'blue' | 'red';
+    showNameInput?: boolean;
+}
+
+const CompactInputRow: React.FC<CompactInputRowProps> = ({
+    label,
+    daysValue,
+    nameValue = '',
+    onDaysChange,
+    onNameChange,
+    onKeyDown,
+    onNumberChange,
+    daysInputRef,
+    color = 'blue',
+    showNameInput = true,
+}) => {
+    const focusClass = color === 'red' ? FOCUS_RED : FOCUS_BLUE;
+    const labelBg = color === 'red' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700';
+
+    return (
+        <div className="flex items-center gap-3">
+            <span className={`w-20 shrink-0 rounded-md px-2 py-1.5 text-xs font-semibold text-center ${labelBg}`}>
+                {label}
+            </span>
+            <div className="flex flex-1 items-center gap-2">
+                <div className="relative">
+                    <input
+                        ref={daysInputRef}
+                        type="text"
+                        inputMode="decimal"
+                        value={daysValue}
+                        onChange={(e) => onNumberChange(onDaysChange, e.target.value)}
+                        onKeyDown={onKeyDown}
+                        placeholder="0"
+                        className={`w-20 ${INPUT_BASE} ${focusClass} text-center pr-6`}
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">일</span>
+                </div>
+                {showNameInput && onNameChange && (
+                    <input
+                        type="text"
+                        value={nameValue}
+                        onChange={(e) => onNameChange(e.target.value)}
+                        onKeyDown={onKeyDown}
+                        placeholder="작업명 (선택사항)"
+                        className={`flex-1 ${INPUT_BASE} ${focusClass} placeholder-gray-400`}
+                    />
+                )}
+            </div>
+        </div>
+    );
+};
 
 interface TaskEditModalProps {
     task: ConstructionTask | null;
@@ -24,48 +124,55 @@ const DeleteConfirmModal: React.FC<{
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 z-60 bg-black/50 transition-opacity"
+                className="fixed inset-0 z-[60] bg-black/50 transition-opacity"
                 onClick={onCancel}
             />
 
             {/* Modal */}
-            <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
                 <div
-                    className="w-[360px] rounded-lg bg-white p-6 shadow-xl"
+                    className="w-[400px] rounded-xl bg-white shadow-2xl border border-gray-200"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="mb-4 flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                            <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900">공정 삭제</h3>
-                            <p className="text-sm text-gray-500">이 작업은 되돌릴 수 없습니다</p>
+                    {/* Header */}
+                    <div className="px-5 py-4 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                                <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900">공정 삭제</h3>
+                                <p className="text-sm text-gray-500">이 작업은 되돌릴 수 없습니다</p>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="mb-6 rounded-md bg-gray-50 p-3">
-                        <p className="text-sm text-gray-600">
-                            다음 공정을 삭제하시겠습니까?
-                        </p>
-                        <p className="mt-1 flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-                            {taskName}
-                        </p>
+                    {/* Body */}
+                    <div className="px-5 py-4">
+                        <div className="rounded-lg bg-red-50 p-4">
+                            <p className="text-sm text-gray-600 mb-2">
+                                다음 공정을 삭제하시겠습니까?
+                            </p>
+                            <p className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                                <span className="h-2 w-2 rounded-full bg-red-500" />
+                                {taskName}
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="flex justify-end gap-3">
+                    {/* Footer */}
+                    <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-xl">
                         <button
                             onClick={onCancel}
-                            className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                            className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
                         >
                             취소
                         </button>
                         <button
                             onClick={onConfirm}
-                            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+                            className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors shadow-sm"
                         >
                             삭제
                         </button>
@@ -285,204 +392,129 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             {/* Modal */}
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div
-                    className="w-full max-w-lg rounded-lg bg-white shadow-xl"
+                    className="w-full max-w-lg rounded-xl bg-white shadow-2xl border border-gray-200"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-800">
+                            <h2 className="text-base font-bold text-gray-900">
                                 공정 설정
                             </h2>
-                            <p className="text-sm text-gray-500">{task.name}</p>
+                            <p className="text-sm text-gray-500 mt-0.5">{task.name}</p>
                         </div>
                         <button
                             onClick={onClose}
-                            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                         >
                             <X size={20} />
                         </button>
                     </div>
 
                     {/* Body */}
-                    <div className="space-y-5 p-4">
-                        {/* 시작일 설정 */}
-                        <div className="rounded-lg border border-green-200 bg-green-50/50 p-4">
-                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-green-700">
-                                <Calendar size={14} />
-                                시작일
-                            </h3>
-                            <div className="flex items-center gap-4">
+                    <div className="p-5 space-y-5">
+                        {/* 시작일 섹션 */}
+                        <div className={SECTION_CARD}>
+                            <h3 className={SECTION_TITLE}>📅 시작일</h3>
+                            <div className="flex items-center gap-3">
                                 <input
                                     type="date"
                                     value={startDateStr}
                                     onChange={(e) => setStartDateStr(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                                    className={`${INPUT_BASE} ${FOCUS_GREEN} w-44`}
                                 />
-                                <span className="text-xs text-gray-500">
-                                    시작일 변경 시 종료일이 자동 계산됩니다
-                                </span>
+                                <span className="text-xs text-gray-500">→ 종료일 자동 계산</span>
                             </div>
                         </div>
 
-                        {/* 앞 간접작업 */}
-                        <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
-                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-700">
-                                <Clock size={14} />
-                                앞 간접작업
-                            </h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-gray-600">
-                                        일수
-                                    </label>
-                                    <input
-                                        ref={preInputRef}
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={indirectWorkDaysPreStr}
-                                        onChange={(e) => handleNumberChange(setIndirectWorkDaysPreStr, e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder="0.5 단위"
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600">
-                                        <Type size={12} />
-                                        작업명
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={indirectWorkNamePre}
-                                        onChange={(e) => setIndirectWorkNamePre(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder="예: 양생, 대기"
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 순작업 */}
-                        <div className="rounded-lg border border-red-200 bg-red-50/50 p-4">
-                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-red-700">
-                                <Clock size={14} />
-                                순작업
-                            </h3>
-                            <div className="mb-4">
-                                <label className="mb-1 block text-xs font-medium text-gray-600">
-                                    일수
-                                </label>
-                                <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={netWorkDaysStr}
-                                    onChange={(e) => handleNumberChange(setNetWorkDaysStr, e.target.value)}
+                        {/* 작업 기간 설정 섹션 */}
+                        <div className={SECTION_CARD}>
+                            <h3 className={SECTION_TITLE}>⏱️ 작업 기간</h3>
+                            <div className="space-y-3">
+                                <CompactInputRow
+                                    label="앞 간접"
+                                    daysValue={indirectWorkDaysPreStr}
+                                    nameValue={indirectWorkNamePre}
+                                    onDaysChange={setIndirectWorkDaysPreStr}
+                                    onNameChange={setIndirectWorkNamePre}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="0.5 단위"
-                                    className="w-full max-w-[120px] rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                                    onNumberChange={handleNumberChange}
+                                    daysInputRef={preInputRef}
+                                    color="blue"
+                                    showNameInput={true}
                                 />
-                            </div>
-
-                            {/* 작업일 설정 */}
-                            <div className="border-t border-red-200 pt-3">
-                                <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-gray-600">
-                                    <Calendar size={12} />
-                                    작업일 설정
-                                </h4>
-                                <div className="space-y-2">
-                                    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
-                                        <input
-                                            type="checkbox"
-                                            checked={saturdayOff}
-                                            onChange={(e) => setSaturdayOff(e.target.checked)}
-                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span>토요일 휴무</span>
-                                        <span className="text-xs text-gray-400">(기본: 작업)</span>
-                                    </label>
-                                    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
-                                        <input
-                                            type="checkbox"
-                                            checked={sundayWork}
-                                            onChange={(e) => setSundayWork(e.target.checked)}
-                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span>일요일 작업</span>
-                                        <span className="text-xs text-gray-400">(기본: 휴무)</span>
-                                    </label>
-                                    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
-                                        <input
-                                            type="checkbox"
-                                            checked={holidayWork}
-                                            onChange={(e) => setHolidayWork(e.target.checked)}
-                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span>공휴일 작업</span>
-                                        <span className="text-xs text-gray-400">(기본: 휴무)</span>
-                                    </label>
-                                </div>
+                                <CompactInputRow
+                                    label="순작업"
+                                    daysValue={netWorkDaysStr}
+                                    onDaysChange={setNetWorkDaysStr}
+                                    onKeyDown={handleKeyDown}
+                                    onNumberChange={handleNumberChange}
+                                    color="red"
+                                    showNameInput={false}
+                                />
+                                <CompactInputRow
+                                    label="뒤 간접"
+                                    daysValue={indirectWorkDaysPostStr}
+                                    nameValue={indirectWorkNamePost}
+                                    onDaysChange={setIndirectWorkDaysPostStr}
+                                    onNameChange={setIndirectWorkNamePost}
+                                    onKeyDown={handleKeyDown}
+                                    onNumberChange={handleNumberChange}
+                                    color="blue"
+                                    showNameInput={true}
+                                />
                             </div>
                         </div>
 
-                        {/* 뒤 간접작업 */}
-                        <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
-                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-700">
-                                <Clock size={14} />
-                                뒤 간접작업
-                            </h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-gray-600">
-                                        일수
-                                    </label>
-                                    <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={indirectWorkDaysPostStr}
-                                        onChange={(e) => handleNumberChange(setIndirectWorkDaysPostStr, e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder="0.5 단위"
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600">
-                                        <Type size={12} />
-                                        작업명
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={indirectWorkNamePost}
-                                        onChange={(e) => setIndirectWorkNamePost(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder="예: 양생, 대기"
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
-                                </div>
+                        {/* 작업일 설정 섹션 */}
+                        <div className={SECTION_CARD}>
+                            <h3 className={SECTION_TITLE}>📆 작업일 설정</h3>
+                            <div className="flex flex-wrap gap-1 -mx-1">
+                                <WorkDayCheckbox
+                                    label="토요일 휴무"
+                                    checked={saturdayOff}
+                                    onChange={setSaturdayOff}
+                                />
+                                <WorkDayCheckbox
+                                    label="일요일 작업"
+                                    checked={sundayWork}
+                                    onChange={setSundayWork}
+                                />
+                                <WorkDayCheckbox
+                                    label="공휴일 작업"
+                                    checked={holidayWork}
+                                    onChange={setHolidayWork}
+                                />
                             </div>
                         </div>
 
                         {/* 총 일수 표시 */}
-                        <div className="rounded-md bg-gray-100 p-3 text-center">
-                            <span className="text-sm text-gray-600">총 기간: </span>
-                            <span className="text-sm font-semibold text-gray-800">{totalDays}일</span>
-                            <span className="ml-2 text-xs text-gray-500">
-                                (앞{indirectWorkDaysPre} + 순{netWorkDays} + 뒤{indirectWorkDaysPost})
-                            </span>
+                        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-gray-100 to-gray-50 px-4 py-3 border border-gray-200">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <span className="font-medium text-blue-600">{indirectWorkDaysPre}</span>
+                                <span className="text-gray-400">+</span>
+                                <span className="font-medium text-red-600">{netWorkDays}</span>
+                                <span className="text-gray-400">+</span>
+                                <span className="font-medium text-blue-600">{indirectWorkDaysPost}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500">=</span>
+                                <span className="text-lg font-bold text-gray-900">
+                                    {totalDays}일
+                                </span>
+                            </div>
                         </div>
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-between border-t border-gray-200 px-4 py-3">
+                    <div className="flex justify-between items-center border-t border-gray-100 px-5 py-4 bg-gray-50/50 rounded-b-xl">
                         {/* 삭제 버튼 (왼쪽) */}
                         <div>
                             {onDelete && (
                                 <button
                                     onClick={handleDeleteClick}
-                                    className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                    className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                                 >
                                     <Trash2 size={16} />
                                     삭제
@@ -491,17 +523,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                         </div>
 
                         {/* 저장/닫기 토글 버튼 (오른쪽) */}
-                        <div className="flex gap-2">
-                            <button
-                                onClick={hasChanges ? handleSave : onClose}
-                                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${hasChanges
-                                    ? 'bg-blue-500 text-white hover:bg-blue-600'
-                                    : 'bg-gray-500 text-white hover:bg-gray-600'
-                                    }`}
-                            >
-                                {hasChanges ? '저장' : '닫기'}
-                            </button>
-                        </div>
+                        <button
+                            onClick={hasChanges ? handleSave : onClose}
+                            className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-all shadow-sm ${hasChanges
+                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
+                                : 'bg-gray-600 text-white hover:bg-gray-700'
+                                }`}
+                        >
+                            {hasChanges ? '저장' : '닫기'}
+                        </button>
                     </div>
                 </div>
             </div>

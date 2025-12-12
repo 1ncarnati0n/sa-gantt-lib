@@ -1,20 +1,18 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { addDays, differenceInDays } from 'date-fns';
-import { isHoliday, snapToWorkingDay } from '../../../utils/dateUtils';
+import { useCallback, useMemo } from 'react';
 import {
     buildDependencyGraph,
     collectConnectedTaskGroup,
     hasAnyDependency,
-    calculateChainedDeltaDays,
 } from '../../../utils/dependencyGraph';
 import {
     calculateDragDirection,
     calculateDeltaDays,
     calculateHolidaySnap,
-    setupDragListeners,
+    applyFinalHolidaySnap,
 } from './dragUtils';
+import { useDragState, updateDragState } from './useDragState';
 import type {
     ConstructionTask,
     AnchorDependency,
@@ -36,8 +34,10 @@ interface UseDependencyDragOptions extends BaseDragOptions {
 }
 
 // ============================================
-// useDependencyDrag Hook
+// useDependencyDrag Hook (리팩토링됨)
 // ============================================
+// UX 개선: 드래그 중에는 모든 연결된 task가 동일한 deltaDays로 이동
+// 드래그 완료 시에만 최종 위치 계산
 
 export const useDependencyDrag = ({
     pixelsPerDay,
@@ -47,14 +47,6 @@ export const useDependencyDrag = ({
     dependencies,
     onDependencyDrag,
 }: UseDependencyDragOptions) => {
-    const [dragState, setDragState] = useState<DependencyDragState | null>(null);
-    const dragStateRef = useRef<DependencyDragState | null>(null);
-
-    // State-Ref 동기화
-    useEffect(() => {
-        dragStateRef.current = dragState;
-    }, [dragState]);
-
     // 종속성 그래프 메모이제이션
     const dependencyGraph = useMemo(
         () => buildDependencyGraph(allTasks, dependencies),
@@ -66,6 +58,57 @@ export const useDependencyDrag = ({
         (taskId: string): boolean => hasAnyDependency(taskId, dependencies),
         [dependencies]
     );
+
+    // ========================================
+    // 공통 드래그 상태 관리 훅 사용
+    // ========================================
+    const { state: dragState, start, isDragging } = useDragState<DependencyDragState>({
+        // 드래그 중 처리
+        onMove: (e, state, setState) => {
+            if (!onDependencyDrag) return;
+
+            const deltaX = e.clientX - state.startX;
+            const deltaDays = calculateDeltaDays(deltaX, pixelsPerDay);
+            const direction = calculateDragDirection(deltaX);
+
+            const { adjustedDeltaDays } = calculateHolidaySnap(
+                state.originalStartDate,
+                deltaDays,
+                direction,
+                holidays,
+                calendarSettings
+            );
+
+            // UX 개선: 모든 task가 동일한 deltaDays로 이동
+            // taskDeltaMap 계산 제거 → 자연스러운 그룹 이동
+            updateDragState(setState, {
+                currentDeltaDays: adjustedDeltaDays,
+                lastDeltaX: deltaX,
+            });
+        },
+        // 드래그 완료 처리
+        onEnd: (state) => {
+            if (!onDependencyDrag || state.currentDeltaDays === 0) return;
+
+            const direction = calculateDragDirection(state.lastDeltaX);
+
+            // 최종 휴일 스냅 적용 (공통 유틸 사용)
+            const { adjustment } = applyFinalHolidaySnap(
+                new Date(state.originalStartDate.getTime() + state.currentDeltaDays * 86400000),
+                direction,
+                holidays,
+                calendarSettings
+            );
+            const finalDeltaDays = state.currentDeltaDays + adjustment;
+
+            onDependencyDrag({
+                sourceTaskId: state.sourceTaskId,
+                deltaDays: finalDeltaDays,
+                affectedTaskIds: state.connectedTaskIds,
+            });
+        },
+        cursor: 'grabbing',
+    });
 
     // ========================================
     // 드래그 시작
@@ -88,7 +131,7 @@ export const useDependencyDrag = ({
             const connectedTaskIds = collectConnectedTaskGroup(taskId, dependencyGraph);
             const connectedTasks = allTasks.filter((t) => connectedTaskIds.includes(t.id));
 
-            const newState: DependencyDragState = {
+            start({
                 sourceTaskId: taskId,
                 startX: e.clientX,
                 originalStartDate: taskData.startDate,
@@ -96,100 +139,13 @@ export const useDependencyDrag = ({
                 connectedTasks,
                 currentDeltaDays: 0,
                 lastDeltaX: 0,
-                taskDeltaMap: new Map(),
-            };
+                taskDeltaMap: new Map(), // 하위 호환성을 위해 유지
+            });
 
-            setDragState(newState);
-            dragStateRef.current = newState;
             return true;
         },
-        [onDependencyDrag, taskHasDependency, dependencyGraph, allTasks]
+        [onDependencyDrag, taskHasDependency, dependencyGraph, allTasks, start]
     );
-
-    // ========================================
-    // 드래그 중
-    // ========================================
-    const handleMouseMove = useCallback(
-        (e: MouseEvent) => {
-            const state = dragStateRef.current;
-            if (!state || !onDependencyDrag) return;
-
-            const deltaX = e.clientX - state.startX;
-            const deltaDays = calculateDeltaDays(deltaX, pixelsPerDay);
-            const direction = calculateDragDirection(deltaX);
-
-            const { adjustedDeltaDays } = calculateHolidaySnap(
-                state.originalStartDate,
-                deltaDays,
-                direction,
-                holidays,
-                calendarSettings
-            );
-
-            // 겹침 방지를 위한 task별 개별 deltaDays 계산
-            const taskDeltaMap = calculateChainedDeltaDays(
-                state.sourceTaskId,
-                adjustedDeltaDays,
-                state.connectedTaskIds,
-                dependencyGraph,
-                allTasks
-            );
-
-            setDragState((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          currentDeltaDays: adjustedDeltaDays,
-                          lastDeltaX: deltaX,
-                          taskDeltaMap,
-                      }
-                    : null
-            );
-        },
-        [onDependencyDrag, pixelsPerDay, dependencyGraph, allTasks, holidays, calendarSettings]
-    );
-
-    // ========================================
-    // 드래그 완료
-    // ========================================
-    const handleMouseUp = useCallback(() => {
-        const state = dragStateRef.current;
-        if (!state || !onDependencyDrag) {
-            setDragState(null);
-            dragStateRef.current = null;
-            return;
-        }
-
-        if (state.currentDeltaDays !== 0) {
-            const direction = calculateDragDirection(state.lastDeltaX);
-            const newStartDate = addDays(state.originalStartDate, state.currentDeltaDays);
-
-            let finalDeltaDays = state.currentDeltaDays;
-            if (isHoliday(newStartDate, holidays, calendarSettings)) {
-                const snappedStart = snapToWorkingDay(newStartDate, direction, holidays, calendarSettings);
-                const adjustment = differenceInDays(snappedStart, newStartDate);
-                finalDeltaDays = state.currentDeltaDays + adjustment;
-            }
-
-            onDependencyDrag({
-                sourceTaskId: state.sourceTaskId,
-                deltaDays: finalDeltaDays,
-                affectedTaskIds: state.connectedTaskIds,
-            });
-        }
-
-        setDragState(null);
-        dragStateRef.current = null;
-    }, [onDependencyDrag, holidays, calendarSettings]);
-
-    // ========================================
-    // 이벤트 리스너 관리
-    // ========================================
-    useEffect(() => {
-        if (dragState) {
-            return setupDragListeners(handleMouseMove, handleMouseUp, 'grabbing');
-        }
-    }, [dragState, handleMouseMove, handleMouseUp]);
 
     // ========================================
     // 드래그 정보 조회
@@ -202,10 +158,13 @@ export const useDependencyDrag = ({
         [dragState]
     );
 
+    // UX 개선: 모든 연결된 task에 동일한 deltaDays 반환
     const getTaskDeltaDays = useCallback(
         (taskId: string): number => {
             if (!dragState || !dragState.connectedTaskIds.includes(taskId)) return 0;
-            return dragState.taskDeltaMap.get(taskId) ?? dragState.currentDeltaDays;
+            // 기존: taskDeltaMap.get(taskId) ?? currentDeltaDays
+            // 개선: 항상 currentDeltaDays (모든 task 동일 속도 이동)
+            return dragState.currentDeltaDays;
         },
         [dragState]
     );
@@ -216,7 +175,7 @@ export const useDependencyDrag = ({
     }, [dragState]);
 
     return {
-        isDragging: !!dragState,
+        isDragging,
         taskHasDependency,
         handleDependencyBarMouseDown: handleMouseDown,
         isDraggingTask,
