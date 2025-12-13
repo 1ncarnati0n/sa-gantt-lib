@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { addDays, getDay } from 'date-fns';
 import { isHoliday } from '../../utils/dateUtils';
+import { GANTT_COLORS } from '../../types';
 import type { TimelineGridProps } from './types';
 
 /**
@@ -30,12 +31,13 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
 
             if (isHol || isSaturday) {
                 const x = i * pixelsPerDay;
-                let fillColor = 'rgba(254, 242, 242, 0.5)'; // 기본 휴일 색상 (red-50/50)
+                // CSS 변수 사용하여 테마에 따라 자동 전환
+                let fillColor: string = GANTT_COLORS.holiday; // 기본 휴일
                 if (isSaturday && !isSunday) {
-                    fillColor = 'rgba(239, 246, 255, 0.5)'; // 토요일 색상 (blue-50/50)
+                    fillColor = GANTT_COLORS.weekend; // 토요일
                 }
                 if (isSunday) {
-                    fillColor = 'rgba(254, 242, 242, 0.5)'; // 일요일 색상 (red-50/50)
+                    fillColor = GANTT_COLORS.sunday; // 일요일
                 }
 
                 rects.push(

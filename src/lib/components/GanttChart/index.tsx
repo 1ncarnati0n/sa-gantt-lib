@@ -418,8 +418,8 @@ export function GanttChart({
     return (
         <div
             ref={containerRef}
-            className={`flex h-full w-full flex-col bg-gray-50 ${className || ''}`}
-            style={style}
+            className={`flex h-full w-full flex-col ${className || ''}`}
+            style={{ backgroundColor: 'var(--gantt-bg-secondary)', ...style }}
         >
             <GanttHeader
                 viewMode={viewMode}
@@ -456,8 +456,8 @@ export function GanttChart({
                     style={{ width: sidebarWidth + 4 }}
                 >
                     <div
-                        className="flex shrink-0 flex-col bg-white overflow-hidden"
-                        style={{ width: sidebarWidth }}
+                        className="flex shrink-0 flex-col overflow-hidden"
+                        style={{ width: sidebarWidth, backgroundColor: 'var(--gantt-bg-primary)' }}
                     >
                         <GanttSidebar
                             tasks={visibleTasks}
@@ -488,17 +488,32 @@ export function GanttChart({
                     </div>
 
                     <div
-                        className={`absolute top-0 right-0 h-full w-1 cursor-col-resize z-20 transition-colors ${isResizing
-                            ? 'bg-blue-500'
-                            : 'bg-gray-200 hover:bg-gray-300'
-                            }`}
+                        className="absolute top-0 right-0 h-full w-1 cursor-col-resize z-20 transition-colors"
+                        style={{
+                            backgroundColor: isResizing
+                                ? 'var(--gantt-resizer-active)'
+                                : 'var(--gantt-resizer)',
+                        }}
                         onMouseDown={handleResizeStart}
                         onDoubleClick={handleResizeDoubleClick}
+                        onMouseEnter={(e) => {
+                            if (!isResizing) {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-resizer-hover)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isResizing) {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-resizer)';
+                            }
+                        }}
                         title="드래그하여 너비 조절 / 더블클릭으로 초기화"
                     />
                 </div>
 
-                <div className="relative flex flex-1 flex-col bg-white">
+                <div
+                    className="relative flex flex-1 flex-col"
+                    style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
+                >
                     <GanttTimeline
                         tasks={visibleTasks}
                         allTasks={tasks}

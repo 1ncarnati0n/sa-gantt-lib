@@ -31,7 +31,7 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
     return (
       <div className="flex items-center gap-2">
         {selectedTaskIds.size > 0 && (
-          <span className="text-xs text-gray-500">
+          <span className="text-xs" style={{ color: 'var(--gantt-text-muted)' }}>
             {selectedTaskIds.size}개 선택
           </span>
         )}
@@ -42,7 +42,8 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
               onTaskUngroup(selectedGroupTask!.id);
               onClearSelection();
             }}
-            className="flex items-center gap-1 rounded bg-gray-500 px-2 py-1 text-xs font-medium text-white hover:bg-gray-600 transition-colors"
+            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-white transition-colors"
+            style={{ backgroundColor: 'var(--gantt-text-muted)' }}
             title="그룹 해제"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -55,7 +56,8 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
         {selectedTaskIds.size > 0 && (
           <button
             onClick={onClearSelection}
-            className="flex items-center justify-center rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+            className="flex items-center justify-center rounded p-1 transition-colors"
+            style={{ color: 'var(--gantt-text-muted)' }}
             title="선택 해제 (ESC)"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -68,12 +70,15 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
   };
 
   const renderColumnHeaders = () => (
-    <div className="flex h-[32px] border-t border-gray-200">
+    <div
+      className="flex h-[32px]"
+      style={{ borderTop: '1px solid var(--gantt-border-light)' }}
+    >
       {columns.map((col, idx) => (
         <div
           key={col.id}
-          className="relative flex shrink-0 items-center justify-center text-xs font-medium text-gray-600"
-          style={{ width: col.width }}
+          className="relative flex shrink-0 items-center justify-center text-xs font-medium"
+          style={{ width: col.width, color: 'var(--gantt-text-secondary)' }}
         >
           {col.label}
           {idx < columns.length - 1 && (
@@ -85,15 +90,20 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
               title="드래그하여 컬럼 너비 조절 / 더블클릭으로 내용에 맞게 자동 조절"
             >
               <div
-                className={`h-full w-[2px] transition-colors pointer-events-none ${resizingIndex === idx
-                  ? 'bg-blue-500'
-                  : 'bg-transparent group-hover:bg-blue-300'
-                  }`}
+                className="h-full w-[2px] transition-colors pointer-events-none"
+                style={{
+                  backgroundColor: resizingIndex === idx
+                    ? 'var(--gantt-focus)'
+                    : 'transparent',
+                }}
               />
             </div>
           )}
           {idx < columns.length - 1 && (
-            <div className="absolute right-0 top-0 h-full w-px bg-gray-200 pointer-events-none" />
+            <div
+              className="absolute right-0 top-0 h-full w-px pointer-events-none"
+              style={{ backgroundColor: 'var(--gantt-border-light)' }}
+            />
           )}
         </div>
       ))}
@@ -102,18 +112,24 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
 
   return (
     <div
-      className="flex shrink-0 flex-col border-b border-gray-300 bg-gray-50"
-      style={{ height: HEADER_HEIGHT }}
+      className="flex shrink-0 flex-col"
+      style={{
+        height: HEADER_HEIGHT,
+        backgroundColor: 'var(--gantt-bg-secondary)',
+        borderBottom: '1px solid var(--gantt-border)',
+      }}
     >
       <div className="flex flex-1 items-center justify-between px-4">
-        <span className="text-gray-700">
+        <span style={{ color: 'var(--gantt-text-secondary)' }}>
           {viewMode === 'MASTER' ? (
             '공구공정표 Master'
           ) : (
             <>
               주공정(C.P)표 Detail : {' '}
-              <span className="font-bold">{activeGroupName ? `${activeGroupName} / ` : ''}
-                {activeCPName || ''}</span>
+              <span className="font-bold" style={{ color: 'var(--gantt-text-primary)' }}>
+                {activeGroupName ? `${activeGroupName} / ` : ''}
+                {activeCPName || ''}
+              </span>
             </>
           )}
         </span>

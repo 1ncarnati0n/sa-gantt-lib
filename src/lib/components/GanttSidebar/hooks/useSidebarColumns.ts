@@ -230,7 +230,7 @@ export const useSidebarColumns = ({
 
             if (viewMode === 'MASTER') {
                 setMasterColumnWidths(newWidths);
-                lastOptimizedKey.current.master = `${allTasks.length}-${cpSummaryMap.size}`;
+                lastOptimizedKey.current.master = `${allTasks.length}-${tasks.length}-${cpSummaryMap.size}`;
             } else {
                 setDetailColumnWidths(newWidths);
                 lastOptimizedKey.current.detail = `${activeCPId}-${tasks.length}`;
@@ -238,8 +238,8 @@ export const useSidebarColumns = ({
         };
 
         if (viewMode === 'MASTER') {
-            const currentKey = `${allTasks.length}-${cpSummaryMap.size}`;
-            if (lastOptimizedKey.current.master !== currentKey && cpSummaryMap.size > 0) {
+            const currentKey = `${allTasks.length}-${tasks.length}-${cpSummaryMap.size}`;
+            if (lastOptimizedKey.current.master !== currentKey) {
                 optimizeColumns();
             }
         } else if (viewMode === 'DETAIL') {

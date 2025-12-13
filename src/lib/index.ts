@@ -62,6 +62,21 @@ export {
 export type { GanttContextValue } from './context/GanttContext';
 
 // ============================================
+// Theme System
+// ============================================
+export {
+    ThemeProvider,
+    useTheme,
+    useThemeSafe,
+} from './context/ThemeContext';
+export type { Theme, ResolvedTheme } from './context/ThemeContext';
+
+export {
+    ThemeToggle,
+    ThemeToggleGroup,
+} from './components/ThemeToggle';
+
+// ============================================
 // Hooks
 // ============================================
 export { useGanttVirtualization } from './hooks/useGanttVirtualization';
@@ -133,10 +148,16 @@ export type {
 // ============================================
 export {
     GANTT_COLORS,
+    GANTT_COLORS_STATIC,
     GANTT_LAYOUT,
     ZOOM_CONFIG,
     DEFAULT_MASTER_COLUMNS,
     DEFAULT_DETAIL_COLUMNS,
+    // Phase 1 신규 상수
+    GANTT_ANCHOR,
+    GANTT_DRAG,
+    GANTT_SUMMARY,
+    GANTT_STROKE,
 } from './types';
 
 export type { ColumnConfig } from './types';
@@ -203,3 +224,21 @@ export {
     isRootTask,
     isNonEmptyArray,
 } from './utils/typeGuards';
+
+// ============================================
+// Services (Data Abstraction Layer)
+// ============================================
+export type { DataService, GanttData, DataServiceOptions } from './services';
+
+export {
+    LocalStorageService,
+    createLocalStorageService,
+    // Serializers
+    isValidTaskData,
+    isValidMilestoneData,
+    isValidAnchorDependencyData,
+    serializeGanttDataForExport,
+    parseImportedData,
+    parseMockTasks,
+    parseMockMilestones,
+} from './services';

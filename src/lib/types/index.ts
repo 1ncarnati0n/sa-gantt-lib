@@ -55,10 +55,16 @@ export type {
 // Constants (values, not types)
 export {
     GANTT_COLORS,
+    GANTT_COLORS_STATIC,
     GANTT_LAYOUT,
     DEFAULT_MASTER_COLUMNS,
     DEFAULT_DETAIL_COLUMNS,
     ZOOM_CONFIG,
+    // Phase 1 신규 상수
+    GANTT_ANCHOR,
+    GANTT_DRAG,
+    GANTT_SUMMARY,
+    GANTT_STROKE,
 } from './constants';
 
 // Column config type

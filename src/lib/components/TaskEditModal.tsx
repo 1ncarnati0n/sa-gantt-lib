@@ -7,14 +7,32 @@ import { format } from 'date-fns';
 import { ConstructionTask, TaskData } from '../types';
 
 // ============================================
-// 공통 스타일 상수
+// 공통 스타일 상수 (다크모드 지원)
 // ============================================
-const INPUT_BASE = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 bg-white";
+const INPUT_BASE = "w-full rounded-md border px-3 py-2 text-sm";
 const FOCUS_BLUE = "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
 const FOCUS_RED = "focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20";
 const FOCUS_GREEN = "focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20";
-const SECTION_CARD = "rounded-lg bg-gray-50/80 p-4";
-const SECTION_TITLE = "text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3";
+
+// 인라인 스타일용 객체
+const inputStyle: React.CSSProperties = {
+    backgroundColor: 'var(--gantt-bg-primary)',
+    borderColor: 'var(--gantt-border)',
+    color: 'var(--gantt-text-secondary)',
+};
+const sectionCardStyle: React.CSSProperties = {
+    backgroundColor: 'var(--gantt-bg-secondary)',
+    borderRadius: '0.5rem',
+    padding: '1rem',
+};
+const sectionTitleStyle: React.CSSProperties = {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: 'var(--gantt-text-muted)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginBottom: '0.75rem',
+};
 
 // ============================================
 // 내부 컴포넌트: WorkDayCheckbox
@@ -29,17 +47,29 @@ const WorkDayCheckbox: React.FC<WorkDayCheckboxProps> = ({
     label,
     checked,
     onChange,
-}) => (
-    <label className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-        <input
-            type="checkbox"
-            checked={checked}
-            onChange={(e) => onChange(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <span className="font-medium">{label}</span>
-    </label>
-);
+}) => {
+    const [isHovered, setIsHovered] = React.useState(false);
+    return (
+        <label
+            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
+            style={{
+                color: 'var(--gantt-text-secondary)',
+                backgroundColor: isHovered ? 'var(--gantt-bg-hover)' : 'transparent',
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => onChange(e.target.checked)}
+                className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500"
+                style={{ borderColor: 'var(--gantt-border)' }}
+            />
+            <span className="font-medium">{label}</span>
+        </label>
+    );
+};
 
 // ============================================
 // 내부 컴포넌트: CompactInputRow
@@ -88,8 +118,14 @@ const CompactInputRow: React.FC<CompactInputRowProps> = ({
                         onKeyDown={onKeyDown}
                         placeholder="0"
                         className={`w-20 ${INPUT_BASE} ${focusClass} text-center pr-6`}
+                        style={inputStyle}
                     />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">일</span>
+                    <span
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-xs"
+                        style={{ color: 'var(--gantt-text-muted)' }}
+                    >
+                        일
+                    </span>
                 </div>
                 {showNameInput && onNameChange && (
                     <input
@@ -98,7 +134,8 @@ const CompactInputRow: React.FC<CompactInputRowProps> = ({
                         onChange={(e) => onNameChange(e.target.value)}
                         onKeyDown={onKeyDown}
                         placeholder="작업명 (선택사항)"
-                        className={`flex-1 ${INPUT_BASE} ${focusClass} placeholder-gray-400`}
+                        className={`flex-1 ${INPUT_BASE} ${focusClass}`}
+                        style={{ ...inputStyle, '--tw-placeholder-opacity': 1 } as React.CSSProperties}
                     />
                 )}
             </div>
@@ -120,6 +157,8 @@ const DeleteConfirmModal: React.FC<{
     onConfirm: () => void;
     onCancel: () => void;
 }> = ({ taskName, onConfirm, onCancel }) => {
+    const [cancelHovered, setCancelHovered] = React.useState(false);
+
     return ReactDOM.createPortal(
         <>
             {/* Backdrop */}
@@ -131,11 +170,18 @@ const DeleteConfirmModal: React.FC<{
             {/* Modal */}
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
                 <div
-                    className="w-[400px] rounded-xl bg-white shadow-2xl border border-gray-200"
+                    className="w-[400px] rounded-xl shadow-2xl"
+                    style={{
+                        backgroundColor: 'var(--gantt-bg-primary)',
+                        border: '1px solid var(--gantt-border)',
+                    }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-5 py-4 border-b border-gray-100">
+                    <div
+                        className="px-5 py-4"
+                        style={{ borderBottom: '1px solid var(--gantt-border-light)' }}
+                    >
                         <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
                                 <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -143,8 +189,18 @@ const DeleteConfirmModal: React.FC<{
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-base font-bold text-gray-900">공정 삭제</h3>
-                                <p className="text-sm text-gray-500">이 작업은 되돌릴 수 없습니다</p>
+                                <h3
+                                    className="text-base font-bold"
+                                    style={{ color: 'var(--gantt-text-primary)' }}
+                                >
+                                    공정 삭제
+                                </h3>
+                                <p
+                                    className="text-sm"
+                                    style={{ color: 'var(--gantt-text-muted)' }}
+                                >
+                                    이 작업은 되돌릴 수 없습니다
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -152,10 +208,16 @@ const DeleteConfirmModal: React.FC<{
                     {/* Body */}
                     <div className="px-5 py-4">
                         <div className="rounded-lg bg-red-50 p-4">
-                            <p className="text-sm text-gray-600 mb-2">
+                            <p
+                                className="text-sm mb-2"
+                                style={{ color: 'var(--gantt-text-secondary)' }}
+                            >
                                 다음 공정을 삭제하시겠습니까?
                             </p>
-                            <p className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                            <p
+                                className="flex items-center gap-2 text-sm font-semibold"
+                                style={{ color: 'var(--gantt-text-primary)' }}
+                            >
                                 <span className="h-2 w-2 rounded-full bg-red-500" />
                                 {taskName}
                             </p>
@@ -163,10 +225,22 @@ const DeleteConfirmModal: React.FC<{
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-xl">
+                    <div
+                        className="flex justify-end gap-3 px-5 py-4 rounded-b-xl"
+                        style={{
+                            borderTop: '1px solid var(--gantt-border-light)',
+                            backgroundColor: 'var(--gantt-bg-secondary)',
+                        }}
+                    >
                         <button
                             onClick={onCancel}
-                            className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                            className="rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                            style={{
+                                color: 'var(--gantt-text-secondary)',
+                                backgroundColor: cancelHovered ? 'var(--gantt-bg-hover)' : 'transparent',
+                            }}
+                            onMouseEnter={() => setCancelHovered(true)}
+                            onMouseLeave={() => setCancelHovered(false)}
                         >
                             취소
                         </button>
@@ -377,6 +451,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         setter(sanitized);
     };
 
+    const [closeHovered, setCloseHovered] = React.useState(false);
+
     if (!isOpen || !task || !task.task) return null;
 
     const totalDays = indirectWorkDaysPre + netWorkDays + indirectWorkDaysPost;
@@ -392,20 +468,41 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             {/* Modal */}
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div
-                    className="w-full max-w-lg rounded-xl bg-white shadow-2xl border border-gray-200"
+                    className="w-full max-w-lg rounded-xl shadow-2xl"
+                    style={{
+                        backgroundColor: 'var(--gantt-bg-primary)',
+                        border: '1px solid var(--gantt-border)',
+                    }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div
+                        className="flex items-center justify-between px-5 py-4"
+                        style={{ borderBottom: '1px solid var(--gantt-border-light)' }}
+                    >
                         <div>
-                            <h2 className="text-base font-bold text-gray-900">
+                            <h2
+                                className="text-base font-bold"
+                                style={{ color: 'var(--gantt-text-primary)' }}
+                            >
                                 공정 설정
                             </h2>
-                            <p className="text-sm text-gray-500 mt-0.5">{task.name}</p>
+                            <p
+                                className="text-sm mt-0.5"
+                                style={{ color: 'var(--gantt-text-muted)' }}
+                            >
+                                {task.name}
+                            </p>
                         </div>
                         <button
                             onClick={onClose}
-                            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                            className="rounded-lg p-2 transition-colors"
+                            style={{
+                                color: 'var(--gantt-text-muted)',
+                                backgroundColor: closeHovered ? 'var(--gantt-bg-hover)' : 'transparent',
+                            }}
+                            onMouseEnter={() => setCloseHovered(true)}
+                            onMouseLeave={() => setCloseHovered(false)}
                         >
                             <X size={20} />
                         </button>
@@ -414,8 +511,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     {/* Body */}
                     <div className="p-5 space-y-5">
                         {/* 시작일 섹션 */}
-                        <div className={SECTION_CARD}>
-                            <h3 className={SECTION_TITLE}>📅 시작일</h3>
+                        <div style={sectionCardStyle}>
+                            <h3 style={sectionTitleStyle}>📅 시작일</h3>
                             <div className="flex items-center gap-3">
                                 <input
                                     type="date"
@@ -423,14 +520,20 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     onChange={(e) => setStartDateStr(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                     className={`${INPUT_BASE} ${FOCUS_GREEN} w-44`}
+                                    style={inputStyle}
                                 />
-                                <span className="text-xs text-gray-500">→ 종료일 자동 계산</span>
+                                <span
+                                    className="text-xs"
+                                    style={{ color: 'var(--gantt-text-muted)' }}
+                                >
+                                    → 종료일 자동 계산
+                                </span>
                             </div>
                         </div>
 
                         {/* 작업 기간 설정 섹션 */}
-                        <div className={SECTION_CARD}>
-                            <h3 className={SECTION_TITLE}>⏱️ 작업 기간</h3>
+                        <div style={sectionCardStyle}>
+                            <h3 style={sectionTitleStyle}>⏱️ 작업 기간</h3>
                             <div className="space-y-3">
                                 <CompactInputRow
                                     label="앞 간접"
@@ -468,8 +571,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                         </div>
 
                         {/* 작업일 설정 섹션 */}
-                        <div className={SECTION_CARD}>
-                            <h3 className={SECTION_TITLE}>📆 작업일 설정</h3>
+                        <div style={sectionCardStyle}>
+                            <h3 style={sectionTitleStyle}>📆 작업일 설정</h3>
                             <div className="flex flex-wrap gap-1 -mx-1">
                                 <WorkDayCheckbox
                                     label="토요일 휴무"
@@ -490,17 +593,34 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                         </div>
 
                         {/* 총 일수 표시 */}
-                        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-gray-100 to-gray-50 px-4 py-3 border border-gray-200">
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div
+                            className="flex items-center justify-between rounded-lg px-4 py-3"
+                            style={{
+                                backgroundColor: 'var(--gantt-bg-tertiary)',
+                                border: '1px solid var(--gantt-border)',
+                            }}
+                        >
+                            <div
+                                className="flex items-center gap-2 text-sm"
+                                style={{ color: 'var(--gantt-text-secondary)' }}
+                            >
                                 <span className="font-medium text-blue-600">{indirectWorkDaysPre}</span>
-                                <span className="text-gray-400">+</span>
+                                <span style={{ color: 'var(--gantt-text-muted)' }}>+</span>
                                 <span className="font-medium text-red-600">{netWorkDays}</span>
-                                <span className="text-gray-400">+</span>
+                                <span style={{ color: 'var(--gantt-text-muted)' }}>+</span>
                                 <span className="font-medium text-blue-600">{indirectWorkDaysPost}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-500">=</span>
-                                <span className="text-lg font-bold text-gray-900">
+                                <span
+                                    className="text-sm"
+                                    style={{ color: 'var(--gantt-text-muted)' }}
+                                >
+                                    =
+                                </span>
+                                <span
+                                    className="text-lg font-bold"
+                                    style={{ color: 'var(--gantt-text-primary)' }}
+                                >
                                     {totalDays}일
                                 </span>
                             </div>
@@ -508,7 +628,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-between items-center border-t border-gray-100 px-5 py-4 bg-gray-50/50 rounded-b-xl">
+                    <div
+                        className="flex justify-between items-center px-5 py-4 rounded-b-xl"
+                        style={{
+                            borderTop: '1px solid var(--gantt-border-light)',
+                            backgroundColor: 'var(--gantt-bg-secondary)',
+                        }}
+                    >
                         {/* 삭제 버튼 (왼쪽) */}
                         <div>
                             {onDelete && (

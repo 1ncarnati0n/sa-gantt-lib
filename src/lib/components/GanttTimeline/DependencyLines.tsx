@@ -2,11 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { differenceInDays } from 'date-fns';
-import { GANTT_LAYOUT } from '../../types';
+import { GANTT_LAYOUT, GANTT_COLORS, GANTT_ANCHOR, GANTT_DRAG, GANTT_STROKE } from '../../types';
 import type { ConstructionTask, AnchorDependency, CalendarSettings } from '../../types';
 import { workingDayToCalendarOffset } from './AnchorPoints';
-
-const ANCHOR_RADIUS = 1.5;
 
 interface DependencyLinesProps {
     tasks: ConstructionTask[];
@@ -68,13 +66,13 @@ const createDependencyPath = (
     targetX: number,
     targetY: number
 ): string => {
-    const startY = sourceY + ANCHOR_RADIUS;
-    const endY = targetY - ANCHOR_RADIUS;
+    const startY = sourceY + GANTT_ANCHOR.RADIUS;
+    const endY = targetY - GANTT_ANCHOR.RADIUS;
     const verticalDiff = targetY - sourceY;
 
     if (Math.abs(verticalDiff) < 5) {
         // 같은 행 - 수평선
-        const endX = targetX - ANCHOR_RADIUS;
+        const endX = targetX - GANTT_ANCHOR.RADIUS;
         return `M ${sourceX} ${startY} L ${endX} ${sourceY}`;
     } else if (verticalDiff > 0) {
         // 아래로 가는 경우
@@ -82,8 +80,8 @@ const createDependencyPath = (
         return `M ${sourceX} ${startY} V ${midY} H ${targetX} V ${endY}`;
     } else {
         // 위로 가는 경우
-        const dropDown = 10;
-        const midX = Math.min(sourceX, targetX) - 15;
+        const dropDown = GANTT_DRAG.DROP_DOWN_OFFSET;
+        const midX = Math.min(sourceX, targetX) - GANTT_DRAG.PATH_OFFSET_X;
         return `M ${sourceX} ${startY} V ${startY + dropDown} H ${midX} V ${endY - dropDown} H ${targetX} V ${endY}`;
     }
 };
@@ -185,24 +183,40 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
             .filter((p): p is DependencyPathInfo => p !== null);
     }, [dependencies, taskMap, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings, getTaskDeltaDays]);
 
+    // 드래그 중인 종속성인지 확인하는 헬퍼 함수
+    const isDependencyDragging = (depId: string): boolean => {
+        const dep = dependencies.find(d => d.id === depId);
+        if (!dep || !getTaskDeltaDays) return false;
+        const sourceDelta = getTaskDeltaDays(dep.sourceTaskId);
+        const targetDelta = getTaskDeltaDays(dep.targetTaskId);
+        return sourceDelta !== 0 || targetDelta !== 0;
+    };
+
     return (
         <g className="dependency-lines">
             {dependencyPaths.map((pathInfo) => {
                 const isSelected = selectedDepId === pathInfo.id;
                 const isHovered = hoveredDepId === pathInfo.id;
+                const isDragging = isDependencyDragging(pathInfo.id);
 
-                let strokeColor = '#111827'; // 기본 검은색
+                let strokeColor: string = GANTT_COLORS.textPrimary; // 기본 색상
                 let markerEnd = 'url(#dependency-arrow)';
-                let strokeWidth = 1.5;
+                let strokeWidth: number = GANTT_STROKE.DEFAULT;
+                let strokeDasharray: string | undefined = undefined;
 
-                if (isSelected) {
-                    strokeColor = '#3B82F6'; // 선택됨: 파란색
+                if (isDragging) {
+                    // 드래그 중: 초록색 강조 + 두꺼운 선
+                    strokeColor = GANTT_COLORS.success;
+                    markerEnd = 'url(#dependency-arrow-connecting)';
+                    strokeWidth = GANTT_STROKE.SELECTED;
+                } else if (isSelected) {
+                    strokeColor = GANTT_COLORS.focus; // 선택됨: 포커스 색상
                     markerEnd = 'url(#dependency-arrow-selected)';
-                    strokeWidth = 2.5;
+                    strokeWidth = GANTT_STROKE.SELECTED;
                 } else if (isHovered) {
-                    strokeColor = '#000000'; // 호버: 진한 검은색
+                    strokeColor = GANTT_COLORS.textPrimary; // 호버: 진한 색상
                     markerEnd = 'url(#dependency-arrow-hover)';
-                    strokeWidth = 2;
+                    strokeWidth = GANTT_STROKE.HOVER;
                 }
 
                 return (
@@ -224,10 +238,11 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                             fill="none"
                             stroke={strokeColor}
                             strokeWidth={strokeWidth}
+                            strokeDasharray={strokeDasharray}
                             markerEnd={markerEnd}
                             style={{
                                 cursor: 'pointer',
-                                transition: 'stroke 0.15s, stroke-width 0.15s',
+                                transition: isDragging ? 'none' : 'stroke 0.15s, stroke-width 0.15s',
                             }}
                             onClick={() => onDependencyClick?.(pathInfo.id)}
                             onMouseEnter={() => onDependencyHover?.(pathInfo.id)}
@@ -259,11 +274,11 @@ export const ConnectionPreviewLine: React.FC<ConnectionPreviewLineProps> = ({
     return (
         <line
             x1={sourceX}
-            y1={sourceY + ANCHOR_RADIUS}
+            y1={sourceY + GANTT_ANCHOR.RADIUS}
             x2={targetX}
-            y2={targetY + ANCHOR_RADIUS}
-            stroke="#10B981"
-            strokeWidth={2}
+            y2={targetY + GANTT_ANCHOR.RADIUS}
+            stroke={GANTT_COLORS.success}
+            strokeWidth={GANTT_STROKE.HOVER}
             strokeDasharray="5,3"
             markerEnd="url(#dependency-arrow-connecting)"
             style={{ pointerEvents: 'none' }}
@@ -381,8 +396,8 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
                     y1={conn.y}
                     x2={conn.toX}
                     y2={conn.y}
-                    stroke="#111827"
-                    strokeWidth={1.5}
+                    stroke={GANTT_COLORS.textPrimary}
+                    strokeWidth={GANTT_STROKE.DEFAULT}
                     style={{ pointerEvents: 'none' }}
                 />
             ))}

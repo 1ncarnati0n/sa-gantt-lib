@@ -7,12 +7,30 @@ import { X, Calendar, Type, Trash2 } from 'lucide-react';
 import { Milestone, MilestoneType } from '../types';
 
 // ============================================
-// 공통 스타일 상수 (TaskEditModal과 동일)
+// 공통 스타일 상수 (다크모드 지원)
 // ============================================
-const INPUT_BASE = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 bg-white";
+const INPUT_BASE = "w-full rounded-md border px-3 py-2 text-sm";
 const FOCUS_STYLE = "focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20";
-const SECTION_CARD = "rounded-lg bg-gray-50/80 p-4";
-const SECTION_TITLE = "text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3";
+
+// 인라인 스타일용 객체
+const inputStyle: React.CSSProperties = {
+    backgroundColor: 'var(--gantt-bg-primary)',
+    borderColor: 'var(--gantt-border)',
+    color: 'var(--gantt-text-secondary)',
+};
+const sectionCardStyle: React.CSSProperties = {
+    backgroundColor: 'var(--gantt-bg-secondary)',
+    borderRadius: '0.5rem',
+    padding: '1rem',
+};
+const sectionTitleStyle: React.CSSProperties = {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: 'var(--gantt-text-muted)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginBottom: '0.75rem',
+};
 
 interface MilestoneEditModalProps {
     milestone: Milestone | null;
@@ -29,6 +47,8 @@ const DeleteConfirmModal: React.FC<{
     onConfirm: () => void;
     onCancel: () => void;
 }> = ({ milestoneName, onConfirm, onCancel }) => {
+    const [cancelHovered, setCancelHovered] = React.useState(false);
+
     return ReactDOM.createPortal(
         <>
             {/* Backdrop */}
@@ -40,11 +60,18 @@ const DeleteConfirmModal: React.FC<{
             {/* Modal */}
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
                 <div
-                    className="w-[400px] rounded-xl bg-white shadow-2xl border border-gray-200"
+                    className="w-[400px] rounded-xl shadow-2xl"
+                    style={{
+                        backgroundColor: 'var(--gantt-bg-primary)',
+                        border: '1px solid var(--gantt-border)',
+                    }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-5 py-4 border-b border-gray-100">
+                    <div
+                        className="px-5 py-4"
+                        style={{ borderBottom: '1px solid var(--gantt-border-light)' }}
+                    >
                         <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
                                 <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -52,8 +79,18 @@ const DeleteConfirmModal: React.FC<{
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-base font-bold text-gray-900">마일스톤 삭제</h3>
-                                <p className="text-sm text-gray-500">이 작업은 되돌릴 수 없습니다</p>
+                                <h3
+                                    className="text-base font-bold"
+                                    style={{ color: 'var(--gantt-text-primary)' }}
+                                >
+                                    마일스톤 삭제
+                                </h3>
+                                <p
+                                    className="text-sm"
+                                    style={{ color: 'var(--gantt-text-muted)' }}
+                                >
+                                    이 작업은 되돌릴 수 없습니다
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -61,10 +98,16 @@ const DeleteConfirmModal: React.FC<{
                     {/* Body */}
                     <div className="px-5 py-4">
                         <div className="rounded-lg bg-red-50 p-4">
-                            <p className="text-sm text-gray-600 mb-2">
+                            <p
+                                className="text-sm mb-2"
+                                style={{ color: 'var(--gantt-text-secondary)' }}
+                            >
                                 다음 마일스톤을 삭제하시겠습니까?
                             </p>
-                            <p className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                            <p
+                                className="flex items-center gap-2 text-sm font-semibold"
+                                style={{ color: 'var(--gantt-text-primary)' }}
+                            >
                                 <span className="h-2 w-2 rounded-full bg-purple-500" />
                                 {milestoneName}
                             </p>
@@ -72,10 +115,22 @@ const DeleteConfirmModal: React.FC<{
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-xl">
+                    <div
+                        className="flex justify-end gap-3 px-5 py-4 rounded-b-xl"
+                        style={{
+                            borderTop: '1px solid var(--gantt-border-light)',
+                            backgroundColor: 'var(--gantt-bg-secondary)',
+                        }}
+                    >
                         <button
                             onClick={onCancel}
-                            className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                            className="rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                            style={{
+                                color: 'var(--gantt-text-secondary)',
+                                backgroundColor: cancelHovered ? 'var(--gantt-bg-hover)' : 'transparent',
+                            }}
+                            onMouseEnter={() => setCancelHovered(true)}
+                            onMouseLeave={() => setCancelHovered(false)}
                         >
                             취소
                         </button>
@@ -111,6 +166,7 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
     const [dateStr, setDateStr] = useState('');
     const [milestoneType, setMilestoneType] = useState<MilestoneType>('MASTER');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [closeHovered, setCloseHovered] = useState(false);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
     // 마일스톤 데이터로 폼 초기화
@@ -208,22 +264,43 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
             {/* Modal */}
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div
-                    className="w-full max-w-lg rounded-xl bg-white shadow-2xl border border-gray-200"
+                    className="w-full max-w-lg rounded-xl shadow-2xl"
+                    style={{
+                        backgroundColor: 'var(--gantt-bg-primary)',
+                        border: '1px solid var(--gantt-border)',
+                    }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div
+                        className="flex items-center justify-between px-5 py-4"
+                        style={{ borderBottom: '1px solid var(--gantt-border-light)' }}
+                    >
                         <div>
-                            <h2 className="text-base font-bold text-gray-900">
+                            <h2
+                                className="text-base font-bold"
+                                style={{ color: 'var(--gantt-text-primary)' }}
+                            >
                                 {isNew ? '새 마일스톤' : '마일스톤 설정'}
                             </h2>
                             {!isNew && milestone && (
-                                <p className="text-sm text-gray-500 mt-0.5">{milestone.name}</p>
+                                <p
+                                    className="text-sm mt-0.5"
+                                    style={{ color: 'var(--gantt-text-muted)' }}
+                                >
+                                    {milestone.name}
+                                </p>
                             )}
                         </div>
                         <button
                             onClick={onClose}
-                            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                            className="rounded-lg p-2 transition-colors"
+                            style={{
+                                color: 'var(--gantt-text-muted)',
+                                backgroundColor: closeHovered ? 'var(--gantt-bg-hover)' : 'transparent',
+                            }}
+                            onMouseEnter={() => setCloseHovered(true)}
+                            onMouseLeave={() => setCloseHovered(false)}
                         >
                             <X size={20} />
                         </button>
@@ -232,12 +309,15 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
                     {/* Body */}
                     <div className="p-5 space-y-5">
                         {/* 기본 정보 섹션 */}
-                        <div className={SECTION_CARD}>
-                            <h3 className={SECTION_TITLE}>📌 기본 정보</h3>
+                        <div style={sectionCardStyle}>
+                            <h3 style={sectionTitleStyle}>📌 기본 정보</h3>
                             <div className="space-y-4">
                                 {/* 이름 */}
                                 <div>
-                                    <label className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                                    <label
+                                        className="mb-2 flex items-center gap-1.5 text-sm font-medium"
+                                        style={{ color: 'var(--gantt-text-secondary)' }}
+                                    >
                                         <Type size={14} />
                                         마일스톤 이름
                                     </label>
@@ -248,13 +328,17 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
                                         onChange={(e) => setName(e.target.value)}
                                         onKeyDown={handleKeyDown}
                                         placeholder="마일스톤 이름을 입력하세요"
-                                        className={`${INPUT_BASE} ${FOCUS_STYLE} placeholder-gray-400`}
+                                        className={`${INPUT_BASE} ${FOCUS_STYLE}`}
+                                        style={inputStyle}
                                     />
                                 </div>
 
                                 {/* 날짜 */}
                                 <div>
-                                    <label className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                                    <label
+                                        className="mb-2 flex items-center gap-1.5 text-sm font-medium"
+                                        style={{ color: 'var(--gantt-text-secondary)' }}
+                                    >
                                         <Calendar size={14} />
                                         날짜
                                     </label>
@@ -264,20 +348,23 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
                                         onChange={(e) => setDateStr(e.target.value)}
                                         onKeyDown={handleKeyDown}
                                         className={`${INPUT_BASE} ${FOCUS_STYLE} w-44`}
+                                        style={inputStyle}
                                     />
                                 </div>
                             </div>
                         </div>
 
                         {/* 표시 설정 섹션 */}
-                        <div className={SECTION_CARD}>
-                            <h3 className={SECTION_TITLE}>👁️ 표시 설정</h3>
+                        <div style={sectionCardStyle}>
+                            <h3 style={sectionTitleStyle}>👁️ 표시 설정</h3>
                             <div className="flex gap-3">
-                                <label className={`flex-1 flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                    milestoneType === 'MASTER'
-                                        ? 'border-gray-500 bg-gray-50'
-                                        : 'border-gray-200 hover:border-gray-300'
-                                }`}>
+                                <label
+                                    className="flex-1 flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all"
+                                    style={{
+                                        borderColor: milestoneType === 'MASTER' ? 'var(--gantt-milestone)' : 'var(--gantt-border)',
+                                        backgroundColor: milestoneType === 'MASTER' ? 'var(--gantt-bg-tertiary)' : 'transparent',
+                                    }}
+                                >
                                     <input
                                         type="radio"
                                         name="milestoneType"
@@ -288,17 +375,32 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
                                     />
                                     <div>
                                         <div className="flex items-center gap-1.5">
-                                            <span className="h-2.5 w-2.5 rounded-full bg-gray-500" />
-                                            <span className="text-sm font-medium text-gray-800">Master View</span>
+                                            <span
+                                                className="h-2.5 w-2.5 rounded-full"
+                                                style={{ backgroundColor: 'var(--gantt-milestone)' }}
+                                            />
+                                            <span
+                                                className="text-sm font-medium"
+                                                style={{ color: 'var(--gantt-text-primary)' }}
+                                            >
+                                                Master View
+                                            </span>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-0.5">전체 공정표에 표시</p>
+                                        <p
+                                            className="text-xs mt-0.5"
+                                            style={{ color: 'var(--gantt-text-muted)' }}
+                                        >
+                                            전체 공정표에 표시
+                                        </p>
                                     </div>
                                 </label>
-                                <label className={`flex-1 flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                    milestoneType === 'DETAIL'
-                                        ? 'border-amber-500 bg-amber-50'
-                                        : 'border-gray-200 hover:border-gray-300'
-                                }`}>
+                                <label
+                                    className="flex-1 flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all"
+                                    style={{
+                                        borderColor: milestoneType === 'DETAIL' ? 'var(--gantt-milestone-detail)' : 'var(--gantt-border)',
+                                        backgroundColor: milestoneType === 'DETAIL' ? 'color-mix(in srgb, var(--gantt-milestone-detail) 15%, transparent)' : 'transparent',
+                                    }}
+                                >
                                     <input
                                         type="radio"
                                         name="milestoneType"
@@ -309,30 +411,50 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
                                     />
                                     <div>
                                         <div className="flex items-center gap-1.5">
-                                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                                            <span className="text-sm font-medium text-gray-800">Detail View</span>
+                                            <span
+                                                className="h-2.5 w-2.5 rounded-full"
+                                                style={{ backgroundColor: 'var(--gantt-milestone-detail)' }}
+                                            />
+                                            <span
+                                                className="text-sm font-medium"
+                                                style={{ color: 'var(--gantt-text-primary)' }}
+                                            >
+                                                Detail View
+                                            </span>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-0.5">상세 공정표에 표시</p>
+                                        <p
+                                            className="text-xs mt-0.5"
+                                            style={{ color: 'var(--gantt-text-muted)' }}
+                                        >
+                                            상세 공정표에 표시
+                                        </p>
                                     </div>
                                 </label>
                             </div>
                         </div>
 
                         {/* 설명 섹션 */}
-                        <div className={SECTION_CARD}>
-                            <h3 className={SECTION_TITLE}>📝 설명 (선택)</h3>
+                        <div style={sectionCardStyle}>
+                            <h3 style={sectionTitleStyle}>📝 설명 (선택)</h3>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="마일스톤에 대한 설명을 입력하세요"
                                 rows={3}
-                                className={`${INPUT_BASE} ${FOCUS_STYLE} resize-none placeholder-gray-400`}
+                                className={`${INPUT_BASE} ${FOCUS_STYLE} resize-none`}
+                                style={inputStyle}
                             />
                         </div>
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-between items-center border-t border-gray-100 px-5 py-4 bg-gray-50/50 rounded-b-xl">
+                    <div
+                        className="flex justify-between items-center px-5 py-4 rounded-b-xl"
+                        style={{
+                            borderTop: '1px solid var(--gantt-border-light)',
+                            backgroundColor: 'var(--gantt-bg-secondary)',
+                        }}
+                    >
                         {/* 삭제 버튼 (왼쪽, 기존 마일스톤만) */}
                         <div>
                             {!isNew && onDelete && (

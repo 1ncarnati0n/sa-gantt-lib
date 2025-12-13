@@ -103,7 +103,7 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
     const currentX = isDragging && dragX !== undefined ? dragX : x;
 
     const markerColor = isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.milestone;
-    const dragColor = isDetail ? '#D97706' : '#3B82F6';  // Detail: amber-600, Master: blue-500
+    const dragColor = isDetail ? GANTT_COLORS.milestoneDetailHover : GANTT_COLORS.focus;
 
     let textX: number;
     let textY: number;
@@ -152,7 +152,7 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
                 y1={0}
                 x2={0}
                 y2={1000}
-                stroke={isDragging ? dragColor : (isDetail ? '#FCD34D' : '#9CA3AF')}
+                stroke={isDragging ? dragColor : markerColor}
                 strokeWidth={isDragging ? 2 : 1.2}
                 strokeDasharray="4, 5"
                 className={isDragging ? 'opacity-100' : 'opacity-90'}
@@ -184,11 +184,11 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
                 x={textX}
                 y={textY}
                 textAnchor={textAnchor}
-                className={`select-none text-[11px] transition-colors ${isDetail ? 'font-medium' : 'font-bold'
-                    } ${isDragging
-                        ? (isDetail ? 'fill-amber-700' : 'fill-blue-700')
-                        : (isDetail ? 'fill-amber-600 group-hover:fill-amber-700' : 'fill-gray-600 group-hover:fill-blue-700')
-                    }`}
+                className={`select-none text-[11px] transition-colors ${isDetail ? 'font-medium' : 'font-bold'}`}
+                fill={isDragging
+                    ? (isDetail ? GANTT_COLORS.milestoneDetailHover : GANTT_COLORS.focus)
+                    : (isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.textSecondary)
+                }
             >
                 {milestone.name}
             </text>

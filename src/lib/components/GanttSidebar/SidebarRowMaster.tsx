@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
-import { GANTT_LAYOUT } from '../../types';
+import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
 import type { SidebarRowMasterProps } from './types';
 
 const { ROW_HEIGHT } = GANTT_LAYOUT;
@@ -45,6 +45,47 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
 }) => {
     const formatNum = (n: number) => Number.isInteger(n) ? n.toString() : n.toFixed(1);
 
+    // 행 스타일 계산
+    const getRowStyle = () => {
+        let backgroundColor = 'var(--gantt-bg-primary)';
+        let borderColor = 'var(--gantt-border-light)';
+        let boxShadow = 'none';
+
+        if (isDragging) {
+            backgroundColor = 'var(--gantt-bg-selected)';
+        } else if (isDragOver) {
+            if (dragOverPosition === 'into') {
+                backgroundColor = 'var(--gantt-bg-selected)';
+                borderColor = 'var(--gantt-focus)';
+                boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
+            }
+        } else if (isFocused) {
+            backgroundColor = 'var(--gantt-bg-selected)';
+            boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
+        } else if (isSelected) {
+            backgroundColor = 'var(--gantt-bg-selected)';
+            boxShadow = 'inset 0 0 0 2px rgba(59, 130, 246, 0.3)';
+        } else if (isGroup) {
+            backgroundColor = 'var(--gantt-bg-secondary)';
+        }
+
+        return {
+            height: ROW_HEIGHT,
+            backgroundColor,
+            borderBottom: `1px solid ${borderColor}`,
+            borderTop: isDragOver && dragOverPosition === 'before' ? '2px solid var(--gantt-focus)' : 'none',
+            boxShadow,
+            opacity: isDragging ? 0.5 : 1,
+            ...(isVirtualized ? {
+                position: 'absolute' as const,
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${rowStart}px)`,
+            } : {}),
+        };
+    };
+
     return (
         <div
             draggable={!!(onTaskReorder || onTaskMove)}
@@ -55,40 +96,16 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
             onDragEnd={onDragEnd}
             onClick={(e) => onRowClick(e, task, rowIndex)}
             onContextMenu={(e) => onContextMenu(e, task)}
-            className={`box-border flex items-center border-b transition-all duration-150 ${isDragging
-                ? 'opacity-50 bg-blue-50'
-                : isDragOver
-                    ? dragOverPosition === 'before'
-                        ? 'border-t-2 border-t-blue-500 border-b-gray-100'
-                        : dragOverPosition === 'into'
-                            ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
-                            : 'border-b-2 border-b-blue-500'
-                    : isFocused
-                        ? 'bg-blue-100 border-gray-100 ring-2 ring-blue-400 ring-inset'
-                        : isSelected
-                            ? 'bg-blue-50 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.3)]'
-                            : isGroup
-                                ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
-                                : 'border-gray-100 cursor-pointer hover:bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
-                }`}
-            style={{
-                height: ROW_HEIGHT,
-                ...(isVirtualized ? {
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${rowStart}px)`,
-                } : {}),
-            }}
+            className="box-border flex items-center transition-all duration-150"
+            style={getRowStyle()}
             onDoubleClick={() => !isGroup && onTaskClick(task)}
             title={!isGroup ? '더블클릭하여 상세 공정표 보기' : undefined}
         >
             {/* Drag Handle */}
             {onTaskReorder && (
                 <div
-                    className="flex shrink-0 items-center justify-center cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
-                    style={{ width: dragHandleWidth }}
+                    className="flex shrink-0 items-center justify-center cursor-grab active:cursor-grabbing"
+                    style={{ width: dragHandleWidth, color: 'var(--gantt-text-muted)' }}
                 >
                     <GripVertical size={14} />
                 </div>
@@ -96,8 +113,12 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
 
             {/* CP Name */}
             <div
-                className="flex shrink-0 items-center overflow-hidden border-r border-gray-100 px-2"
-                style={{ width: onTaskReorder ? columns[0].width - dragHandleWidth : columns[0].width, paddingLeft: indent + 8 }}
+                className="flex shrink-0 items-center overflow-hidden px-2"
+                style={{
+                    width: onTaskReorder ? columns[0].width - dragHandleWidth : columns[0].width,
+                    paddingLeft: indent + 8,
+                    borderRight: '1px solid var(--gantt-border-light)',
+                }}
             >
                 {canExpand ? (
                     <button
@@ -105,7 +126,8 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
                             e.stopPropagation();
                             onToggle(task.id);
                         }}
-                        className="mr-1 shrink-0 rounded p-1 text-gray-500 hover:bg-gray-200"
+                        className="mr-1 shrink-0 rounded p-1"
+                        style={{ color: 'var(--gantt-text-muted)' }}
                     >
                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>
@@ -122,14 +144,21 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
                         onKeyDown={onEditKeyDown}
                         onBlur={onSaveEdit}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full rounded border border-blue-400 bg-white px-1 py-0.5 text-sm font-normal text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded px-1 py-0.5 text-sm font-normal focus:outline-none focus:ring-1"
+                        style={{
+                            backgroundColor: 'var(--gantt-bg-primary)',
+                            color: 'var(--gantt-text-secondary)',
+                            border: '1px solid var(--gantt-focus)',
+                        }}
                     />
                 ) : (
                     <span
-                        className={`truncate text-sm ${isGroup
-                            ? 'font-normal text-gray-500 cursor-text'
-                            : 'font-medium text-gray-800'
-                            }`}
+                        className="truncate text-sm"
+                        style={{
+                            fontWeight: isGroup ? 'normal' : 500,
+                            color: isGroup ? 'var(--gantt-text-muted)' : 'var(--gantt-text-primary)',
+                            cursor: isGroup ? 'text' : 'default',
+                        }}
                         onDoubleClick={(e) => {
                             if (onTaskUpdate) {
                                 e.stopPropagation();
@@ -145,24 +174,32 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
 
             {/* Total Duration */}
             <div
-                className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-gray-500"
-                style={{ width: columns[1].width }}
+                className="flex shrink-0 items-center justify-center text-xs"
+                style={{
+                    width: columns[1].width,
+                    color: 'var(--gantt-text-muted)',
+                    borderRight: '1px solid var(--gantt-border-light)',
+                }}
             >
                 {isGroup ? '-' : cpSummary ? `${cpSummary.totalDays}일` : '-'}
             </div>
 
             {/* Work Days */}
             <div
-                className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-vermilion"
-                style={{ width: columns[2].width }}
+                className="flex shrink-0 items-center justify-center text-xs"
+                style={{
+                    width: columns[2].width,
+                    color: GANTT_COLORS.vermilion,
+                    borderRight: '1px solid var(--gantt-border-light)',
+                }}
             >
                 {isGroup ? '-' : cpSummary ? `${formatNum(cpSummary.workDays)}일` : '-'}
             </div>
 
             {/* Non-Work Days */}
             <div
-                className="flex shrink-0 items-center justify-center text-xs text-teal"
-                style={{ width: columns[3].width }}
+                className="flex shrink-0 items-center justify-center text-xs"
+                style={{ width: columns[3].width, color: GANTT_COLORS.teal }}
             >
                 {isGroup ? '-' : cpSummary ? `${formatNum(cpSummary.nonWorkDays)}일` : '-'}
             </div>

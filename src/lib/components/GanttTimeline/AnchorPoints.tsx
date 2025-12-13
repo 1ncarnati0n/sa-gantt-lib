@@ -2,11 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { differenceInDays, addDays } from 'date-fns';
-import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
+import { GANTT_LAYOUT, GANTT_COLORS, GANTT_ANCHOR } from '../../types';
 import type { ConstructionTask, AnchorDependency, CalendarSettings } from '../../types';
 import { getTaskCalendarSettings, getHolidayOffsetsInDateRange } from '../../utils/dateUtils';
-
-const ANCHOR_RADIUS = 1.5;
 
 /** 앵커 위치 정보 (dayIndex 기반) */
 export interface AnchorPosition {
@@ -284,7 +282,7 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                         <circle
                             cx={anchorPos.x}
                             cy={anchorPos.y}
-                            r={10}
+                            r={GANTT_ANCHOR.HIT_AREA}
                             fill="transparent"
                             style={{ cursor: isDisabled ? 'default' : 'pointer' }}
                             onClick={isDisabled ? undefined : () => onAnchorClick?.(task.id, anchorPos.dayIndex)}
@@ -296,24 +294,29 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                         <circle
                             cx={anchorPos.x}
                             cy={anchorPos.y}
-                            r={isConnectingStart ? 2.5 : isConnected ? 1.5 : ANCHOR_RADIUS}
+                            r={isConnectingStart
+                                ? GANTT_ANCHOR.RADIUS_ACTIVE
+                                : isConnected
+                                    ? GANTT_ANCHOR.RADIUS_CONNECTED
+                                    : GANTT_ANCHOR.RADIUS
+                            }
                             fill={
                                 isConnectingStart
-                                    ? '#10B981' // 연결 시작점: 초록
+                                    ? GANTT_COLORS.success // 연결 시작점: 초록
                                     : isConnected
-                                        ? '#111827' // 연결됨: 검은 점
+                                        ? GANTT_COLORS.textPrimary // 연결됨: 검은/흰 점
                                         : isPathBlocked
-                                            ? '#9CA3AF' // 경로상: 회색
-                                            : 'white'
+                                            ? GANTT_COLORS.dependency // 경로상: 회색
+                                            : GANTT_COLORS.anchorFill
                             }
                             stroke={
                                 isConnectingStart
-                                    ? '#10B981'
+                                    ? GANTT_COLORS.success
                                     : isDisabled
                                         ? 'none' // 비활성화: 아웃라인 없음
-                                        : GANTT_COLORS.dependency
+                                        : GANTT_COLORS.anchorStroke
                             }
-                            strokeWidth={isDisabled ? 0 : 1.5}
+                            strokeWidth={isDisabled ? 0 : GANTT_ANCHOR.STROKE_WIDTH}
                             opacity={isVisible ? 1 : (isPathBlocked && shouldShowAnchors) ? 0.4 : 0}
                             style={{
                                 cursor: isDisabled ? 'default' : 'pointer',

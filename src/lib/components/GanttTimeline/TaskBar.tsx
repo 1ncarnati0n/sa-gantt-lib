@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { format, addDays } from 'date-fns';
-import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
+import { GANTT_LAYOUT, GANTT_COLORS, GANTT_DRAG } from '../../types';
 import { dateToX, getTaskCalendarSettings, getHolidayOffsetsInDateRange } from '../../utils/dateUtils';
 import { calculateCriticalPath } from '../../utils/criticalPathUtils';
 import type { TaskBarProps } from './types';
@@ -115,12 +115,12 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                         width={totalWidth + 6}
                         height={BAR_HEIGHT + 6}
                         fill="none"
-                        stroke="#3B82F6"
+                        stroke={GANTT_COLORS.focus}
                         strokeWidth={2}
                         rx={radius + 2}
                         ry={radius + 2}
                         className="animate-pulse"
-                        style={{ filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' }}
+                        style={{ filter: `drop-shadow(0 0 6px ${GANTT_COLORS.focus})` }}
                     />
                 )}
                 {showBar && (
@@ -152,7 +152,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                         x={-8}
                         y={BAR_HEIGHT / 2 + 4}
                         textAnchor="end"
-                        className="pointer-events-none select-none text-[11px] font-bold fill-gray-700"
+                        className="pointer-events-none select-none text-[11px] font-bold"
+                        fill={GANTT_COLORS.textSecondary}
                     >
                         {task.name}
                     </text>
@@ -194,8 +195,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
         const netX = preWidth;
         const postX = preWidth + netWidth;
 
-        const handleWidth = 8;
-        const boundaryHandleWidth = 6;
+        const handleWidth = GANTT_DRAG.HANDLE_WIDTH;
+        const boundaryHandleWidth = GANTT_DRAG.BOUNDARY_HANDLE_WIDTH;
 
         const taskData = {
             startDate: effectiveStartDate,
@@ -213,6 +214,27 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
             >
+                {/* Connected Group Drag Indicator - 종속성 드래그 시 연결 표시 */}
+                {isDependencyDragging && showBar && (
+                    <rect
+                        x={-4}
+                        y={-4}
+                        width={barWidth + 8}
+                        height={BAR_HEIGHT + 8}
+                        fill="none"
+                        stroke={GANTT_COLORS.success}
+                        strokeWidth={2}
+                        strokeDasharray="6,3"
+                        rx={4}
+                        ry={4}
+                        className="pointer-events-none"
+                        style={{
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                            opacity: 0.8,
+                        }}
+                    />
+                )}
+
                 {/* Focus Highlight Effect */}
                 {isFocused && showBar && (
                     <rect
@@ -221,12 +243,12 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                         width={barWidth + 6}
                         height={BAR_HEIGHT + 6}
                         fill="none"
-                        stroke="#3B82F6"
+                        stroke={GANTT_COLORS.focus}
                         strokeWidth={2}
                         rx={radius + 2}
                         ry={radius + 2}
                         className="animate-pulse"
-                        style={{ filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' }}
+                        style={{ filter: `drop-shadow(0 0 6px ${GANTT_COLORS.focus})` }}
                     />
                 )}
 
@@ -251,7 +273,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                                 x={preX + preWidth / 2}
                                 y={BAR_HEIGHT + 11}
                                 textAnchor="middle"
-                                className="pointer-events-none select-none text-[9px] fill-blue-600 font-medium"
+                                className="pointer-events-none select-none text-[9px] font-medium"
+                                fill={GANTT_COLORS.blue}
                             >
                                 {indirectWorkNamePre}
                             </text>
@@ -308,7 +331,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                                 x={postX + postWidth / 2}
                                 y={BAR_HEIGHT + 11}
                                 textAnchor="middle"
-                                className="pointer-events-none select-none text-[9px] fill-blue-600 font-medium"
+                                className="pointer-events-none select-none text-[9px] font-medium"
+                                fill={GANTT_COLORS.blue}
                             >
                                 {indirectWorkNamePost}
                             </text>
@@ -407,7 +431,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                             width={3}
                             height={12}
                             rx={1}
-                            fill="white"
+                            fill={GANTT_COLORS.textInverse}
                             className="pointer-events-none opacity-0 group-hover:opacity-80 transition-opacity"
                         />
                         <rect
@@ -416,7 +440,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                             width={3}
                             height={12}
                             rx={1}
-                            fill="white"
+                            fill={GANTT_COLORS.textInverse}
                             className="pointer-events-none opacity-0 group-hover:opacity-80 transition-opacity"
                         />
                         {effectivePreDays > 0 && effectiveNetDays > 0 && (
@@ -426,7 +450,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                                 width={3}
                                 height={8}
                                 rx={1}
-                                fill="white"
+                                fill={GANTT_COLORS.textInverse}
                                 className="pointer-events-none opacity-0 group-hover:opacity-60 transition-opacity"
                             />
                         )}
@@ -437,7 +461,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                                 width={3}
                                 height={8}
                                 rx={1}
-                                fill="white"
+                                fill={GANTT_COLORS.textInverse}
                                 className="pointer-events-none opacity-0 group-hover:opacity-60 transition-opacity"
                             />
                         )}
@@ -450,7 +474,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                         x={-8}
                         y={BAR_HEIGHT / 2 + 4}
                         textAnchor="end"
-                        className="pointer-events-none select-none text-[11px] font-medium fill-gray-700"
+                        className="pointer-events-none select-none text-[11px] font-medium"
+                        fill={GANTT_COLORS.textSecondary}
                     >
                         {task.name}
                     </text>
@@ -478,7 +503,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                             x={barWidth / 2}
                             y={-6}
                             textAnchor="middle"
-                            className="pointer-events-none select-none text-[10px] font-bold fill-blue-600"
+                            className="pointer-events-none select-none text-[10px] font-bold"
+                            fill={GANTT_COLORS.focus}
                         >
                             {format(effectiveStartDate, 'MM/dd')} ~ {format(effectiveEndDate, 'MM/dd')}
                         </text>
@@ -486,7 +512,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                             x={barWidth / 2}
                             y={BAR_HEIGHT + 12}
                             textAnchor="middle"
-                            className="pointer-events-none select-none text-[9px] fill-gray-500"
+                            className="pointer-events-none select-none text-[9px]"
+                            fill={GANTT_COLORS.textMuted}
                         >
                             앞{effectivePreDays}일 + 순{effectiveNetDays}일 + 뒤{effectivePostDays}일
                         </text>

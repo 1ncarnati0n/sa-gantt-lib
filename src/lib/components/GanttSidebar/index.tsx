@@ -237,7 +237,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
 
         // Common container render
         const renderContainer = (content: React.ReactNode) => (
-            <div className="flex h-full flex-col bg-white select-none">
+            <div
+                className="flex h-full flex-col select-none"
+                style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
+            >
                 <SidebarHeader
                     viewMode={viewMode}
                     activeGroupName={activeGroupName}
@@ -264,14 +267,23 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                 >
                     {/* Milestone Lane Spacer */}
                     <div
-                        className="flex items-center border-b border-gray-200 bg-gray-50/50"
-                        style={{ height: MILESTONE_LANE_HEIGHT, minWidth: totalWidth }}
+                        className="flex items-center"
+                        style={{
+                            height: MILESTONE_LANE_HEIGHT,
+                            minWidth: totalWidth,
+                            backgroundColor: 'var(--gantt-bg-secondary)',
+                            borderBottom: '1px solid var(--gantt-border-light)',
+                        }}
                     >
                         {columns.map((col, idx) => (
                             <div
                                 key={col.id}
-                                className="flex shrink-0 items-center justify-center border-r border-gray-100 text-xs text-gray-500"
-                                style={{ width: col.width }}
+                                className="flex shrink-0 items-center justify-center text-xs"
+                                style={{
+                                    width: col.width,
+                                    color: 'var(--gantt-text-muted)',
+                                    borderRight: '1px solid var(--gantt-border-light)',
+                                }}
                             >
                                 {idx === 0 && 'Milestone'}
                             </div>
