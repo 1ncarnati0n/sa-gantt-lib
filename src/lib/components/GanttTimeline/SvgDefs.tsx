@@ -5,6 +5,7 @@ import { GANTT_COLORS } from '../../types';
 
 /**
  * SVG 정의 (마커, 패턴 등)
+ * CSS 변수를 사용하여 테마에 따라 자동 전환
  */
 export const SvgDefs: React.FC = () => (
     <defs>
@@ -27,7 +28,7 @@ export const SvgDefs: React.FC = () => (
             height="6"
             patternTransform="rotate(45)"
         >
-            <rect width="6" height="6" fill="rgba(255, 255, 255, 0.6)" />
+            <rect width="6" height="6" fill={GANTT_COLORS.bgPrimary} fillOpacity={0.6} />
             <line x1="0" y1="0" x2="0" y2="6" stroke={GANTT_COLORS.blue} strokeWidth="2" />
         </pattern>
 
@@ -44,12 +45,13 @@ export const SvgDefs: React.FC = () => (
                 y1="0"
                 x2="0"
                 y2="8"
-                stroke="rgba(0, 0, 0, 0.5)"
+                stroke={GANTT_COLORS.textPrimary}
                 strokeWidth="3"
+                strokeOpacity={0.5}
             />
         </pattern>
 
-        {/* 종속성 화살표 마커 - 기본 (검은색) */}
+        {/* 종속성 화살표 마커 - 기본 */}
         <marker
             id="dependency-arrow"
             markerWidth="5"
@@ -61,7 +63,7 @@ export const SvgDefs: React.FC = () => (
             <path
                 d="M0.5,0.5 L4,2.5 L0.5,4.5"
                 fill="none"
-                stroke="#111827"
+                stroke={GANTT_COLORS.textPrimary}
                 strokeWidth="1"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -80,7 +82,7 @@ export const SvgDefs: React.FC = () => (
             <path
                 d="M0.5,0.5 L4,2.5 L0.5,4.5"
                 fill="none"
-                stroke="#3B82F6"
+                stroke={GANTT_COLORS.focus}
                 strokeWidth="1.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -99,14 +101,14 @@ export const SvgDefs: React.FC = () => (
             <path
                 d="M0.5,0.5 L4,2.5 L0.5,4.5"
                 fill="none"
-                stroke="#10B981"
+                stroke={GANTT_COLORS.success}
                 strokeWidth="1.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
             />
         </marker>
 
-        {/* 종속성 화살표 마커 - 호버 (진한 검은색) */}
+        {/* 종속성 화살표 마커 - 호버 */}
         <marker
             id="dependency-arrow-hover"
             markerWidth="5"
@@ -118,7 +120,7 @@ export const SvgDefs: React.FC = () => (
             <path
                 d="M0.5,0.5 L4,2.5 L0.5,4.5"
                 fill="none"
-                stroke="#000000"
+                stroke={GANTT_COLORS.textPrimary}
                 strokeWidth="1.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"

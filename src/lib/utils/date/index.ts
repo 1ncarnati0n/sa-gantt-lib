@@ -8,6 +8,7 @@ export {
     isWeekend,
     getHolidaysInDateRange,
     getHolidayOffsetsInDateRange,
+    snapToWorkingDay,
 } from './holiday';
 
 // Working days utilities

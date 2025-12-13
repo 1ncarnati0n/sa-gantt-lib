@@ -1,19 +1,24 @@
 'use client';
 
 import { useRef, useCallback, useMemo, useState, useEffect } from 'react';
-import { addDays } from 'date-fns';
+import { addDays, differenceInDays } from 'date-fns';
+import { isHoliday, snapToWorkingDay } from '../../utils/dateUtils';
 import { GanttSidebar } from '../GanttSidebar';
 import { GanttTimeline, BarDragResult } from '../GanttTimeline';
 import { MilestoneEditModal } from '../MilestoneEditModal';
 import { TaskEditModal } from '../TaskEditModal';
-import { useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion } from '../../store/useGanttStore';
+import { useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion, useGanttSelection } from '../../store/useGanttStore';
 import { useGanttVirtualization } from '../../hooks/useGanttVirtualization';
+import { useTaskFocus } from '../../hooks/useTaskFocus';
+import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
+import { calculateDateRange } from '../../utils/dateUtils';
 import {
     GanttChartProps,
     ConstructionTask,
     Milestone,
     CalendarSettings,
     GroupDragResult,
+    ZOOM_CONFIG,
 } from '../../types';
 
 // Sub-components
@@ -70,6 +75,7 @@ export function GanttChart({
     const { setViewMode, setZoomLevel } = useGanttViewActions();
     const { sidebarWidth, setSidebarWidth } = useGanttSidebar();
     const { expandedTaskIds, toggleTask, expandAll, collapseAll } = useGanttExpansion();
+    const { focusedTaskId } = useGanttSelection();
 
     // Refs
     const containerRef = useRef<HTMLDivElement>(null);
@@ -148,9 +154,25 @@ export function GanttChart({
     }, [childrenMap, viewMode, activeCPId, expandedTaskIds]);
 
     // Virtualization
-    const { virtualRows, totalHeight } = useGanttVirtualization({
+    const { virtualRows, totalHeight, virtualizer } = useGanttVirtualization({
         containerRef: scrollRef,
         count: visibleTasks.length,
+    });
+
+    // 날짜 범위 계산 (포커싱에 필요)
+    const { minDate } = useMemo(() =>
+        calculateDateRange(tasks, milestones, 60),
+        [tasks, milestones]
+    );
+
+    // Task 포커스 훅
+    const { focusTask } = useTaskFocus({
+        scrollContainerRef: scrollRef,
+        virtualizer,
+        visibleTasks,
+        minDate,
+        pixelsPerDay: ZOOM_CONFIG[zoomLevel].pixelsPerDay,
+        sidebarWidth,
     });
 
     // Sidebar Resize
@@ -178,6 +200,14 @@ export function GanttChart({
         setViewMode(mode, cpId);
         onViewChange?.(mode, cpId);
     }, [setViewMode, onViewChange]);
+
+    // 키보드 네비게이션 훅 (handleViewChange 정의 후에 호출)
+    useKeyboardNavigation({
+        visibleTasks,
+        viewMode,
+        onViewChange: handleViewChange,
+        focusTask,
+    });
 
     const handleTaskClick = useCallback((task: ConstructionTask) => {
         if (viewMode === 'MASTER' && task.type === 'CP') {
@@ -348,14 +378,28 @@ export function GanttChart({
             }
 
             if (onTaskUpdate) {
+                const dragDirection: 'left' | 'right' = result.deltaDays >= 0 ? 'right' : 'left';
+
                 for (const taskId of result.affectedTaskIds) {
                     const task = tasks.find(t => t.id === taskId);
                     if (!task) continue;
 
+                    // 1. 새 시작일 계산
+                    let newStartDate = addDays(task.startDate, result.deltaDays);
+
+                    // 2. 휴일이면 드래그 방향에 따라 스냅
+                    if (isHoliday(newStartDate, holidays, calendarSettings)) {
+                        newStartDate = snapToWorkingDay(newStartDate, dragDirection, holidays, calendarSettings);
+                    }
+
+                    // 3. 종료일은 시작일 기준으로 동일한 기간 유지
+                    const duration = differenceInDays(task.endDate, task.startDate);
+                    const newEndDate = addDays(newStartDate, duration);
+
                     const updatedTask: ConstructionTask = {
                         ...task,
-                        startDate: addDays(task.startDate, result.deltaDays),
-                        endDate: addDays(task.endDate, result.deltaDays),
+                        startDate: newStartDate,
+                        endDate: newEndDate,
                     };
 
                     await onTaskUpdate(updatedTask);
@@ -369,13 +413,13 @@ export function GanttChart({
                 details: { affectedTaskIds: result.affectedTaskIds },
             });
         }
-    }, [tasks, onTaskUpdate, onGroupDrag, onError]);
+    }, [tasks, onTaskUpdate, onGroupDrag, onError, holidays, calendarSettings]);
 
     return (
         <div
             ref={containerRef}
-            className={`flex h-full w-full flex-col bg-gray-50 ${className || ''}`}
-            style={style}
+            className={`flex h-full w-full flex-col ${className || ''}`}
+            style={{ backgroundColor: 'var(--gantt-bg-secondary)', ...style }}
         >
             <GanttHeader
                 viewMode={viewMode}
@@ -412,8 +456,8 @@ export function GanttChart({
                     style={{ width: sidebarWidth + 4 }}
                 >
                     <div
-                        className="flex shrink-0 flex-col bg-white overflow-hidden"
-                        style={{ width: sidebarWidth }}
+                        className="flex shrink-0 flex-col overflow-hidden"
+                        style={{ width: sidebarWidth, backgroundColor: 'var(--gantt-bg-primary)' }}
                     >
                         <GanttSidebar
                             tasks={visibleTasks}
@@ -444,17 +488,32 @@ export function GanttChart({
                     </div>
 
                     <div
-                        className={`absolute top-0 right-0 h-full w-1 cursor-col-resize z-20 transition-colors ${isResizing
-                            ? 'bg-blue-500'
-                            : 'bg-gray-200 hover:bg-gray-300'
-                            }`}
+                        className="absolute top-0 right-0 h-full w-1 cursor-col-resize z-20 transition-colors"
+                        style={{
+                            backgroundColor: isResizing
+                                ? 'var(--gantt-resizer-active)'
+                                : 'var(--gantt-resizer)',
+                        }}
                         onMouseDown={handleResizeStart}
                         onDoubleClick={handleResizeDoubleClick}
+                        onMouseEnter={(e) => {
+                            if (!isResizing) {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-resizer-hover)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isResizing) {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-resizer)';
+                            }
+                        }}
                         title="드래그하여 너비 조절 / 더블클릭으로 초기화"
                     />
                 </div>
 
-                <div className="relative flex flex-1 flex-col bg-white">
+                <div
+                    className="relative flex flex-1 flex-col"
+                    style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
+                >
                     <GanttTimeline
                         tasks={visibleTasks}
                         allTasks={tasks}
@@ -485,6 +544,7 @@ export function GanttChart({
                         onAnchorDependencyCreate={onAnchorDependencyCreate}
                         onAnchorDependencyDelete={onAnchorDependencyDelete}
                         onAnchorDependencyDrag={onAnchorDependencyDrag}
+                        focusedTaskId={focusedTaskId}
                     />
                 </div>
 

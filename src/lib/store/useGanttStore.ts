@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
+import type { ConstructionTask } from '../types';
 import {
     GanttStore,
     ViewMode,
     ZoomLevel,
     GANTT_LAYOUT,
+    TaskSelectOptions,
 } from '../types';
 
 /**
@@ -27,8 +29,12 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
     activeCPId: null,
     zoomLevel: 'MONTH',  // Master View 기본: 월
 
-    // UI Interaction State
-    selectedTaskId: null,
+    // UI Interaction State - Selection
+    selectedTaskIds: new Set<string>(),
+    focusedTaskId: null,
+    lastClickedIndex: null,
+
+    // UI Interaction State - Hover & Expand
     hoveredTaskId: null,
     expandedTaskIds: new Set<string>(),
 
@@ -65,12 +71,110 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
     },
 
     // ====================================
-    // Task UI Actions
+    // Task Selection Actions
     // ====================================
 
-    selectTask: (taskId: string | null) => {
-        set({ selectedTaskId: taskId });
+    selectTask: (taskId: string, options?: TaskSelectOptions) => {
+        const { selectedTaskIds, lastClickedIndex } = get();
+        const { ctrlKey, shiftKey, visibleTasks } = options ?? {};
+
+        if (ctrlKey) {
+            // Ctrl/Cmd + 클릭: 토글 선택
+            const newSet = new Set(selectedTaskIds);
+            if (newSet.has(taskId)) {
+                newSet.delete(taskId);
+            } else {
+                newSet.add(taskId);
+            }
+            const rowIndex = visibleTasks?.findIndex(t => t.id === taskId) ?? null;
+            set({
+                selectedTaskIds: newSet,
+                focusedTaskId: taskId,
+                lastClickedIndex: rowIndex,
+            });
+        } else if (shiftKey && lastClickedIndex !== null && visibleTasks) {
+            // Shift + 클릭: 범위 선택
+            const currentIndex = visibleTasks.findIndex(t => t.id === taskId);
+            if (currentIndex !== -1) {
+                const start = Math.min(lastClickedIndex, currentIndex);
+                const end = Math.max(lastClickedIndex, currentIndex);
+                const newSet = new Set(selectedTaskIds);
+                for (let i = start; i <= end; i++) {
+                    if (visibleTasks[i]) {
+                        newSet.add(visibleTasks[i].id);
+                    }
+                }
+                set({
+                    selectedTaskIds: newSet,
+                    focusedTaskId: taskId,
+                });
+            }
+        } else {
+            // 단순 클릭: 단일 선택
+            const rowIndex = visibleTasks?.findIndex(t => t.id === taskId) ?? null;
+            set({
+                selectedTaskIds: new Set([taskId]),
+                focusedTaskId: taskId,
+                lastClickedIndex: rowIndex,
+            });
+        }
     },
+
+    selectMultipleTasks: (taskIds: string[]) => {
+        set({
+            selectedTaskIds: new Set(taskIds),
+            focusedTaskId: taskIds.length > 0 ? taskIds[0] : null,
+        });
+    },
+
+    clearSelection: () => {
+        set({
+            selectedTaskIds: new Set(),
+            focusedTaskId: null,
+            lastClickedIndex: null,
+        });
+    },
+
+    setFocusedTask: (taskId: string | null) => {
+        set({ focusedTaskId: taskId });
+    },
+
+    moveFocus: (direction: 'up' | 'down', visibleTasks: ConstructionTask[]) => {
+        const { focusedTaskId, selectedTaskIds } = get();
+
+        // 현재 포커스된 Task의 인덱스 찾기
+        let currentIndex = -1;
+        if (focusedTaskId) {
+            currentIndex = visibleTasks.findIndex(t => t.id === focusedTaskId);
+        } else if (selectedTaskIds.size > 0) {
+            // 선택된 것 중 첫 번째
+            const firstSelectedId = Array.from(selectedTaskIds)[0];
+            currentIndex = visibleTasks.findIndex(t => t.id === firstSelectedId);
+        }
+
+        let newIndex: number;
+        if (currentIndex === -1) {
+            // 아무것도 선택되지 않은 경우 첫 번째로
+            newIndex = 0;
+        } else if (direction === 'up') {
+            newIndex = Math.max(0, currentIndex - 1);
+        } else {
+            newIndex = Math.min(visibleTasks.length - 1, currentIndex + 1);
+        }
+
+        const newTask = visibleTasks[newIndex];
+        if (newTask) {
+            set({
+                focusedTaskId: newTask.id,
+                selectedTaskIds: new Set([newTask.id]),
+                lastClickedIndex: newIndex,
+            });
+        }
+    },
+
+    // ====================================
+    // Task Hover Actions
+    // ====================================
 
     hoverTask: (taskId: string | null) => {
         set({ hoveredTaskId: taskId });
@@ -156,13 +260,26 @@ export const useGanttViewActions = () =>
         }))
     );
 
-/** 선택/호버 상태만 구독 */
+/** 선택 상태만 구독 */
 export const useGanttSelection = () =>
     useGanttStore(
         useShallow((state) => ({
-            selectedTaskId: state.selectedTaskId,
-            hoveredTaskId: state.hoveredTaskId,
+            selectedTaskIds: state.selectedTaskIds,
+            focusedTaskId: state.focusedTaskId,
+            lastClickedIndex: state.lastClickedIndex,
             selectTask: state.selectTask,
+            selectMultipleTasks: state.selectMultipleTasks,
+            clearSelection: state.clearSelection,
+            setFocusedTask: state.setFocusedTask,
+            moveFocus: state.moveFocus,
+        }))
+    );
+
+/** 호버 상태만 구독 */
+export const useGanttHover = () =>
+    useGanttStore(
+        useShallow((state) => ({
+            hoveredTaskId: state.hoveredTaskId,
             hoverTask: state.hoverTask,
         }))
     );

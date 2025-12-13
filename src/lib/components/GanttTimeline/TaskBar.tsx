@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { format, addDays } from 'date-fns';
-import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
+import { GANTT_LAYOUT, GANTT_COLORS, GANTT_DRAG } from '../../types';
 import { dateToX, getTaskCalendarSettings, getHolidayOffsetsInDateRange } from '../../utils/dateUtils';
 import { calculateCriticalPath } from '../../utils/criticalPathUtils';
 import type { TaskBarProps } from './types';
@@ -32,6 +32,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
     hasDependency = false,
     onMouseEnter,
     onMouseLeave,
+    isFocused = false,
 }) => {
     const showBar = renderMode === 'full' || renderMode === 'bar';
     const showLabel = renderMode === 'full' || renderMode === 'label';
@@ -40,18 +41,33 @@ export const TaskBar: React.FC<TaskBarProps> = ({
 
     const radius = 0;
     const isDragging = !!dragInfo;
-    const isGroupDragging = groupDragDeltaDays !== 0;
-    const isDependencyDragging = dependencyDragDeltaDays !== 0;
 
+    // 성능 최적화: effectiveDates 메모이제이션
     // 드래그 우선순위: dragInfo > dependencyDrag > groupDrag > 기본
-    const effectiveStartDate = dragInfo?.startDate
-        || (isDependencyDragging ? addDays(task.startDate, dependencyDragDeltaDays)
-        : isGroupDragging ? addDays(task.startDate, groupDragDeltaDays)
-        : task.startDate);
-    const effectiveEndDate = dragInfo?.endDate
-        || (isDependencyDragging ? addDays(task.endDate, dependencyDragDeltaDays)
-        : isGroupDragging ? addDays(task.endDate, groupDragDeltaDays)
-        : task.endDate);
+    const { effectiveStartDate, effectiveEndDate } = useMemo(() => {
+        // 1. 직접 드래그 중
+        if (dragInfo) {
+            return { effectiveStartDate: dragInfo.startDate, effectiveEndDate: dragInfo.endDate };
+        }
+        // 2. 종속성 드래그 중
+        if (dependencyDragDeltaDays !== 0) {
+            return {
+                effectiveStartDate: addDays(task.startDate, dependencyDragDeltaDays),
+                effectiveEndDate: addDays(task.endDate, dependencyDragDeltaDays),
+            };
+        }
+        // 3. 그룹 드래그 중
+        if (groupDragDeltaDays !== 0) {
+            return {
+                effectiveStartDate: addDays(task.startDate, groupDragDeltaDays),
+                effectiveEndDate: addDays(task.endDate, groupDragDeltaDays),
+            };
+        }
+        // 4. 기본값
+        return { effectiveStartDate: task.startDate, effectiveEndDate: task.endDate };
+    }, [task.startDate, task.endDate, dragInfo, dependencyDragDeltaDays, groupDragDeltaDays]);
+
+    const isDependencyDragging = dependencyDragDeltaDays !== 0;
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
 
     if (isMasterView) {
@@ -87,8 +103,26 @@ export const TaskBar: React.FC<TaskBarProps> = ({
         const workWidth = workDays * pixelsPerDay;
         const nonWorkWidth = nonWorkDays * pixelsPerDay;
 
+        const totalWidth = workWidth + nonWorkWidth;
+
         return (
             <g transform={`translate(${startX}, ${y})`} className="group cursor-pointer">
+                {/* Focus Highlight Effect */}
+                {isFocused && showBar && (
+                    <rect
+                        x={-3}
+                        y={-3}
+                        width={totalWidth + 6}
+                        height={BAR_HEIGHT + 6}
+                        fill="none"
+                        stroke={GANTT_COLORS.focus}
+                        strokeWidth={2}
+                        rx={radius + 2}
+                        ry={radius + 2}
+                        className="animate-pulse"
+                        style={{ filter: `drop-shadow(0 0 6px ${GANTT_COLORS.focus})` }}
+                    />
+                )}
                 {showBar && (
                     <>
                         <rect
@@ -118,7 +152,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                         x={-8}
                         y={BAR_HEIGHT / 2 + 4}
                         textAnchor="end"
-                        className="pointer-events-none select-none text-[11px] font-bold fill-gray-700"
+                        className="pointer-events-none select-none text-[11px] font-bold"
+                        fill={GANTT_COLORS.textSecondary}
                     >
                         {task.name}
                     </text>
@@ -160,8 +195,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
         const netX = preWidth;
         const postX = preWidth + netWidth;
 
-        const handleWidth = 8;
-        const boundaryHandleWidth = 6;
+        const handleWidth = GANTT_DRAG.HANDLE_WIDTH;
+        const boundaryHandleWidth = GANTT_DRAG.BOUNDARY_HANDLE_WIDTH;
 
         const taskData = {
             startDate: effectiveStartDate,
@@ -179,6 +214,44 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
             >
+                {/* Connected Group Drag Indicator - 종속성 드래그 시 연결 표시 */}
+                {isDependencyDragging && showBar && (
+                    <rect
+                        x={-4}
+                        y={-4}
+                        width={barWidth + 8}
+                        height={BAR_HEIGHT + 8}
+                        fill="none"
+                        stroke={GANTT_COLORS.success}
+                        strokeWidth={2}
+                        strokeDasharray="6,3"
+                        rx={4}
+                        ry={4}
+                        className="pointer-events-none"
+                        style={{
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                            opacity: 0.8,
+                        }}
+                    />
+                )}
+
+                {/* Focus Highlight Effect */}
+                {isFocused && showBar && (
+                    <rect
+                        x={-3}
+                        y={-3}
+                        width={barWidth + 6}
+                        height={BAR_HEIGHT + 6}
+                        fill="none"
+                        stroke={GANTT_COLORS.focus}
+                        strokeWidth={2}
+                        rx={radius + 2}
+                        ry={radius + 2}
+                        className="animate-pulse"
+                        style={{ filter: `drop-shadow(0 0 6px ${GANTT_COLORS.focus})` }}
+                    />
+                )}
+
                 {/* Pre Indirect Work (Blue) */}
                 {effectivePreDays > 0 && (
                     <>
@@ -200,7 +273,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                                 x={preX + preWidth / 2}
                                 y={BAR_HEIGHT + 11}
                                 textAnchor="middle"
-                                className="pointer-events-none select-none text-[9px] fill-blue-600 font-medium"
+                                className="pointer-events-none select-none text-[9px] font-medium"
+                                fill={GANTT_COLORS.blue}
                             >
                                 {indirectWorkNamePre}
                             </text>
@@ -257,7 +331,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                                 x={postX + postWidth / 2}
                                 y={BAR_HEIGHT + 11}
                                 textAnchor="middle"
-                                className="pointer-events-none select-none text-[9px] fill-blue-600 font-medium"
+                                className="pointer-events-none select-none text-[9px] font-medium"
+                                fill={GANTT_COLORS.blue}
                             >
                                 {indirectWorkNamePost}
                             </text>
@@ -356,7 +431,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                             width={3}
                             height={12}
                             rx={1}
-                            fill="white"
+                            fill={GANTT_COLORS.textInverse}
                             className="pointer-events-none opacity-0 group-hover:opacity-80 transition-opacity"
                         />
                         <rect
@@ -365,7 +440,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                             width={3}
                             height={12}
                             rx={1}
-                            fill="white"
+                            fill={GANTT_COLORS.textInverse}
                             className="pointer-events-none opacity-0 group-hover:opacity-80 transition-opacity"
                         />
                         {effectivePreDays > 0 && effectiveNetDays > 0 && (
@@ -375,7 +450,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                                 width={3}
                                 height={8}
                                 rx={1}
-                                fill="white"
+                                fill={GANTT_COLORS.textInverse}
                                 className="pointer-events-none opacity-0 group-hover:opacity-60 transition-opacity"
                             />
                         )}
@@ -386,7 +461,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                                 width={3}
                                 height={8}
                                 rx={1}
-                                fill="white"
+                                fill={GANTT_COLORS.textInverse}
                                 className="pointer-events-none opacity-0 group-hover:opacity-60 transition-opacity"
                             />
                         )}
@@ -399,10 +474,26 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                         x={-8}
                         y={BAR_HEIGHT / 2 + 4}
                         textAnchor="end"
-                        className="pointer-events-none select-none text-[11px] font-medium fill-gray-700"
+                        className="pointer-events-none select-none text-[11px] font-medium"
+                        fill={GANTT_COLORS.textSecondary}
                     >
                         {task.name}
                     </text>
+                )}
+
+                {/* 드래그 중 건너뛴 휴일 영역 표시 */}
+                {isDragging && dragInfo?.skippedHolidayDays && dragInfo.skippedHolidayDays > 0 && (
+                    <rect
+                        x={dragInfo.dragDirection === 'left'
+                            ? barWidth  // 왼쪽 드래그: 휴일이 task 오른쪽에 있음
+                            : -dragInfo.skippedHolidayDays * pixelsPerDay  // 오른쪽 드래그: 휴일이 task 왼쪽에 있음
+                        }
+                        y={0}
+                        width={dragInfo.skippedHolidayDays * pixelsPerDay}
+                        height={BAR_HEIGHT}
+                        fill="url(#holidayHatchPattern)"
+                        className="pointer-events-none opacity-70"
+                    />
                 )}
 
                 {/* Drag preview */}
@@ -412,7 +503,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                             x={barWidth / 2}
                             y={-6}
                             textAnchor="middle"
-                            className="pointer-events-none select-none text-[10px] font-bold fill-blue-600"
+                            className="pointer-events-none select-none text-[10px] font-bold"
+                            fill={GANTT_COLORS.focus}
                         >
                             {format(effectiveStartDate, 'MM/dd')} ~ {format(effectiveEndDate, 'MM/dd')}
                         </text>
@@ -420,7 +512,8 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                             x={barWidth / 2}
                             y={BAR_HEIGHT + 12}
                             textAnchor="middle"
-                            className="pointer-events-none select-none text-[9px] fill-gray-500"
+                            className="pointer-events-none select-none text-[9px]"
+                            fill={GANTT_COLORS.textMuted}
                         >
                             앞{effectivePreDays}일 + 순{effectiveNetDays}일 + 뒤{effectivePostDays}일
                         </text>

@@ -72,6 +72,8 @@ interface GanttTimelineProps {
     onAnchorDependencyCreate?: (dependency: AnchorDependency) => void;
     onAnchorDependencyDelete?: (depId: string) => void;
     onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void;
+    // 선택/포커스 관련
+    focusedTaskId?: string | null;
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
@@ -99,6 +101,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         onAnchorDependencyCreate,
         onAnchorDependencyDelete,
         onAnchorDependencyDrag,
+        focusedTaskId,
     }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
@@ -112,10 +115,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         } | null>(null);
 
 
-        // Calculate date range
+        // Calculate date range (allTasks 기준으로 계산하여 스크롤 위치와 일치시킴)
         const { minDate, totalDays } = useMemo(() => {
-            return calculateDateRange(tasks, milestones, 60);
-        }, [tasks, milestones]);
+            return calculateDateRange(allTasks || tasks, milestones, 60);
+        }, [allTasks, tasks, milestones]);
 
         // viewMode에 따라 마일스톤 필터링
         const filteredMilestones = useMemo(() => {
@@ -196,10 +199,12 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         });
 
         const {
+            isDragging: isDependencyDragging,
             taskHasDependency,
             handleDependencyBarMouseDown,
             getTaskDeltaDays: getDependencyDragDeltaDays,
             isDraggingTask: _isDependencyDraggingTask,
+            getConnectedTaskIds,
         } = useDependencyDrag({
             pixelsPerDay,
             holidays,
@@ -266,7 +271,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }));
 
         return (
-            <div className="flex h-full w-full flex-col overflow-hidden bg-white">
+            <div className="flex h-full w-full flex-col overflow-hidden" style={{ backgroundColor: 'var(--gantt-bg-primary)' }}>
                 <div ref={ref} className="relative flex-1">
                     <TimelineHeader
                         minDate={minDate}
@@ -280,7 +285,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                     <svg
                         width={chartWidth}
                         height={chartHeight}
-                        className="block bg-white"
+                        className="block"
+                        style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
                         onContextMenu={handleContextMenu}
                         onClick={handleSvgClick}
                     >
@@ -310,7 +316,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     y={rowY}
                                     width={chartWidth}
                                     height={ROW_HEIGHT}
-                                    fill="rgba(249, 250, 251, 0.6)"
+                                    fill={GANTT_COLORS.bgSecondary}
+                                    fillOpacity={0.6}
                                     className="pointer-events-none"
                                 />
                             );
@@ -323,17 +330,17 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const dayOfWeek = getDay(date);
 
                             let showLine = false;
-                            let strokeColor = '#f0f0f0';
+                            let strokeColor: string = GANTT_COLORS.grid;
 
                             if (zoomLevel === 'DAY') {
                                 showLine = true;
-                                strokeColor = dayOfWeek === 0 ? '#e0e0e0' : '#f0f0f0';
+                                strokeColor = dayOfWeek === 0 ? GANTT_COLORS.gridDark : GANTT_COLORS.grid;
                             } else if (zoomLevel === 'WEEK') {
                                 showLine = dayOfWeek === 0;
-                                strokeColor = '#e5e7eb';
+                                strokeColor = GANTT_COLORS.grid;
                             } else if (zoomLevel === 'MONTH') {
                                 showLine = dayOfWeek === 0;
-                                strokeColor = '#f0f0f0';
+                                strokeColor = GANTT_COLORS.grid;
                             }
 
                             if (!showLine) return null;
@@ -359,7 +366,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 y1={row.start + ROW_HEIGHT + MILESTONE_LANE_HEIGHT}
                                 x2={chartWidth}
                                 y2={row.start + ROW_HEIGHT + MILESTONE_LANE_HEIGHT}
-                                stroke="#f3f4f6"
+                                stroke={GANTT_COLORS.borderLight}
                                 strokeWidth={1}
                             />
                         ))}
@@ -411,6 +418,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         currentDeltaDays={getGroupDragDeltaDays(task.id)}
                                         onDragStart={handleGroupBarMouseDown}
                                         onToggle={onGroupToggle}
+                                        isFocused={focusedTaskId === task.id}
                                     />
                                 );
                             }
@@ -434,6 +442,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     onDragStart={handleBarMouseDown}
                                     onDependencyDragStart={handleDependencyBarMouseDown}
                                     hasDependency={taskHasDependency(task.id)}
+                                    isFocused={focusedTaskId === task.id}
                                     onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
                                         ? () => onTaskDoubleClick(task)
                                         : undefined}
@@ -456,6 +465,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 onDependencyHover={handleDependencyHover}
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
+                                getTaskDeltaDays={getDependencyDragDeltaDays}
                             />
                         )}
 
@@ -468,6 +478,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 pixelsPerDay={pixelsPerDay}
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
+                                getTaskDeltaDays={getDependencyDragDeltaDays}
                             />
                         )}
 
@@ -521,6 +532,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
+                                    isFocused={focusedTaskId === task.id}
                                 />
                             );
                         })}
@@ -544,6 +556,36 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     targetX={targetPos.x}
                                     targetY={targetPos.y}
                                 />
+                            );
+                        })()}
+
+                        {/* Dependency Drag Info Indicator */}
+                        {isDependencyDragging && (() => {
+                            const connectedIds = getConnectedTaskIds();
+                            if (connectedIds.length <= 1) return null;
+
+                            return (
+                                <g className="dependency-drag-indicator">
+                                    <rect
+                                        x={10}
+                                        y={10}
+                                        width={180}
+                                        height={28}
+                                        rx={6}
+                                        fill={GANTT_COLORS.success}
+                                        fillOpacity={0.9}
+                                    />
+                                    <text
+                                        x={100}
+                                        y={28}
+                                        textAnchor="middle"
+                                        fill="white"
+                                        fontSize={12}
+                                        fontWeight={600}
+                                    >
+                                        🔗 연결된 {connectedIds.length}개 태스크 이동 중
+                                    </text>
+                                </g>
                             );
                         })()}
                     </svg>

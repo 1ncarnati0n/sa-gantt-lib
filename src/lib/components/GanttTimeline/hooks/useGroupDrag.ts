@@ -1,48 +1,32 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { addDays, differenceInDays } from 'date-fns';
-import { isHoliday } from '../../../utils/dateUtils';
+import { useCallback } from 'react';
+import { addDays } from 'date-fns';
 import { collectDescendantTasks } from '../../../utils/groupUtils';
+import {
+    calculateDragDirection,
+    calculateDeltaDays,
+    calculateHolidaySnap,
+    applyFinalHolidaySnap,
+} from './dragUtils';
+import { useDragState, updateDragState } from './useDragState';
 import type { ConstructionTask, CalendarSettings, GroupDragResult } from '../../../types';
+import type { GroupDragState, BaseDragOptions } from '../types';
 
-/** 그룹 드래그 내부 상태 */
-interface GroupDragState {
-    groupId: string;
-    startX: number;
-    originalStartDate: Date;
-    originalEndDate: Date;
-    affectedTasks: ConstructionTask[];
-    currentDeltaDays: number;
-    lastDeltaX: number;
-}
+// ============================================
+// Hook Options
+// ============================================
 
-/**
- * 드래그 방향에 따라 휴일을 피해 가장 가까운 작업일로 스냅
- */
-const snapToWorkingDay = (
-    date: Date,
-    direction: 'left' | 'right',
-    holidays: Date[],
-    settings: CalendarSettings
-): Date => {
-    let current = new Date(date);
-    const step = direction === 'right' ? 1 : -1;
-
-    while (isHoliday(current, holidays, settings)) {
-        current = addDays(current, step);
-    }
-
-    return current;
-};
-
-interface UseGroupDragOptions {
-    pixelsPerDay: number;
+interface UseGroupDragOptions extends BaseDragOptions {
     holidays: Date[];
     calendarSettings: CalendarSettings;
     allTasks: ConstructionTask[];
     onGroupDrag?: (result: GroupDragResult) => void;
 }
+
+// ============================================
+// useGroupDrag Hook (리팩토링됨)
+// ============================================
 
 export const useGroupDrag = ({
     pixelsPerDay,
@@ -51,20 +35,66 @@ export const useGroupDrag = ({
     allTasks,
     onGroupDrag,
 }: UseGroupDragOptions) => {
-    const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(null);
-    const groupDragStateRef = useRef<GroupDragState | null>(null);
+    // ========================================
+    // 공통 드래그 상태 관리 훅 사용
+    // ========================================
+    const { state: dragState, start, isDragging } = useDragState<GroupDragState>({
+        // 드래그 중 처리
+        // 개별 휴일 스냅: 드래그 중에는 순수 deltaDays만 추적
+        // (각 태스크별 휴일 스냅은 드래그 완료 시점에 개별 적용)
+        onMove: (e, state, setState) => {
+            if (!onGroupDrag) return;
 
-    useEffect(() => {
-        groupDragStateRef.current = groupDragState;
-    }, [groupDragState]);
+            const deltaX = e.clientX - state.startX;
+            const deltaDays = calculateDeltaDays(deltaX, pixelsPerDay);
 
-    const handleGroupBarMouseDown = useCallback((
+            // 상태 업데이트 - 휴일 스냅 없이 순수 deltaDays
+            updateDragState(setState, {
+                currentDeltaDays: deltaDays,
+                lastDeltaX: deltaX,
+            });
+        },
+        // 드래그 완료 처리
+        // 개별 휴일 스냅: 각 태스크별로 개별 휴일 스냅 적용
+        onEnd: (state) => {
+            if (!onGroupDrag || state.currentDeltaDays === 0) return;
+
+            const direction = calculateDragDirection(state.lastDeltaX);
+
+            // 각 태스크별 개별 휴일 스냅 적용
+            const taskUpdates = state.affectedTasks.map(task => {
+                const tentativeDate = addDays(task.startDate, state.currentDeltaDays);
+                const { adjustedDate } = applyFinalHolidaySnap(
+                    tentativeDate,
+                    direction,
+                    holidays,
+                    calendarSettings
+                );
+                return {
+                    taskId: task.id,
+                    newStartDate: adjustedDate,
+                };
+            });
+
+            onGroupDrag({
+                groupId: state.groupId,
+                deltaDays: state.currentDeltaDays, // 기본 이동량 (참고용)
+                affectedTaskIds: state.affectedTasks.map(t => t.id),
+                taskUpdates,
+            });
+        },
+        cursor: 'grabbing',
+    });
+
+    // ========================================
+    // 드래그 시작
+    // ========================================
+    const handleMouseDown = useCallback((
         e: React.MouseEvent,
         groupId: string,
         taskData: {
             startDate: Date;
             endDate: Date;
-            affectedTaskIds: string[];
         }
     ) => {
         if (!onGroupDrag) return;
@@ -73,7 +103,7 @@ export const useGroupDrag = ({
 
         const affectedTasks = collectDescendantTasks(groupId, allTasks);
 
-        const newState: GroupDragState = {
+        start({
             groupId,
             startX: e.clientX,
             originalStartDate: taskData.startDate,
@@ -81,88 +111,43 @@ export const useGroupDrag = ({
             affectedTasks,
             currentDeltaDays: 0,
             lastDeltaX: 0,
-        };
+        });
+    }, [onGroupDrag, allTasks, start]);
 
-        setGroupDragState(newState);
-        groupDragStateRef.current = newState;
-    }, [onGroupDrag, allTasks]);
-
-    const handleGroupMouseMove = useCallback((e: MouseEvent) => {
-        const state = groupDragStateRef.current;
-        if (!state || !onGroupDrag) return;
-
-        const deltaX = e.clientX - state.startX;
-        const deltaDays = Math.round(deltaX / pixelsPerDay);
-
-        setGroupDragState(prev => prev ? {
-            ...prev,
-            currentDeltaDays: deltaDays,
-            lastDeltaX: deltaX,
-        } : null);
-    }, [onGroupDrag, pixelsPerDay]);
-
-    const handleGroupMouseUp = useCallback(() => {
-        const state = groupDragStateRef.current;
-        if (!state || !onGroupDrag) {
-            setGroupDragState(null);
-            groupDragStateRef.current = null;
-            return;
-        }
-
-        if (state.currentDeltaDays !== 0) {
-            const dragDirection: 'left' | 'right' = state.lastDeltaX < 0 ? 'left' : 'right';
-            const newGroupStartDate = addDays(state.originalStartDate, state.currentDeltaDays);
-
-            let finalDeltaDays = state.currentDeltaDays;
-            if (isHoliday(newGroupStartDate, holidays, calendarSettings)) {
-                const snappedStart = snapToWorkingDay(newGroupStartDate, dragDirection, holidays, calendarSettings);
-                const adjustment = differenceInDays(snappedStart, newGroupStartDate);
-                finalDeltaDays = state.currentDeltaDays + adjustment;
-            }
-
-            onGroupDrag({
-                groupId: state.groupId,
-                deltaDays: finalDeltaDays,
-                affectedTaskIds: state.affectedTasks.map(t => t.id),
-            });
-        }
-
-        setGroupDragState(null);
-        groupDragStateRef.current = null;
-    }, [onGroupDrag, holidays, calendarSettings]);
-
-    // 그룹 드래그 이벤트 리스너 등록
-    useEffect(() => {
-        if (groupDragState) {
-            window.addEventListener('mousemove', handleGroupMouseMove);
-            window.addEventListener('mouseup', handleGroupMouseUp);
-            document.body.style.cursor = 'grabbing';
-
-            return () => {
-                window.removeEventListener('mousemove', handleGroupMouseMove);
-                window.removeEventListener('mouseup', handleGroupMouseUp);
-                document.body.style.cursor = '';
-            };
-        }
-    }, [groupDragState, handleGroupMouseMove, handleGroupMouseUp]);
-
-    const getGroupDragDeltaDays = useCallback((groupId: string): number => {
-        if (groupDragState && groupDragState.groupId === groupId) {
-            return groupDragState.currentDeltaDays;
+    // ========================================
+    // 드래그 정보 조회
+    // ========================================
+    const getDragInfo = useCallback((groupId: string): number => {
+        if (dragState && dragState.groupId === groupId) {
+            return dragState.currentDeltaDays;
         }
         return 0;
-    }, [groupDragState]);
+    }, [dragState]);
 
-    const getTaskGroupDragDeltaDays = useCallback((taskId: string): number => {
-        if (!groupDragState) return 0;
-        const isAffected = groupDragState.affectedTasks.some(t => t.id === taskId);
-        return isAffected ? groupDragState.currentDeltaDays : 0;
-    }, [groupDragState]);
+    // 개별 휴일 스냅: 드래그 중에도 각 태스크별 개별 휴일 스냅 적용
+    const getTaskDragDeltaDays = useCallback((taskId: string): number => {
+        if (!dragState) return 0;
+
+        const task = dragState.affectedTasks.find(t => t.id === taskId);
+        if (!task) return 0;
+
+        // 각 태스크의 시작일 기준으로 개별 휴일 스냅 계산
+        const direction = calculateDragDirection(dragState.lastDeltaX);
+        const { adjustedDeltaDays } = calculateHolidaySnap(
+            task.startDate,
+            dragState.currentDeltaDays,
+            direction,
+            holidays,
+            calendarSettings
+        );
+
+        return adjustedDeltaDays;
+    }, [dragState, holidays, calendarSettings]);
 
     return {
-        isDragging: !!groupDragState,
-        handleGroupBarMouseDown,
-        getGroupDragDeltaDays,
-        getTaskGroupDragDeltaDays,
+        isDragging,
+        handleGroupBarMouseDown: handleMouseDown,
+        getGroupDragDeltaDays: getDragInfo,
+        getTaskGroupDragDeltaDays: getTaskDragDeltaDays,
     };
 };

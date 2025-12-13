@@ -20,6 +20,9 @@ export interface DragInfo {
     indirectWorkDaysPre: number;
     indirectWorkDaysPost: number;
     netWorkDays: number;
+    // 스킵된 휴일 영역 정보 (빗금 표시용)
+    skippedHolidayDays?: number;
+    dragDirection?: 'left' | 'right';
 }
 
 /** Bar 드래그 결과 콜백 파라미터 */
@@ -56,6 +59,8 @@ export interface BarDragState {
     currentNetWorkDays: number;
     currentIndirectWorkDaysPost: number;
     lastDeltaX: number;
+    skippedHolidayDays: number;
+    dragDirection: 'left' | 'right';
 }
 
 /** 마일스톤 드래그 상태 */
@@ -75,6 +80,29 @@ export interface GroupDragState {
     affectedTasks: ConstructionTask[];
     currentDeltaDays: number;
     lastDeltaX: number;
+}
+
+/** 종속성 드래그 상태 */
+export interface DependencyDragState {
+    sourceTaskId: string;
+    startX: number;
+    originalStartDate: Date;
+    connectedTaskIds: string[];
+    connectedTasks: ConstructionTask[];
+    currentDeltaDays: number;
+    lastDeltaX: number;
+    taskDeltaMap: Map<string, number>;
+}
+
+// ============================================
+// 드래그 Hook Options 타입
+// ============================================
+
+/** 드래그 Hook 공통 옵션 */
+export interface BaseDragOptions {
+    pixelsPerDay: number;
+    holidays?: Date[];
+    calendarSettings?: CalendarSettings;
 }
 
 /** TaskBar 렌더링 모드 */
@@ -118,6 +146,8 @@ export interface TaskBarProps {
     hasDependency?: boolean;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
+    /** 키보드 포커스 상태 (하이라이팅 효과) */
+    isFocused?: boolean;
 }
 
 /** MilestoneMarker Props */

@@ -24,6 +24,12 @@
   - 간접작업일 (Indirect Work): 휴일 포함, 선/후 분리
   - 작업일/비작업일 자동 집계
 
+- **앵커 기반 종속성 시스템** 🆕
+  - 태스크 바 내 Day 단위 앵커 포인트
+  - 드래그로 종속성 연결/삭제
+  - 연결된 태스크 그룹 동시 이동
+  - 실시간 시각적 피드백 (드래그 중 연결 강조)
+
 - **고성능 렌더링**
   - @tanstack/react-virtual 기반 가상화
   - 대용량 데이터 처리 최적화
@@ -33,6 +39,11 @@
   - 줌 레벨 (일/주/월)
   - 마일스톤 관리
   - Undo/Redo 지원
+
+- **데이터 서비스 추상화** 🆕
+  - `DataService` 인터페이스로 저장소 분리
+  - `LocalStorageService` 기본 구현
+  - Supabase 등 외부 DB 전환 용이
 
 ---
 
@@ -230,9 +241,15 @@ export { dateToX, xToDate, addWorkingDays, calculateCriticalPath };
 
 // 타입
 export type { ConstructionTask, Milestone, Dependency, CPData, TaskData };
+export type { AnchorDependency, DataService, GanttData };  // 🆕
 
 // 상수
 export { GANTT_COLORS, GANTT_LAYOUT, ZOOM_CONFIG };
+export { GANTT_ANCHOR, GANTT_DRAG, GANTT_SUMMARY, GANTT_STROKE };  // 🆕
+
+// 데이터 서비스 (🆕)
+export { LocalStorageService, createLocalStorageService };
+export { serializeGanttDataForExport, parseImportedData };
 ```
 
 ---
@@ -246,21 +263,34 @@ sa-gantt-lib/
 │   │   ├── components/         # React 컴포넌트
 │   │   │   ├── GanttChart.tsx        # 메인 컴포넌트
 │   │   │   ├── GanttSidebar.tsx      # 사이드바
-│   │   │   ├── GanttTimeline.tsx     # 타임라인
+│   │   │   ├── GanttTimeline/        # 타임라인 모듈
+│   │   │   │   ├── index.tsx         # 타임라인 메인
+│   │   │   │   ├── TaskBar.tsx       # 태스크 바
+│   │   │   │   ├── AnchorPoints.tsx  # 앵커 포인트
+│   │   │   │   ├── DependencyLines.tsx # 종속성 선
+│   │   │   │   └── hooks/            # 드래그 훅
 │   │   │   ├── CriticalPathBar.tsx   # CP 바
-│   │   │   ├── TaskEditModal.tsx     # 작업 편집 모달
-│   │   │   └── MilestoneEditModal.tsx
+│   │   │   ├── GroupSummaryBar.tsx   # 그룹 요약 바
+│   │   │   └── TaskEditModal.tsx     # 작업 편집 모달
 │   │   ├── hooks/              # 커스텀 훅
 │   │   │   ├── useGanttVirtualization.ts
 │   │   │   ├── useHistory.ts
 │   │   │   └── useColumnResizer.ts
+│   │   ├── services/           # 데이터 서비스 (🆕)
+│   │   │   ├── DataService.ts        # 서비스 인터페이스
+│   │   │   ├── LocalStorageService.ts # localStorage 구현
+│   │   │   ├── serializers.ts        # 직렬화 유틸
+│   │   │   └── index.ts              # re-export
 │   │   ├── store/              # Zustand 스토어
 │   │   ├── utils/              # 유틸리티 함수
 │   │   │   ├── dateUtils.ts          # 날짜 계산
 │   │   │   ├── criticalPathUtils.ts  # CP 계산
+│   │   │   ├── dependencyGraph.ts    # 종속성 그래프
 │   │   │   └── typeGuards.ts
 │   │   ├── context/            # React Context
-│   │   ├── types.ts            # 타입 정의
+│   │   ├── types/              # 타입 정의
+│   │   │   ├── index.ts              # 타입 re-export
+│   │   │   └── constants.ts          # 상수 정의
 │   │   └── index.ts            # 라이브러리 진입점
 │   ├── App.tsx                 # 데모 앱
 │   └── data/                   # Mock 데이터
@@ -299,11 +329,16 @@ tsc --noEmit
 - [x] 드래그 앤 드롭
 - [x] 마일스톤 관리
 - [x] Undo/Redo
+- [x] 앵커 기반 종속성 시스템 🆕
+- [x] 연결된 태스크 그룹 드래그 🆕
+- [x] DataService 추상화 (Supabase 준비) 🆕
+- [x] 상수 모듈화 (매직 넘버 제거) 🆕
 
 ### v0.2.0 (예정)
-- [ ] 종속성 라인 시각화
+- [ ] Supabase 연동 (SupabaseService)
 - [ ] 작업 자동 스케줄링
 - [ ] PDF/이미지 내보내기
+- [ ] 종속성 제약 검증
 
 ### v1.0.0 (목표)
 - [ ] 멀티 프로젝트 지원

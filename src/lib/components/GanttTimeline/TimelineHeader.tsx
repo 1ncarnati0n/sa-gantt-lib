@@ -65,35 +65,45 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
             return null;
         } else if (zoomLevel === 'DAY') {
             return (
-                <div className="flex h-[32px] items-center bg-white" style={{ minWidth: totalWidth }}>
+                <div
+                    className="flex h-[32px] items-center"
+                    style={{ minWidth: totalWidth, backgroundColor: 'var(--gantt-bg-primary)' }}
+                >
                     {headerDays.map((date, index) => {
                         const day = getDay(date);
                         const isHol = isHoliday(date, holidays, calendarSettings);
                         const isSunday = day === 0;
                         const isSaturday = day === 6;
 
-                        let textColor = 'text-gray-600';
-                        if (isSunday) textColor = 'text-red-500';
-                        if (isSaturday) textColor = 'text-blue-500';
-                        if (isHol && !isSunday && !isSaturday) textColor = 'text-red-500';
+                        let textColor = 'var(--gantt-text-secondary)';
+                        let bgColor = 'transparent';
 
-                        let bgColor = '';
-                        if (isSunday || (isHol && !isSaturday)) {
-                            bgColor = 'bg-red-50/50';
+                        if (isSunday) {
+                            textColor = 'var(--gantt-sunday-text)';
+                            bgColor = 'var(--gantt-sunday-bg)';
                         } else if (isSaturday) {
-                            bgColor = 'bg-blue-50/50';
+                            textColor = 'var(--gantt-weekend-text)';
+                            bgColor = 'var(--gantt-weekend-bg)';
+                        } else if (isHol) {
+                            textColor = 'var(--gantt-holiday-text)';
+                            bgColor = 'var(--gantt-holiday-bg)';
                         }
 
                         return (
                             <div
                                 key={index}
-                                className={`flex h-full shrink-0 flex-col items-center justify-center border-r border-gray-100 font-medium ${bgColor}`}
-                                style={{ width: pixelsPerDay, minWidth: pixelsPerDay }}
+                                className="flex h-full shrink-0 flex-col items-center justify-center font-medium"
+                                style={{
+                                    width: pixelsPerDay,
+                                    minWidth: pixelsPerDay,
+                                    backgroundColor: bgColor,
+                                    borderRight: '1px solid var(--gantt-border-light)',
+                                }}
                             >
-                                <span className={`text-[10px] leading-none ${textColor}`}>
+                                <span className="text-[10px] leading-none" style={{ color: textColor }}>
                                     {format(date, 'd')}
                                 </span>
-                                <span className={`mt-0.5 text-[9px] font-bold leading-none ${textColor}`}>
+                                <span className="mt-0.5 text-[9px] font-bold leading-none" style={{ color: textColor }}>
                                     {['일', '월', '화', '수', '목', '금', '토'][day]}
                                 </span>
                             </div>
@@ -119,12 +129,19 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
             groups.push({ label: `${getWeekOfMonth(currentWeek, { weekStartsOn: 0 })}주`, days: count });
 
             return (
-                <div className="flex h-[32px] items-center bg-white" style={{ minWidth: totalWidth }}>
+                <div
+                    className="flex h-[32px] items-center"
+                    style={{ minWidth: totalWidth, backgroundColor: 'var(--gantt-bg-primary)' }}
+                >
                     {groups.map((g, i) => (
                         <div
                             key={i}
-                            className="flex h-full shrink-0 items-center justify-center border-r border-gray-100 text-xs font-medium text-gray-600"
-                            style={{ width: g.days * pixelsPerDay }}
+                            className="flex h-full shrink-0 items-center justify-center text-xs font-medium"
+                            style={{
+                                width: g.days * pixelsPerDay,
+                                color: 'var(--gantt-text-secondary)',
+                                borderRight: '1px solid var(--gantt-border-light)',
+                            }}
                         >
                             {g.label}
                         </div>
@@ -138,21 +155,34 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
 
     return (
         <div
-            className="sticky top-0 z-5 flex shrink-0 flex-col border-b border-gray-300 bg-white shadow-sm"
-            style={{ height: HEADER_HEIGHT, minWidth: totalWidth }}
+            className="sticky top-0 z-5 flex shrink-0 flex-col shadow-sm"
+            style={{
+                height: HEADER_HEIGHT,
+                minWidth: totalWidth,
+                backgroundColor: 'var(--gantt-bg-primary)',
+                borderBottom: '1px solid var(--gantt-border)',
+            }}
         >
             {isMonthView ? (
                 <>
                     {/* MONTH View: Year Row (2줄 높이 = 48px) */}
                     <div
-                        className="flex h-[48px] items-center border-b border-gray-300 bg-gray-100 text-sm font-bold text-gray-800"
-                        style={{ minWidth: totalWidth }}
+                        className="flex h-[48px] items-center text-sm font-bold"
+                        style={{
+                            minWidth: totalWidth,
+                            backgroundColor: 'var(--gantt-bg-tertiary)',
+                            borderBottom: '1px solid var(--gantt-border)',
+                            color: 'var(--gantt-text-primary)',
+                        }}
                     >
                         {yearGroups.map((g, i) => (
                             <div
                                 key={i}
-                                className="flex h-full shrink-0 items-center justify-center border-r border-gray-300"
-                                style={{ width: g.days * pixelsPerDay }}
+                                className="flex h-full shrink-0 items-center justify-center"
+                                style={{
+                                    width: g.days * pixelsPerDay,
+                                    borderRight: '1px solid var(--gantt-border)',
+                                }}
                             >
                                 {g.label}
                             </div>
@@ -161,14 +191,21 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
 
                     {/* MONTH View: Month Row (1줄 높이 = 32px) */}
                     <div
-                        className="flex h-[32px] items-center bg-white text-xs font-medium text-gray-700"
-                        style={{ minWidth: totalWidth }}
+                        className="flex h-[32px] items-center text-xs font-medium"
+                        style={{
+                            minWidth: totalWidth,
+                            backgroundColor: 'var(--gantt-bg-primary)',
+                            color: 'var(--gantt-text-secondary)',
+                        }}
                     >
                         {monthGroups.map((g, i) => (
                             <div
                                 key={i}
-                                className="flex h-full shrink-0 items-center justify-center border-r border-gray-200"
-                                style={{ width: g.days * pixelsPerDay }}
+                                className="flex h-full shrink-0 items-center justify-center"
+                                style={{
+                                    width: g.days * pixelsPerDay,
+                                    borderRight: '1px solid var(--gantt-border-light)',
+                                }}
                             >
                                 {g.label}
                             </div>
@@ -179,14 +216,22 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                 <>
                     {/* WEEK/DAY View: Year Row */}
                     <div
-                        className="flex h-[24px] items-center border-b border-gray-300 bg-gray-100 text-xs font-bold text-gray-800"
-                        style={{ minWidth: totalWidth }}
+                        className="flex h-[24px] items-center text-xs font-bold"
+                        style={{
+                            minWidth: totalWidth,
+                            backgroundColor: 'var(--gantt-bg-tertiary)',
+                            borderBottom: '1px solid var(--gantt-border)',
+                            color: 'var(--gantt-text-primary)',
+                        }}
                     >
                         {yearGroups.map((g, i) => (
                             <div
                                 key={i}
-                                className="flex shrink-0 items-center border-r border-gray-300 pl-2"
-                                style={{ width: g.days * pixelsPerDay }}
+                                className="flex shrink-0 items-center pl-2"
+                                style={{
+                                    width: g.days * pixelsPerDay,
+                                    borderRight: '1px solid var(--gantt-border)',
+                                }}
                             >
                                 {g.label}
                             </div>
@@ -195,14 +240,22 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
 
                     {/* WEEK/DAY View: Month Row */}
                     <div
-                        className="flex h-[24px] items-center border-b border-gray-200 bg-gray-100 text-xs font-medium text-gray-700"
-                        style={{ minWidth: totalWidth }}
+                        className="flex h-[24px] items-center text-xs font-medium"
+                        style={{
+                            minWidth: totalWidth,
+                            backgroundColor: 'var(--gantt-bg-tertiary)',
+                            borderBottom: '1px solid var(--gantt-border-light)',
+                            color: 'var(--gantt-text-secondary)',
+                        }}
                     >
                         {monthGroups.map((g, i) => (
                             <div
                                 key={i}
-                                className="flex shrink-0 items-center justify-center border-r border-gray-300"
-                                style={{ width: g.days * pixelsPerDay }}
+                                className="flex shrink-0 items-center justify-center"
+                                style={{
+                                    width: g.days * pixelsPerDay,
+                                    borderRight: '1px solid var(--gantt-border)',
+                                }}
                             >
                                 {g.label}
                             </div>

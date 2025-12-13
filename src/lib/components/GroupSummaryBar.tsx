@@ -2,16 +2,12 @@
 
 import React, { useMemo } from 'react';
 import { addDays } from 'date-fns';
-import { ConstructionTask, GANTT_LAYOUT } from '../types';
+import { ConstructionTask, GANTT_LAYOUT, GANTT_COLORS, GANTT_SUMMARY } from '../types';
 import { dateToX } from '../utils/dateUtils';
 import { calculateGroupDateRange, collectDescendantTasks } from '../utils/groupUtils';
 
 const { BAR_HEIGHT } = GANTT_LAYOUT;
-
-// Summary 바 스타일 상수
-const SUMMARY_BAR_HEIGHT = 9;
-const SUMMARY_BAR_COLOR = '#9CA3AF';      // gray-400
-const PROGRESS_COLOR = '#6B7280';         // gray-500
+const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT, VERTICAL_OFFSET } = GANTT_SUMMARY;
 
 interface GroupSummaryBarProps {
     group: ConstructionTask;
@@ -31,6 +27,7 @@ interface GroupSummaryBarProps {
         }
     ) => void;
     onToggle?: (groupId: string) => void;
+    isFocused?: boolean;
 }
 
 export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
@@ -43,6 +40,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
     currentDeltaDays = 0,
     onDragStart,
     onToggle,
+    isFocused = false,
 }) => {
     // 그룹의 날짜 범위 계산
     const dateRange = useMemo(
@@ -71,8 +69,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
     const progressWidth = totalWidth * (progress / 100);
 
     // Summary 바 Y 위치 (행 중앙 아래에 배치)
-    // +4 오프셋: TaskBar보다 살짝 아래에 위치시켜 그룹 구분을 명확하게 함
-    const VERTICAL_OFFSET = 4;
+    // VERTICAL_OFFSET: TaskBar보다 살짝 아래에 위치시켜 그룹 구분을 명확하게 함
     const barY = (BAR_HEIGHT - SUMMARY_BAR_HEIGHT) / 2 + VERTICAL_OFFSET;
 
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -98,13 +95,30 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
             transform={`translate(${startX}, ${y})`}
             className={isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}
         >
+            {/* Focus Highlight Effect */}
+            {isFocused && (
+                <rect
+                    x={-3}
+                    y={barY - 3}
+                    width={totalWidth + 6}
+                    height={SUMMARY_BAR_HEIGHT + 6}
+                    fill="none"
+                    stroke={GANTT_COLORS.focus}
+                    strokeWidth={2}
+                    rx={4}
+                    ry={4}
+                    className="animate-pulse"
+                    style={{ filter: `drop-shadow(0 0 6px ${GANTT_COLORS.focus})` }}
+                />
+            )}
+
             {/* Summary 바 배경 (전체 기간) */}
             <rect
                 x={0}
                 y={barY}
                 width={totalWidth}
                 height={SUMMARY_BAR_HEIGHT}
-                fill={SUMMARY_BAR_COLOR}
+                fill={GANTT_COLORS.summaryBar}
                 rx={2}
                 ry={2}
                 opacity={0.4}
@@ -117,7 +131,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
                     y={barY}
                     width={progressWidth}
                     height={SUMMARY_BAR_HEIGHT}
-                    fill={PROGRESS_COLOR}
+                    fill={GANTT_COLORS.summaryProgress}
                     rx={2}
                     ry={2}
                 />
@@ -128,7 +142,8 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
                 x={totalWidth / 2}
                 y={barY - 3}
                 textAnchor="middle"
-                className="fill-gray-600 font-medium"
+                className="font-medium"
+                fill={GANTT_COLORS.textSecondary}
                 style={{ fontSize: '10px' }}
             >
                 {group.name}
@@ -138,7 +153,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
             <text
                 x={totalWidth + 8}
                 y={barY + SUMMARY_BAR_HEIGHT / 2 + 3}
-                className="fill-gray-500"
+                fill={GANTT_COLORS.textMuted}
                 style={{ fontSize: '9px' }}
             >
                 {progress}%

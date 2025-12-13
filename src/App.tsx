@@ -9,7 +9,24 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { parseISO, format } from 'date-fns';
-import { GanttChart, ConstructionTask, Milestone, CalendarSettings, calculateDualCalendarDates, AnchorPoint, DependencyType, DropPosition, Dependency, AnchorDependency } from './lib';
+import {
+  GanttChart,
+  ConstructionTask,
+  Milestone,
+  CalendarSettings,
+  calculateDualCalendarDates,
+  DropPosition,
+  AnchorDependency,
+  ThemeProvider,
+  ThemeToggle,
+  // DataService
+  createLocalStorageService,
+  parseMockTasks,
+  parseMockMilestones,
+  isValidAnchorDependencyData,
+  serializeGanttDataForExport,
+  parseImportedData,
+} from './lib';
 import { useHistory } from './lib/hooks/useHistory';
 import mockData from './data/mock.json';
 
@@ -49,257 +66,17 @@ interface AppState {
 }
 
 // ============================================
-// localStorage 키
+// DataService 인스턴스 생성
+// (향후 Supabase 전환 시 createSupabaseService()로 교체)
 // ============================================
-const STORAGE_KEYS = {
-  TASKS: 'sa-gantt-tasks',
-  MILESTONES: 'sa-gantt-milestones',
-  ANCHOR_DEPENDENCIES: 'sa-gantt-anchor-dependencies',
-};
+const dataService = createLocalStorageService({ debug: true });
 
 // ============================================
-// localStorage 유틸리티 함수
-// (나중에 Supabase로 전환 시 이 함수들만 수정)
-// ============================================
-
-// Task를 저장 가능한 형태로 직렬화
-const serializeTasks = (tasks: ConstructionTask[]): string => {
-  const serialized = tasks.map(t => ({
-    ...t,
-    startDate: format(t.startDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
-    endDate: format(t.endDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
-  }));
-  return JSON.stringify(serialized);
-};
-
-// Milestone을 저장 가능한 형태로 직렬화
-const serializeMilestones = (milestones: Milestone[]): string => {
-  const serialized = milestones.map(m => ({
-    ...m,
-    date: format(m.date, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
-  }));
-  return JSON.stringify(serialized);
-};
-
-// AnchorDependency를 저장 가능한 형태로 직렬화 (날짜 없음 - 단순)
-const serializeAnchorDependencies = (deps: AnchorDependency[]): string => {
-  return JSON.stringify(deps);
-};
-
-// ============================================
-// 내보내기용 직렬화 함수 (mock.json 형식)
-// ============================================
-
-// Task를 mock.json 형식으로 직렬화 (날짜는 YYYY-MM-DD)
-const serializeTasksForExport = (tasks: ConstructionTask[]) => {
-  return tasks.map(t => ({
-    id: t.id,
-    parentId: t.parentId,
-    wbsLevel: t.wbsLevel,
-    type: t.type,
-    name: t.name,
-    startDate: format(t.startDate, 'yyyy-MM-dd'),
-    endDate: format(t.endDate, 'yyyy-MM-dd'),
-    ...(t.cp ? { cp: t.cp } : {}),
-    ...(t.task ? { task: t.task } : {}),
-    dependencies: t.dependencies,
-  }));
-};
-
-// Milestone을 mock.json 형식으로 직렬화
-const serializeMilestonesForExport = (milestones: Milestone[]) => {
-  return milestones.map(m => ({
-    id: m.id,
-    date: format(m.date, 'yyyy-MM-dd'),
-    name: m.name,
-    type: 'MILESTONE',
-    ...(m.milestoneType ? { milestoneType: m.milestoneType } : {}),
-    ...(m.description ? { description: m.description } : {}),
-  }));
-};
-
-// AnchorDependency를 mock.json 형식으로 직렬화
-const serializeAnchorDependenciesForExport = (deps: AnchorDependency[]) => {
-  return deps.map(d => ({
-    id: d.id,
-    sourceTaskId: d.sourceTaskId,
-    targetTaskId: d.targetTaskId,
-    sourceDayIndex: d.sourceDayIndex,
-    targetDayIndex: d.targetDayIndex,
-    ...(d.lag !== undefined && d.lag !== 0 ? { lag: d.lag } : {}),
-  }));
-};
-
-// 타입 가드: Task 데이터 검증
-const isValidTaskData = (data: unknown): data is Record<string, unknown> & {
-  id: string;
-  startDate: string;
-  endDate: string;
-} => {
-  if (!data || typeof data !== 'object') return false;
-  const obj = data as Record<string, unknown>;
-  return (
-    typeof obj.id === 'string' &&
-    typeof obj.startDate === 'string' &&
-    typeof obj.endDate === 'string'
-  );
-};
-
-// localStorage에서 Tasks 로드
-const loadTasksFromStorage = (): ConstructionTask[] | null => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEYS.TASKS);
-    if (!stored) return null;
-
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) {
-      console.error('Invalid tasks data format: expected array');
-      return null;
-    }
-
-    return parsed
-      .filter(isValidTaskData)
-      .map((t) => ({
-        ...t,
-        startDate: parseISO(t.startDate),
-        endDate: parseISO(t.endDate),
-      })) as ConstructionTask[];
-  } catch (error) {
-    console.error('Failed to load tasks from localStorage:', error);
-    return null;
-  }
-};
-
-// 타입 가드: Milestone 데이터 검증
-const isValidMilestoneData = (data: unknown): data is Record<string, unknown> & {
-  id: string;
-  date: string;
-  name: string;
-} => {
-  if (!data || typeof data !== 'object') return false;
-  const obj = data as Record<string, unknown>;
-  return (
-    typeof obj.id === 'string' &&
-    typeof obj.date === 'string' &&
-    typeof obj.name === 'string'
-  );
-};
-
-// 타입 가드: AnchorDependency 데이터 검증
-const isValidAnchorDependencyData = (data: unknown): data is AnchorDependency => {
-  if (!data || typeof data !== 'object') return false;
-  const obj = data as Record<string, unknown>;
-  return (
-    typeof obj.id === 'string' &&
-    typeof obj.sourceTaskId === 'string' &&
-    typeof obj.targetTaskId === 'string' &&
-    typeof obj.sourceDayIndex === 'number' &&
-    typeof obj.targetDayIndex === 'number' &&
-    (obj.lag === undefined || typeof obj.lag === 'number')
-  );
-};
-
-// localStorage에서 Milestones 로드
-const loadMilestonesFromStorage = (): Milestone[] | null => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEYS.MILESTONES);
-    if (!stored) return null;
-
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) {
-      console.error('Invalid milestones data format: expected array');
-      return null;
-    }
-
-    return parsed
-      .filter(isValidMilestoneData)
-      .map((m) => ({
-        ...m,
-        date: parseISO(m.date),
-      })) as Milestone[];
-  } catch (error) {
-    console.error('Failed to load milestones from localStorage:', error);
-    return null;
-  }
-};
-
-// localStorage에 Tasks 저장
-const saveTasksToStorage = (tasks: ConstructionTask[]): void => {
-  try {
-    localStorage.setItem(STORAGE_KEYS.TASKS, serializeTasks(tasks));
-    console.log('Tasks saved to localStorage');
-  } catch (error) {
-    console.error('Failed to save tasks to localStorage:', error);
-  }
-};
-
-// localStorage에 Milestones 저장
-const saveMilestonesToStorage = (milestones: Milestone[]): void => {
-  try {
-    localStorage.setItem(STORAGE_KEYS.MILESTONES, serializeMilestones(milestones));
-    console.log('Milestones saved to localStorage');
-  } catch (error) {
-    console.error('Failed to save milestones to localStorage:', error);
-  }
-};
-
-// localStorage에서 AnchorDependencies 로드
-const loadAnchorDependenciesFromStorage = (): AnchorDependency[] | null => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEYS.ANCHOR_DEPENDENCIES);
-    if (!stored) return null;
-
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) {
-      console.error('Invalid anchor dependencies data format: expected array');
-      return null;
-    }
-
-    return parsed.filter(isValidAnchorDependencyData);
-  } catch (error) {
-    console.error('Failed to load anchor dependencies from localStorage:', error);
-    return null;
-  }
-};
-
-// localStorage에 AnchorDependencies 저장
-const saveAnchorDependenciesToStorage = (deps: AnchorDependency[]): void => {
-  try {
-    localStorage.setItem(STORAGE_KEYS.ANCHOR_DEPENDENCIES, serializeAnchorDependencies(deps));
-    console.log('Anchor dependencies saved to localStorage');
-  } catch (error) {
-    console.error('Failed to save anchor dependencies to localStorage:', error);
-  }
-};
-
-// localStorage 데이터 초기화 (mock.json으로 리셋)
-export const resetStorageToMock = (): void => {
-  localStorage.removeItem(STORAGE_KEYS.TASKS);
-  localStorage.removeItem(STORAGE_KEYS.MILESTONES);
-  localStorage.removeItem(STORAGE_KEYS.ANCHOR_DEPENDENCIES);
-  console.log('Storage reset. Refresh to load mock data.');
-};
-
-// ============================================
-// Mock 데이터 파싱
+// Mock 데이터 파싱 (services/serializers 사용)
 // ============================================
 const parseMockData = (): AppState => {
-  const milestones: Milestone[] = mockData.milestones.map(m => ({
-    ...m,
-    date: parseISO(m.date),
-    milestoneType: (m as { milestoneType?: string }).milestoneType as 'MASTER' | 'DETAIL' | undefined,
-  }));
-
-  const tasks: ConstructionTask[] = mockData.tasks.map(t => ({
-    ...t,
-    wbsLevel: t.wbsLevel as 1 | 2,
-    type: t.type as 'GROUP' | 'CP' | 'TASK',
-    startDate: parseISO(t.startDate),
-    endDate: parseISO(t.endDate),
-    cp: t.cp ? { ...t.cp } : undefined,
-    task: t.task ? { ...t.task } : undefined,
-    dependencies: (t.dependencies as Dependency[]) || [],
-  }));
+  const tasks = parseMockTasks(mockData.tasks as Array<Record<string, unknown>>);
+  const milestones = parseMockMilestones(mockData.milestones as Array<Record<string, unknown>>);
 
   // anchorDependencies 파싱 (하위 호환성 - 없으면 빈 배열)
   const anchorDependencies: AnchorDependency[] =
@@ -310,28 +87,29 @@ const parseMockData = (): AppState => {
   return { milestones, tasks, anchorDependencies };
 };
 
-// 초기 상태 로드 함수
-const loadInitialState = (): AppState => {
-  const storedTasks = loadTasksFromStorage();
-  const storedMilestones = loadMilestonesFromStorage();
-  const storedDependencies = loadAnchorDependenciesFromStorage();
+// 초기 상태 로드 함수 (DataService 사용)
+const loadInitialState = async (): Promise<AppState> => {
+  // DataService로 데이터 로드
+  const data = await dataService.loadAll();
 
-  if (storedTasks && storedTasks.length > 0) {
-    console.log('Loaded from localStorage');
+  if (data.tasks.length > 0) {
+    console.log('Loaded from localStorage via DataService');
     return {
-      tasks: storedTasks,
-      milestones: storedMilestones || [],
-      anchorDependencies: storedDependencies || [],
+      tasks: data.tasks,
+      milestones: data.milestones,
+      anchorDependencies: data.dependencies,
     };
   }
 
   console.log('Loaded from mock.json (first time)');
   const mockState = parseMockData();
 
-  // mock 데이터를 localStorage에 저장
-  saveTasksToStorage(mockState.tasks);
-  saveMilestonesToStorage(mockState.milestones);
-  saveAnchorDependenciesToStorage(mockState.anchorDependencies);
+  // mock 데이터를 DataService로 저장
+  await dataService.saveAll({
+    tasks: mockState.tasks,
+    milestones: mockState.milestones,
+    dependencies: mockState.anchorDependencies,
+  });
 
   return mockState;
 };
@@ -378,16 +156,20 @@ function App() {
   // 초기 로드 여부 추적
   const isInitialLoad = useRef(true);
 
-  // 초기 데이터 로드
+  // 초기 데이터 로드 (async DataService 사용)
   useEffect(() => {
-    const initialState = loadInitialState();
-    setAppState(initialState);
-    setIsLoaded(true);
+    const initializeData = async () => {
+      const initialState = await loadInitialState();
+      setAppState(initialState);
+      setIsLoaded(true);
 
-    // 초기 로드 완료 후 플래그 해제
-    setTimeout(() => {
-      isInitialLoad.current = false;
-    }, 100);
+      // 초기 로드 완료 후 플래그 해제
+      setTimeout(() => {
+        isInitialLoad.current = false;
+      }, 100);
+    };
+
+    initializeData();
   }, [setAppState]);
 
   // ====================================
@@ -435,18 +217,20 @@ function App() {
   }, [tasks, milestones, anchorDependencies, isLoaded]);
 
   // ====================================
-  // 수동 저장 핸들러
+  // 수동 저장 핸들러 (DataService 사용)
   // ====================================
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!hasUnsavedChanges) return;
 
     setSaveStatus('saving');
 
     try {
-      // 저장 실행
-      saveTasksToStorage(tasks);
-      saveMilestonesToStorage(milestones);
-      saveAnchorDependenciesToStorage(anchorDependencies);
+      // DataService로 저장 실행
+      await dataService.saveAll({
+        tasks,
+        milestones,
+        dependencies: anchorDependencies,
+      });
 
       // 저장 완료 표시
       setTimeout(() => {
@@ -465,12 +249,13 @@ function App() {
     }
   }, [tasks, milestones, anchorDependencies, hasUnsavedChanges]);
 
-  // 초기화 핸들러 (mock.json으로 리셋)
-  const handleReset = useCallback(() => {
+  // 초기화 핸들러 (mock.json으로 리셋, DataService 사용)
+  const handleReset = useCallback(async () => {
     if (!confirm('모든 변경사항을 취소하고 초기 데이터로 되돌리시겠습니까?')) return;
 
     try {
-      resetStorageToMock();
+      // DataService로 스토리지 초기화
+      await dataService.reset();
 
       // mock.json에서 다시 로드
       const mockState = parseMockData();
@@ -478,15 +263,17 @@ function App() {
       // 히스토리 초기화와 함께 상태 리셋
       resetHistory(mockState);
 
-      // localStorage에 저장
-      saveTasksToStorage(mockState.tasks);
-      saveMilestonesToStorage(mockState.milestones);
-      saveAnchorDependenciesToStorage(mockState.anchorDependencies);
+      // DataService로 저장
+      await dataService.saveAll({
+        tasks: mockState.tasks,
+        milestones: mockState.milestones,
+        dependencies: mockState.anchorDependencies,
+      });
 
       setHasUnsavedChanges(false);
       setSaveStatus('idle');
 
-      console.log('Reset to mock data');
+      console.log('Reset to mock data via DataService');
     } catch (error) {
       console.error('Failed to reset data:', error);
       alert('초기화 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
@@ -494,19 +281,16 @@ function App() {
   }, [resetHistory]);
 
   // ====================================
-  // 내보내기 핸들러 (JSON 파일 다운로드 - 저장 위치 지정 가능)
+  // 내보내기 핸들러 (JSON 파일 다운로드 - DataService 직렬화 사용)
   // ====================================
   const handleExport = useCallback(async () => {
     try {
-      // mock.json 형식으로 데이터 구성
-      const exportData = {
-        milestones: serializeMilestonesForExport(milestones),
-        tasks: serializeTasksForExport(tasks),
-        anchorDependencies: serializeAnchorDependenciesForExport(anchorDependencies),
-      };
-
-      // JSON 문자열로 변환 (가독성을 위해 들여쓰기 적용)
-      const jsonString = JSON.stringify(exportData, null, 4);
+      // DataService 직렬화 함수 사용
+      const jsonString = serializeGanttDataForExport({
+        tasks,
+        milestones,
+        dependencies: anchorDependencies,
+      });
 
       // 기본 파일명
       const defaultFileName = `gantt-data-${format(new Date(), 'yyyy-MM-dd')}.json`;
@@ -562,69 +346,42 @@ function App() {
   }, [tasks, milestones, anchorDependencies]);
 
   // ====================================
-  // 가져오기 핸들러 (JSON 파일 업로드)
+  // 가져오기 핸들러 (JSON 파일 업로드, DataService 파싱 사용)
   // ====================================
   const handleImport = useCallback(async (file: File) => {
     try {
       const text = await file.text();
-      const importedData = JSON.parse(text);
 
-      // 데이터 유효성 검증
-      if (!importedData.tasks || !Array.isArray(importedData.tasks)) {
-        throw new Error('유효하지 않은 파일 형식입니다. tasks 배열이 필요합니다.');
+      // DataService 파싱 함수 사용
+      const importedData = parseImportedData(text);
+      if (!importedData) {
+        throw new Error('유효하지 않은 파일 형식입니다.');
       }
 
-      // Tasks 파싱
-      const importedTasks: ConstructionTask[] = importedData.tasks
-        .filter(isValidTaskData)
-        .map((t: Record<string, unknown>) => ({
-          ...t,
-          wbsLevel: t.wbsLevel as 1 | 2,
-          type: t.type as 'GROUP' | 'CP' | 'TASK',
-          startDate: parseISO(t.startDate as string),
-          endDate: parseISO(t.endDate as string),
-          dependencies: (t.dependencies as Array<Record<string, unknown>>)?.map(d => ({
-            ...d,
-            type: d.type as DependencyType,
-            sourceAnchor: d.sourceAnchor as AnchorPoint | undefined,
-            targetAnchor: d.targetAnchor as AnchorPoint | undefined,
-          })) || [],
-        }));
-
-      // Milestones 파싱 (있으면)
-      const importedMilestones: Milestone[] = (importedData.milestones || [])
-        .filter(isValidMilestoneData)
-        .map((m: Record<string, unknown>) => ({
-          ...m,
-          date: parseISO(m.date as string),
-        }));
-
-      // AnchorDependencies 파싱 (있으면)
-      const importedDependencies: AnchorDependency[] =
-        Array.isArray(importedData.anchorDependencies)
-          ? importedData.anchorDependencies.filter(isValidAnchorDependencyData)
-          : [];
+      const { tasks: importedTasks, milestones: importedMilestones, dependencies: importedDependencies } = importedData;
 
       if (importedTasks.length === 0) {
         throw new Error('가져올 수 있는 태스크가 없습니다.');
       }
 
-      // 상태 업데이트 (import 데이터의 anchorDependencies 사용)
+      // 상태 업데이트
       setAppState({
         tasks: importedTasks,
         milestones: importedMilestones,
         anchorDependencies: importedDependencies,
       });
 
-      // localStorage에도 저장
-      saveTasksToStorage(importedTasks);
-      saveMilestonesToStorage(importedMilestones);
-      saveAnchorDependenciesToStorage(importedDependencies);
+      // DataService로 저장
+      await dataService.saveAll({
+        tasks: importedTasks,
+        milestones: importedMilestones,
+        dependencies: importedDependencies,
+      });
 
       setHasUnsavedChanges(false);
       setSaveStatus('idle');
 
-      console.log('Data imported successfully:', importedTasks.length, 'tasks,', importedMilestones.length, 'milestones,', importedDependencies.length, 'dependencies');
+      console.log('Data imported via DataService:', importedTasks.length, 'tasks,', importedMilestones.length, 'milestones,', importedDependencies.length, 'dependencies');
       alert(`가져오기 완료: ${importedTasks.length}개의 태스크, ${importedMilestones.length}개의 마일스톤, ${importedDependencies.length}개의 종속성`);
     } catch (error) {
       console.error('Failed to import data:', error);
@@ -1082,33 +839,56 @@ function App() {
 
   if (tasks.length === 0) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-100">
-        <div className="text-lg text-gray-500">Loading...</div>
-      </div>
+      <ThemeProvider>
+        <div
+          className="flex h-screen w-screen items-center justify-center"
+          style={{ backgroundColor: 'var(--gantt-bg-secondary)' }}
+        >
+          <div className="text-lg" style={{ color: 'var(--gantt-text-secondary)' }}>Loading...</div>
+        </div>
+      </ThemeProvider>
     );
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-gray-100">
-      {/* 상단 헤더 바 */}
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <h1 className="flex items-center gap-2 text-lg font-extrabold text-gray-800">
-            <span>
-              <span className="text-teal">건설</span>{' '}
-              <span className="text-vermilion">표준공정표</span> 관리 시스템
-            </span>
-          </h1>
+    <ThemeProvider>
+      <div
+        className="flex h-screen w-screen flex-col overflow-hidden"
+        style={{ backgroundColor: 'var(--gantt-bg-secondary)' }}
+      >
+        {/* 상단 헤더 바 */}
+        <div
+          className="flex h-12 shrink-0 items-center justify-between px-4 shadow-sm"
+          style={{
+            backgroundColor: 'var(--gantt-bg-primary)',
+            borderBottom: '1px solid var(--gantt-border)'
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <h1
+              className="flex items-center gap-2 text-lg font-extrabold"
+              style={{ color: 'var(--gantt-text-primary)' }}
+            >
+              <span>
+                <span className="text-teal">건설</span>{' '}
+                <span className="text-vermilion">표준공정표</span> 관리 시스템
+              </span>
+            </h1>
 
           {/* Undo/Redo 버튼 */}
-          <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
+          <div
+            className="flex items-center gap-1 pl-3"
+            style={{ borderLeft: '1px solid var(--gantt-border)' }}
+          >
             <button
               onClick={undo}
               disabled={!canUndo}
-              className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${canUndo
-                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                : 'cursor-not-allowed bg-gray-50 text-gray-300'
-                }`}
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+              style={{
+                backgroundColor: canUndo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
+                color: canUndo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
+                cursor: canUndo ? 'pointer' : 'not-allowed',
+              }}
               title="실행 취소 (Ctrl+Z / Cmd+Z)"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1116,16 +896,18 @@ function App() {
               </svg>
               <span className="hidden sm:inline">실행취소</span>
               {historyLength.past > 0 && (
-                <span className="ml-0.5 text-[10px] text-gray-400">({historyLength.past})</span>
+                <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>({historyLength.past})</span>
               )}
             </button>
             <button
               onClick={redo}
               disabled={!canRedo}
-              className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${canRedo
-                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                : 'cursor-not-allowed bg-gray-50 text-gray-300'
-                }`}
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+              style={{
+                backgroundColor: canRedo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
+                color: canRedo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
+                cursor: canRedo ? 'pointer' : 'not-allowed',
+              }}
               title="다시 실행 (Ctrl+Shift+Z / Cmd+Shift+Z)"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1133,14 +915,14 @@ function App() {
               </svg>
               <span className="hidden sm:inline">다시실행</span>
               {historyLength.future > 0 && (
-                <span className="ml-0.5 text-[10px] text-gray-400">({historyLength.future})</span>
+                <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>({historyLength.future})</span>
               )}
             </button>
           </div>
 
           {/* 변경사항 표시 */}
           {hasUnsavedChanges && (
-            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
               변경사항 있음
             </span>
@@ -1148,11 +930,14 @@ function App() {
 
           {/* 저장 완료 표시 */}
           {saveStatus === 'saved' && !hasUnsavedChanges && (
-            <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+            <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
               저장됨
             </span>
           )}
+
+          {/* 테마 토글 버튼 */}
+          <ThemeToggle />
         </div>
       </div>
 
@@ -1186,6 +971,7 @@ function App() {
         />
       </div>
     </div>
+    </ThemeProvider>
   );
 }
 

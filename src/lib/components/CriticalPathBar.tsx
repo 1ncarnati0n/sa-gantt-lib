@@ -91,11 +91,13 @@ const Tooltip: React.FC<TooltipProps> = ({ day, x, containerWidth }) => {
 
     return (
         <div
-            className="pointer-events-none absolute z-50 rounded bg-gray-800 px-3 py-2 text-xs text-white shadow-lg"
+            className="pointer-events-none absolute z-50 rounded px-3 py-2 text-xs shadow-lg"
             style={{
                 left: adjustedX,
                 top: CRITICAL_PATH_ROW_HEIGHT + 4,
                 minWidth: tooltipWidth,
+                backgroundColor: 'var(--gantt-tooltip-bg)',
+                color: 'var(--gantt-tooltip-text)',
             }}
         >
             <div className="font-semibold">{format(day.date, 'yyyy-MM-dd (EEE)')}</div>
@@ -191,8 +193,12 @@ export const CriticalPathBar: React.FC<CriticalPathBarProps> = ({
 
     return (
         <div
-            className="border-t-2 border-gray-300 bg-gray-50/80"
-            style={{ minWidth: totalWidth, height: CRITICAL_PATH_ROW_HEIGHT }}
+            style={{
+                minWidth: totalWidth,
+                height: CRITICAL_PATH_ROW_HEIGHT,
+                backgroundColor: 'var(--gantt-bg-secondary)',
+                borderTop: '2px solid var(--gantt-border)',
+            }}
         >
             <svg
                 width={totalWidth}
@@ -219,7 +225,8 @@ export const CriticalPathBar: React.FC<CriticalPathBarProps> = ({
                     x={barStartX - 8}
                     y={CRITICAL_PATH_ROW_HEIGHT / 2 + 3}
                     textAnchor="end"
-                    className="pointer-events-none select-none text-[9px] font-bold fill-gray-700"
+                    className="pointer-events-none select-none text-[9px] font-bold"
+                    style={{ fill: 'var(--gantt-text-secondary)' }}
                 >
                     Critical Path
                 </text>
@@ -230,7 +237,10 @@ export const CriticalPathBar: React.FC<CriticalPathBarProps> = ({
                     const baseX = barStartX + summary.totalDays * pixelsPerDay + 8;
                     const y = CRITICAL_PATH_ROW_HEIGHT / 2;
                     return (
-                        <g className="pointer-events-none select-none text-[9px] fill-gray-500">
+                        <g
+                            className="pointer-events-none select-none text-[9px]"
+                            style={{ fill: 'var(--gantt-text-muted)' }}
+                        >
                             <text x={baseX} y={y + 3}>총일: {summary.totalDays}일 |</text>
                             <rect x={baseX + 72} y={y - 3} width={6} height={6} fill={GANTT_COLORS.vermilion} rx={1} />
                             <text x={baseX + 82} y={y + 3}>작업일: {formatNum(summary.workDays)}일 |</text>

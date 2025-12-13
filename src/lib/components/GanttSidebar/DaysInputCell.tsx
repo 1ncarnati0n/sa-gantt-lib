@@ -5,20 +5,20 @@ import type { DaysInputCellProps } from './types';
 const fieldConfig = {
     indirectWorkDaysPre: {
         localKey: 'pre',
-        bgClass: 'bg-blue-50',
-        focusClass: 'focus:border-blue-500 focus:ring-blue-500',
+        bgColor: 'var(--gantt-blue)',
+        focusBorderColor: 'var(--gantt-blue)',
         title: '선 간접작업일 (바 드래그로도 조절 가능, 0.1 단위)',
     },
     netWorkDays: {
         localKey: 'net',
-        bgClass: 'bg-red-50',
-        focusClass: 'focus:border-red-500 focus:ring-red-500',
+        bgColor: 'var(--gantt-red)',
+        focusBorderColor: 'var(--gantt-red)',
         title: '순작업일 (0.1 단위)',
     },
     indirectWorkDaysPost: {
         localKey: 'post',
-        bgClass: 'bg-blue-50',
-        focusClass: 'focus:border-blue-500 focus:ring-blue-500',
+        bgColor: 'var(--gantt-blue)',
+        focusBorderColor: 'var(--gantt-blue)',
         title: '후 간접작업일 (바 드래그로도 조절 가능, 0.1 단위)',
     },
 };
@@ -34,10 +34,10 @@ export const DaysInputCell: React.FC<DaysInputCellProps> = ({
     if (!task.task) {
         return (
             <div
-                className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
-                style={{ width }}
+                className="flex shrink-0 items-center justify-center px-1"
+                style={{ width, borderRight: '1px solid var(--gantt-border-light)' }}
             >
-                <span className="text-xs text-gray-400">-</span>
+                <span className="text-xs" style={{ color: 'var(--gantt-text-muted)' }}>-</span>
             </div>
         );
     }
@@ -48,14 +48,19 @@ export const DaysInputCell: React.FC<DaysInputCellProps> = ({
 
     return (
         <div
-            className="flex shrink-0 items-center justify-center border-r border-gray-100 px-1"
-            style={{ width }}
+            className="flex shrink-0 items-center justify-center px-1"
+            style={{ width, borderRight: '1px solid var(--gantt-border-light)' }}
         >
             <input
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*\.?[0-9]?"
-                className={`w-full max-w-[45px] rounded border border-gray-300 ${config.bgClass} px-1 py-1 text-center text-xs text-gray-800 ${config.focusClass} focus:outline-none focus:ring-1`}
+                className="w-full max-w-[45px] rounded px-1 py-1 text-center text-xs focus:outline-none focus:ring-1"
+                style={{
+                    backgroundColor: `color-mix(in srgb, ${config.bgColor} 15%, var(--gantt-bg-primary))`,
+                    color: 'var(--gantt-text-primary)',
+                    border: `1px solid var(--gantt-border)`,
+                }}
                 value={isEditing ? editingDays.value : value}
                 onFocus={() => setEditingDays({ taskId: task.id, field: config.localKey, value: String(value) })}
                 onChange={(e) => {

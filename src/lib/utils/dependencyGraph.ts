@@ -192,3 +192,154 @@ export const hasAnyDependency = (
         dep => dep.sourceTaskId === taskId || dep.targetTaskId === taskId
     );
 };
+
+// ============================================
+// 위상 정렬 및 겹침 방지 로직
+// ============================================
+
+/**
+ * 연결된 task 그룹 내에서 위상 정렬 수행
+ * @param connectedTaskIds 연결된 task ID 목록
+ * @param graph 종속성 그래프
+ * @returns 위상 정렬된 task ID 배열 (선행 → 후행 순서)
+ */
+export const topologicalSortConnectedTasks = (
+    connectedTaskIds: string[],
+    graph: DependencyGraph
+): string[] => {
+    const connectedSet = new Set(connectedTaskIds);
+    const inDegree = new Map<string, number>();
+    const result: string[] = [];
+
+    // 연결된 task들만 대상으로 진입 차수 초기화
+    connectedTaskIds.forEach(taskId => {
+        inDegree.set(taskId, 0);
+    });
+
+    // 연결된 task 간의 종속성만 고려하여 진입 차수 계산
+    connectedTaskIds.forEach(taskId => {
+        const incoming = graph.incomingEdges.get(taskId) || [];
+        incoming.forEach(dep => {
+            if (connectedSet.has(dep.sourceTaskId)) {
+                inDegree.set(taskId, (inDegree.get(taskId) || 0) + 1);
+            }
+        });
+    });
+
+    // 진입 차수가 0인 노드들로 큐 초기화
+    const queue: string[] = [];
+    connectedTaskIds.forEach(taskId => {
+        if (inDegree.get(taskId) === 0) {
+            queue.push(taskId);
+        }
+    });
+
+    // BFS로 위상 정렬
+    while (queue.length > 0) {
+        const current = queue.shift()!;
+        result.push(current);
+
+        const outgoing = graph.outgoingEdges.get(current) || [];
+        outgoing.forEach(dep => {
+            if (connectedSet.has(dep.targetTaskId)) {
+                const newDegree = (inDegree.get(dep.targetTaskId) || 1) - 1;
+                inDegree.set(dep.targetTaskId, newDegree);
+                if (newDegree === 0) {
+                    queue.push(dep.targetTaskId);
+                }
+            }
+        });
+    }
+
+    return result;
+};
+
+/**
+ * 겹침 방지를 위한 task별 개별 deltaDays 계산
+ * 후행 task가 선행 task 끝 이후에만 배치되도록 보장
+ *
+ * @param draggedTaskId 드래그 중인 task ID
+ * @param baseDeltaDays 기본 이동량 (드래그로 인한 일수)
+ * @param connectedTaskIds 연결된 모든 task ID
+ * @param graph 종속성 그래프
+ * @param tasks task 목록
+ * @returns taskId -> 개별 조정된 deltaDays Map
+ */
+export const calculateChainedDeltaDays = (
+    _draggedTaskId: string,  // 향후 확장용 (현재 미사용)
+    baseDeltaDays: number,
+    connectedTaskIds: string[],
+    graph: DependencyGraph,
+    tasks: ConstructionTask[]
+): Map<string, number> => {
+    const deltaMap = new Map<string, number>();
+    const taskMap = new Map<string, ConstructionTask>();
+
+    // task 맵 구축
+    tasks.forEach(t => taskMap.set(t.id, t));
+
+    // 위상 정렬
+    const sorted = topologicalSortConnectedTasks(connectedTaskIds, graph);
+
+    // 모든 task에 기본 deltaDays 적용
+    sorted.forEach(taskId => {
+        deltaMap.set(taskId, baseDeltaDays);
+    });
+
+    // 새 위치 계산용 맵 (startDate, endDate)
+    const newPositions = new Map<string, { start: Date; end: Date }>();
+
+    // 선행-후행 간 최소 간격 (일)
+    const MIN_GAP_DAYS = 1;
+
+    // 위상 정렬 순서대로 처리하며 겹침 보정
+    sorted.forEach(taskId => {
+        const task = taskMap.get(taskId);
+        if (!task) return;
+
+        const currentDelta = deltaMap.get(taskId) ?? baseDeltaDays;
+        let newStart = new Date(task.startDate);
+        newStart.setDate(newStart.getDate() + currentDelta);
+        let newEnd = new Date(task.endDate);
+        newEnd.setDate(newEnd.getDate() + currentDelta);
+
+        // 이 task로 들어오는 종속성 확인 (선행 task들)
+        const incoming = graph.incomingEdges.get(taskId) || [];
+
+        // 모든 선행 task 중 가장 늦은 종료일 찾기
+        let latestPredEnd: Date | null = null;
+        incoming.forEach(dep => {
+            const predPos = newPositions.get(dep.sourceTaskId);
+            if (predPos) {
+                if (!latestPredEnd || predPos.end > latestPredEnd) {
+                    latestPredEnd = new Date(predPos.end);
+                }
+            }
+        });
+
+        // 가장 늦은 선행 task 종료일 + MIN_GAP_DAYS 이후로 시작해야 함
+        if (latestPredEnd) {
+            const minStart = new Date(latestPredEnd);
+            minStart.setDate(minStart.getDate() + MIN_GAP_DAYS);
+
+            if (newStart < minStart) {
+                // 겹침 발생! 추가 밀어내기 필요
+                const additionalDays = Math.ceil(
+                    (minStart.getTime() - newStart.getTime()) / (1000 * 60 * 60 * 24)
+                );
+                const adjustedDelta = currentDelta + additionalDays;
+                deltaMap.set(taskId, adjustedDelta);
+
+                // 새 위치 재계산
+                newStart = new Date(task.startDate);
+                newStart.setDate(newStart.getDate() + adjustedDelta);
+                newEnd = new Date(task.endDate);
+                newEnd.setDate(newEnd.getDate() + adjustedDelta);
+            }
+        }
+
+        newPositions.set(taskId, { start: newStart, end: newEnd });
+    });
+
+    return deltaMap;
+};

@@ -27,21 +27,41 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
     canCreateMilestone,
 }) => {
     return (
-        <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm">
+        <header
+            className="flex h-[60px] shrink-0 items-center justify-between px-4 shadow-sm"
+            style={{
+                backgroundColor: 'var(--gantt-bg-primary)',
+                borderBottom: '1px solid var(--gantt-border)',
+            }}
+        >
             {/* 왼쪽: 상위 공정표로 버튼 + 추가 버튼 */}
             <div className="flex items-center gap-3 shrink-0">
                 {viewMode === 'DETAIL' ? (
                     <>
                         <button
                             onClick={() => onViewChange('MASTER')}
-                            className="rounded bg-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-300 transition-colors"
+                            className="rounded px-3 py-1.5 text-xs font-medium transition-colors"
+                            style={{
+                                backgroundColor: 'var(--gantt-bg-tertiary)',
+                                color: 'var(--gantt-text-secondary)',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                            }}
                         >
                             ← 상위 공정표로
                         </button>
                         {canCreateTask && onStartAddTask && !isAddingTask && (
                             <button
                                 onClick={onStartAddTask}
-                                className="flex items-center gap-1 rounded bg-blue-500 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-600 transition-colors"
+                                className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
+                                style={{
+                                    backgroundColor: 'var(--gantt-focus)',
+                                    color: 'var(--gantt-text-inverse)',
+                                }}
                                 title="새 공정 추가"
                             >
                                 + Task 추가
@@ -53,7 +73,11 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         {canCreateTask && onStartAddCP && !isAddingCP && (
                             <button
                                 onClick={onStartAddCP}
-                                className="flex items-center gap-1 rounded bg-blue-500 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-600 transition-colors"
+                                className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
+                                style={{
+                                    backgroundColor: 'var(--gantt-focus)',
+                                    color: 'var(--gantt-text-inverse)',
+                                }}
                                 title="새 CP 추가"
                             >
                                 + CP 추가
@@ -62,14 +86,20 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         {canCreateMilestone && onStartAddMilestone && (
                             <button
                                 onClick={onStartAddMilestone}
-                                className="flex items-center gap-1 rounded bg-purple-500 px-2 py-1.5 text-xs font-medium text-white hover:bg-purple-600 transition-colors"
+                                className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
+                                style={{
+                                    backgroundColor: 'var(--gantt-milestone-detail)',
+                                    color: 'var(--gantt-text-inverse)',
+                                }}
                                 title="새 마일스톤 추가"
                             >
                                 + 마일스톤
                             </button>
                         )}
                         {isAddingCP && (
-                            <span className="text-xs text-gray-500 italic">CP 추가 중... (Enter 저장 / Esc 취소)</span>
+                            <span className="text-xs italic" style={{ color: 'var(--gantt-text-muted)' }}>
+                                CP 추가 중... (Enter 저장 / Esc 취소)
+                            </span>
                         )}
                     </>
                 )}
@@ -79,18 +109,38 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
             <div className="flex items-center gap-4">
                 <button
                     onClick={onScrollToFirst}
-                    className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                    style={{
+                        backgroundColor: 'var(--gantt-bg-tertiary)',
+                        color: 'var(--gantt-text-secondary)',
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                    }}
                     title={viewMode === 'MASTER' ? '진행 중인 CP로 스크롤' : '진행 중인 작업으로 스크롤'}
                 >
                     Focusing
                 </button>
 
                 {(onCollapseAll || onExpandAll) && (
-                    <div className="flex rounded bg-gray-100 p-0.5 gap-0.5">
+                    <div
+                        className="flex rounded p-0.5 gap-0.5"
+                        style={{ backgroundColor: 'var(--gantt-bg-tertiary)' }}
+                    >
                         {onExpandAll && (
                             <button
                                 onClick={onExpandAll}
-                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                                style={{ color: 'var(--gantt-text-secondary)' }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
                                 title="모든 그룹 펼치기"
                             >
                                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -102,7 +152,14 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         {onCollapseAll && (
                             <button
                                 onClick={onCollapseAll}
-                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                                style={{ color: 'var(--gantt-text-secondary)' }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
                                 title="모든 그룹 접기"
                             >
                                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -114,7 +171,10 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     </div>
                 )}
 
-                <div className="flex rounded bg-gray-100 p-1">
+                <div
+                    className="flex rounded p-1"
+                    style={{ backgroundColor: 'var(--gantt-bg-tertiary)' }}
+                >
                     {(viewMode === 'MASTER'
                         ? (['WEEK', 'MONTH'] as const)
                         : (['DAY', 'WEEK'] as const)
@@ -122,17 +182,19 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         <button
                             key={level}
                             onClick={() => onZoomChange(level)}
-                            className={`rounded px-3 py-1 text-xs font-medium transition-colors ${zoomLevel === level
-                                ? 'bg-white text-gray-800 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                            className="rounded px-3 py-1 text-xs font-medium transition-colors"
+                            style={{
+                                backgroundColor: zoomLevel === level ? 'var(--gantt-bg-primary)' : 'transparent',
+                                color: zoomLevel === level ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
+                                boxShadow: zoomLevel === level ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                            }}
                         >
                             {ZOOM_CONFIG[level].label}
                         </button>
                     ))}
                 </div>
 
-                <div className="text-sm text-gray-500">
+                <div className="text-sm" style={{ color: 'var(--gantt-text-muted)' }}>
                     기준일: {format(new Date(), 'yyyy-MM-dd')}
                 </div>
             </div>
@@ -143,10 +205,12 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     <button
                         onClick={onSave}
                         disabled={!hasUnsavedChanges || saveStatus === 'saving'}
-                        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${hasUnsavedChanges
-                            ? 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
-                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            }`}
+                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        style={{
+                            backgroundColor: hasUnsavedChanges ? 'var(--gantt-focus)' : 'var(--gantt-bg-tertiary)',
+                            color: hasUnsavedChanges ? 'var(--gantt-text-inverse)' : 'var(--gantt-text-muted)',
+                            cursor: hasUnsavedChanges ? 'pointer' : 'not-allowed',
+                        }}
                     >
                         {saveStatus === 'saving' ? (
                             <>
@@ -170,7 +234,17 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 {onReset && (
                     <button
                         onClick={onReset}
-                        className="flex items-center gap-1.5 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200 active:bg-gray-300"
+                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        style={{
+                            backgroundColor: 'var(--gantt-bg-tertiary)',
+                            color: 'var(--gantt-text-secondary)',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                        }}
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -180,13 +254,20 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 )}
 
                 {(onExport || onImport) && (
-                    <div className="h-6 w-px bg-gray-300" />
+                    <div
+                        className="h-6 w-px"
+                        style={{ backgroundColor: 'var(--gantt-border)' }}
+                    />
                 )}
 
                 {onExport && (
                     <button
                         onClick={onExport}
-                        className="flex items-center gap-1.5 rounded-md bg-green-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-600 active:bg-green-700"
+                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        style={{
+                            backgroundColor: 'var(--gantt-success)',
+                            color: 'var(--gantt-text-inverse)',
+                        }}
                         title="현재 데이터를 JSON 파일로 내보내기"
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -197,7 +278,13 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 )}
 
                 {onImport && (
-                    <label className="flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-600 active:bg-amber-700">
+                    <label
+                        className="flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        style={{
+                            backgroundColor: 'var(--gantt-milestone-detail)',
+                            color: 'var(--gantt-text-inverse)',
+                        }}
+                    >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>

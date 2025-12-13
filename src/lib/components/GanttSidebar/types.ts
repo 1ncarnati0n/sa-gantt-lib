@@ -59,6 +59,7 @@ export interface SidebarRowProps {
     isDragOver: boolean;
     dragOverPosition: DropPosition | null;
     isSelected: boolean;
+    isFocused: boolean;           // 키보드 포커스 상태
     isExpanded: boolean;
     canExpand: boolean;
     indent: number;
