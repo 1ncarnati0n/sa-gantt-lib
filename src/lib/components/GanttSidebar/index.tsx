@@ -127,6 +127,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
 
         const {
             selectedTaskIds,
+            focusedTaskId,
             handleRowClick,
             clearSelection,
             selectTask,
@@ -331,6 +332,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 isDragOver={dragOverTaskId === task.id}
                                 dragOverPosition={dragOverPosition}
                                 isSelected={selectedTaskIds.has(task.id)}
+                                isFocused={focusedTaskId === task.id}
                                 isExpanded={expandedIds.has(task.id)}
                                 canExpand={canExpand}
                                 indent={getMasterGroupDepth(task) * 12}
@@ -396,6 +398,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             isDragOver={dragOverTaskId === task.id}
                             dragOverPosition={dragOverPosition}
                             isSelected={selectedTaskIds.has(task.id)}
+                            isFocused={focusedTaskId === task.id}
                             isExpanded={expandedIds.has(task.id)}
                             canExpand={canExpand}
                             indent={getGroupDepth(task) * 12}

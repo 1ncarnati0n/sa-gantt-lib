@@ -40,52 +40,47 @@ export const useGroupDrag = ({
     // ========================================
     const { state: dragState, start, isDragging } = useDragState<GroupDragState>({
         // 드래그 중 처리
+        // 개별 휴일 스냅: 드래그 중에는 순수 deltaDays만 추적
+        // (각 태스크별 휴일 스냅은 드래그 완료 시점에 개별 적용)
         onMove: (e, state, setState) => {
             if (!onGroupDrag) return;
 
             const deltaX = e.clientX - state.startX;
             const deltaDays = calculateDeltaDays(deltaX, pixelsPerDay);
-            const direction = calculateDragDirection(deltaX);
 
-            const { adjustedDeltaDays } = calculateHolidaySnap(
-                state.originalStartDate,
-                deltaDays,
-                direction,
-                holidays,
-                calendarSettings
-            );
-
-            // 상태 업데이트
+            // 상태 업데이트 - 휴일 스냅 없이 순수 deltaDays
             updateDragState(setState, {
-                currentDeltaDays: adjustedDeltaDays,
+                currentDeltaDays: deltaDays,
                 lastDeltaX: deltaX,
             });
         },
         // 드래그 완료 처리
+        // 개별 휴일 스냅: 각 태스크별로 개별 휴일 스냅 적용
         onEnd: (state) => {
             if (!onGroupDrag || state.currentDeltaDays === 0) return;
 
             const direction = calculateDragDirection(state.lastDeltaX);
-            const newGroupStartDate = addDays(state.originalStartDate, state.currentDeltaDays);
 
-            // 최종 휴일 스냅 적용
-            const { adjustment } = applyFinalHolidaySnap(
-                newGroupStartDate,
-                direction,
-                holidays,
-                calendarSettings
-            );
-            const finalDeltaDays = state.currentDeltaDays + adjustment;
+            // 각 태스크별 개별 휴일 스냅 적용
+            const taskUpdates = state.affectedTasks.map(task => {
+                const tentativeDate = addDays(task.startDate, state.currentDeltaDays);
+                const { adjustedDate } = applyFinalHolidaySnap(
+                    tentativeDate,
+                    direction,
+                    holidays,
+                    calendarSettings
+                );
+                return {
+                    taskId: task.id,
+                    newStartDate: adjustedDate,
+                };
+            });
 
-            // 버그 수정: taskUpdates 배열로 각 task의 새 날짜 정보도 전달
             onGroupDrag({
                 groupId: state.groupId,
-                deltaDays: finalDeltaDays,
+                deltaDays: state.currentDeltaDays, // 기본 이동량 (참고용)
                 affectedTaskIds: state.affectedTasks.map(t => t.id),
-                taskUpdates: state.affectedTasks.map(t => ({
-                    taskId: t.id,
-                    newStartDate: addDays(t.startDate, finalDeltaDays),
-                })),
+                taskUpdates,
             });
         },
         cursor: 'grabbing',
@@ -129,11 +124,25 @@ export const useGroupDrag = ({
         return 0;
     }, [dragState]);
 
+    // 개별 휴일 스냅: 드래그 중에도 각 태스크별 개별 휴일 스냅 적용
     const getTaskDragDeltaDays = useCallback((taskId: string): number => {
         if (!dragState) return 0;
-        const isAffected = dragState.affectedTasks.some(t => t.id === taskId);
-        return isAffected ? dragState.currentDeltaDays : 0;
-    }, [dragState]);
+
+        const task = dragState.affectedTasks.find(t => t.id === taskId);
+        if (!task) return 0;
+
+        // 각 태스크의 시작일 기준으로 개별 휴일 스냅 계산
+        const direction = calculateDragDirection(dragState.lastDeltaX);
+        const { adjustedDeltaDays } = calculateHolidaySnap(
+            task.startDate,
+            dragState.currentDeltaDays,
+            direction,
+            holidays,
+            calendarSettings
+        );
+
+        return adjustedDeltaDays;
+    }, [dragState, holidays, calendarSettings]);
 
     return {
         isDragging,

@@ -15,6 +15,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
     isDragOver,
     dragOverPosition,
     isSelected,
+    isFocused,
     isExpanded,
     canExpand,
     indent,
@@ -62,11 +63,13 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
                         : dragOverPosition === 'into'
                             ? 'bg-blue-200 border-blue-400 border-2 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.6)]'
                             : 'border-b-2 border-b-blue-500'
-                    : isSelected
-                        ? 'bg-blue-100 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.5)]'
-                        : isGroup
-                            ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
-                            : 'border-gray-100 cursor-pointer hover:bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
+                    : isFocused
+                        ? 'bg-blue-100 border-gray-100 ring-2 ring-blue-400 ring-inset'
+                        : isSelected
+                            ? 'bg-blue-50 border-gray-100 shadow-[inset_0_0_0_2px_rgba(59,130,246,0.3)]'
+                            : isGroup
+                                ? 'bg-gray-50 border-gray-100 hover:bg-gray-100'
+                                : 'border-gray-100 cursor-pointer hover:bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
                 }`}
             style={{
                 height: ROW_HEIGHT,

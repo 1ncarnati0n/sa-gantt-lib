@@ -42,6 +42,7 @@ export type {
     GanttUIActions,
     GanttStore,
     GanttErrorContext,
+    TaskSelectOptions,
 } from './ui';
 
 // Props types

@@ -72,6 +72,8 @@ interface GanttTimelineProps {
     onAnchorDependencyCreate?: (dependency: AnchorDependency) => void;
     onAnchorDependencyDelete?: (depId: string) => void;
     onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void;
+    // 선택/포커스 관련
+    focusedTaskId?: string | null;
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
@@ -99,6 +101,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         onAnchorDependencyCreate,
         onAnchorDependencyDelete,
         onAnchorDependencyDrag,
+        focusedTaskId,
     }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
@@ -112,10 +115,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         } | null>(null);
 
 
-        // Calculate date range
+        // Calculate date range (allTasks 기준으로 계산하여 스크롤 위치와 일치시킴)
         const { minDate, totalDays } = useMemo(() => {
-            return calculateDateRange(tasks, milestones, 60);
-        }, [tasks, milestones]);
+            return calculateDateRange(allTasks || tasks, milestones, 60);
+        }, [allTasks, tasks, milestones]);
 
         // viewMode에 따라 마일스톤 필터링
         const filteredMilestones = useMemo(() => {
@@ -434,6 +437,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     onDragStart={handleBarMouseDown}
                                     onDependencyDragStart={handleDependencyBarMouseDown}
                                     hasDependency={taskHasDependency(task.id)}
+                                    isFocused={focusedTaskId === task.id}
                                     onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
                                         ? () => onTaskDoubleClick(task)
                                         : undefined}
@@ -523,6 +527,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
+                                    isFocused={focusedTaskId === task.id}
                                 />
                             );
                         })}

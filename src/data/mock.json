@@ -4179,27 +4179,5 @@
             "dependencies": []
         }
     ],
-    "anchorDependencies": [
-        {
-            "id": "dep-1765411390990-kxzmgzhh7",
-            "sourceTaskId": "task-1765258943830",
-            "targetTaskId": "task-1765258943831",
-            "sourceDayIndex": 6,
-            "targetDayIndex": 0
-        },
-        {
-            "id": "dep-1765411393040-tmvcuq09p",
-            "sourceTaskId": "task-1765258943831",
-            "targetTaskId": "task-1765258943832",
-            "sourceDayIndex": 2,
-            "targetDayIndex": 0
-        },
-        {
-            "id": "dep-1765411395123-s2ggpregt",
-            "sourceTaskId": "task-1765258943829",
-            "targetTaskId": "task-1765258943830",
-            "sourceDayIndex": 1,
-            "targetDayIndex": 0
-        }
-    ]
+    "anchorDependencies": []
 }

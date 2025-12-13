@@ -2,7 +2,20 @@
 // SA-Gantt-Lib: UI 상태 타입 정의
 // ============================================
 
-import type { ViewMode, ZoomLevel } from './core';
+import type { ViewMode, ZoomLevel, ConstructionTask } from './core';
+
+// ============================================
+// Selection Options (선택 동작 옵션)
+// ============================================
+
+export interface TaskSelectOptions {
+    /** Ctrl/Cmd 키 누름 상태 */
+    ctrlKey?: boolean;
+    /** Shift 키 누름 상태 */
+    shiftKey?: boolean;
+    /** 현재 보이는 Task 목록 (Shift 범위 선택용) */
+    visibleTasks?: ConstructionTask[];
+}
 
 // ============================================
 // Store State 인터페이스 (UI 상태만)
@@ -14,8 +27,12 @@ export interface GanttUIState {
     activeCPId: string | null;        // Detail 뷰에서 선택된 CP ID
     zoomLevel: ZoomLevel;
 
-    // UI Interaction State
-    selectedTaskId: string | null;
+    // UI Interaction State - Selection
+    selectedTaskIds: Set<string>;         // 다중 선택된 Task ID들
+    focusedTaskId: string | null;         // 키보드 포커스된 Task ID
+    lastClickedIndex: number | null;      // Shift 클릭 범위 선택용
+
+    // UI Interaction State - Hover & Expand
     hoveredTaskId: string | null;
     expandedTaskIds: Set<string>;
 
@@ -33,8 +50,14 @@ export interface GanttUIActions {
     setViewMode: (mode: ViewMode, cpId?: string | null) => void;
     setZoomLevel: (level: ZoomLevel) => void;
 
-    // Task UI Actions
-    selectTask: (taskId: string | null) => void;
+    // Task Selection Actions
+    selectTask: (taskId: string, options?: TaskSelectOptions) => void;
+    selectMultipleTasks: (taskIds: string[]) => void;
+    clearSelection: () => void;
+    setFocusedTask: (taskId: string | null) => void;
+    moveFocus: (direction: 'up' | 'down', visibleTasks: ConstructionTask[]) => void;
+
+    // Task Hover & Expand Actions
     hoverTask: (taskId: string | null) => void;
     toggleTask: (taskId: string) => void;
     expandAll: (taskIds: string[]) => void;

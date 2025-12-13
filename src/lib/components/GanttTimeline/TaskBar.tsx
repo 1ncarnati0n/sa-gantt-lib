@@ -32,6 +32,7 @@ export const TaskBar: React.FC<TaskBarProps> = ({
     hasDependency = false,
     onMouseEnter,
     onMouseLeave,
+    isFocused = false,
 }) => {
     const showBar = renderMode === 'full' || renderMode === 'bar';
     const showLabel = renderMode === 'full' || renderMode === 'label';
@@ -102,8 +103,26 @@ export const TaskBar: React.FC<TaskBarProps> = ({
         const workWidth = workDays * pixelsPerDay;
         const nonWorkWidth = nonWorkDays * pixelsPerDay;
 
+        const totalWidth = workWidth + nonWorkWidth;
+
         return (
             <g transform={`translate(${startX}, ${y})`} className="group cursor-pointer">
+                {/* Focus Highlight Effect */}
+                {isFocused && showBar && (
+                    <rect
+                        x={-3}
+                        y={-3}
+                        width={totalWidth + 6}
+                        height={BAR_HEIGHT + 6}
+                        fill="none"
+                        stroke="#3B82F6"
+                        strokeWidth={2}
+                        rx={radius + 2}
+                        ry={radius + 2}
+                        className="animate-pulse"
+                        style={{ filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' }}
+                    />
+                )}
                 {showBar && (
                     <>
                         <rect
@@ -194,6 +213,23 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
             >
+                {/* Focus Highlight Effect */}
+                {isFocused && showBar && (
+                    <rect
+                        x={-3}
+                        y={-3}
+                        width={barWidth + 6}
+                        height={BAR_HEIGHT + 6}
+                        fill="none"
+                        stroke="#3B82F6"
+                        strokeWidth={2}
+                        rx={radius + 2}
+                        ry={radius + 2}
+                        className="animate-pulse"
+                        style={{ filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' }}
+                    />
+                )}
+
                 {/* Pre Indirect Work (Blue) */}
                 {effectivePreDays > 0 && (
                     <>

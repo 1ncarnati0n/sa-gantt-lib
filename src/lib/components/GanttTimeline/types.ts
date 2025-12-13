@@ -146,6 +146,8 @@ export interface TaskBarProps {
     hasDependency?: boolean;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
+    /** 키보드 포커스 상태 (하이라이팅 효과) */
+    isFocused?: boolean;
 }
 
 /** MilestoneMarker Props */

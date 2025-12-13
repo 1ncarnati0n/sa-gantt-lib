@@ -41,10 +41,14 @@ export const useScrollToDate = ({
         if (align === 'center') {
             leftMargin = timelineViewWidth / 2;
         } else {
-            leftMargin = Math.min(100, Math.max(50, timelineViewWidth * 0.2));
+            // 화면 너비의 15%를 여백으로 사용 (최소 80px, 최대 200px)
+            leftMargin = Math.min(200, Math.max(80, timelineViewWidth * 0.15));
         }
 
-        container.scrollLeft = Math.max(0, x - leftMargin);
+        container.scrollTo({
+            left: Math.max(0, x - leftMargin),
+            behavior: 'smooth',
+        });
     }, [scrollRef, zoomLevel, tasks, milestones, sidebarWidth]);
 
     const scrollToFirstTask = useCallback(() => {
@@ -74,14 +78,38 @@ export const useScrollToDate = ({
                 }
             }
         } else if (viewMode === 'DETAIL' && activeCPId) {
-            const childTasks = tasks.filter(t => t.parentId === activeCPId);
+            // 그룹 내부의 중첩된 Task까지 포함하여 모든 후손 Task 수집
+            const collectDescendants = (parentId: string): ConstructionTask[] => {
+                const result: ConstructionTask[] = [];
+                tasks.forEach(t => {
+                    if (t.parentId === parentId) {
+                        result.push(t);
+                        if (t.type === 'GROUP') {
+                            result.push(...collectDescendants(t.id));
+                        }
+                    }
+                });
+                return result;
+            };
 
-            if (childTasks.length > 0) {
-                const minStart = childTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, childTasks[0].startDate);
-                const maxEnd = childTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, childTasks[0].endDate);
-                const centerTime = minStart.getTime() + (maxEnd.getTime() - minStart.getTime()) / 2;
-                const centerDate = new Date(centerTime);
-                scrollToDate(centerDate, 'center');
+            const allChildTasks = collectDescendants(activeCPId);
+            // TASK 타입만 필터링 (GROUP은 날짜가 자동 계산되므로 제외)
+            const taskOnlyChildren = allChildTasks.filter(t => t.type === 'TASK');
+
+            if (taskOnlyChildren.length > 0) {
+                // 가장 빠른 시작일로 스크롤 (중앙이 아닌 시작점으로)
+                const minStart = taskOnlyChildren.reduce(
+                    (min, t) => t.startDate < min ? t.startDate : min,
+                    taskOnlyChildren[0].startDate
+                );
+                scrollToDate(minStart, 'left');
+            } else if (allChildTasks.length > 0) {
+                // TASK가 없으면 GROUP이라도 사용
+                const minStart = allChildTasks.reduce(
+                    (min, t) => t.startDate < min ? t.startDate : min,
+                    allChildTasks[0].startDate
+                );
+                scrollToDate(minStart, 'left');
             }
         }
     }, [viewMode, activeCPId, tasks, visibleTasks, milestones, scrollToDate]);
@@ -98,12 +126,22 @@ export const useScrollToDate = ({
     useEffect(() => {
         if (viewMode === 'DETAIL' && activeCPId && activeCPId !== lastScrolledCPId.current) {
             lastScrolledCPId.current = activeCPId;
-            const timer = setTimeout(() => {
-                scrollToFirstTask();
-            }, GANTT_LAYOUT.SCROLL_DELAY_MS);
-            return () => clearTimeout(timer);
+
+            // 레이아웃 업데이트(줌 레벨 변경 등)가 완료된 후 스크롤 실행
+            // requestAnimationFrame으로 렌더링 사이클 완료를 기다린 후
+            // setTimeout으로 추가 지연을 줌
+            const frameId = requestAnimationFrame(() => {
+                const timer = setTimeout(() => {
+                    scrollToFirstTask();
+                }, GANTT_LAYOUT.SCROLL_DELAY_MS);
+
+                // cleanup을 위해 timer를 ref에 저장하거나 여기서 처리
+                return () => clearTimeout(timer);
+            });
+
+            return () => cancelAnimationFrame(frameId);
         }
-    }, [viewMode, activeCPId, scrollToFirstTask]);
+    }, [viewMode, activeCPId, zoomLevel, scrollToFirstTask]); // zoomLevel 의존성 추가
 
     return {
         scrollToDate,
