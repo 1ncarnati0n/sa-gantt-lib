@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { parseISO, format } from 'date-fns';
+import { format } from 'date-fns';
 import {
   GanttChart,
   ConstructionTask,
@@ -580,9 +580,6 @@ function App() {
         const parentIds = new Set(selectedTasks.map(t => t.parentId));
         const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
 
-        // 기존 그룹 수 계산 (새 그룹 이름용)
-        const existingGroupCount = prev.tasks.filter(t => t.type === 'GROUP').length;
-
         // 새 GROUP 생성
         const newGroupId = `group-${Date.now()}`;
         const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
@@ -593,7 +590,7 @@ function App() {
           parentId: commonParentId,
           wbsLevel: selectedTasks[0].wbsLevel,
           type: 'GROUP',
-          name: `새 그룹 ${existingGroupCount + 1}`,
+          name: '새 그룹',
           startDate: minStart,
           endDate: maxEnd,
           dependencies: [],
@@ -931,10 +928,10 @@ function App() {
                 저장됨
               </span>
             )}
-
-            {/* 테마 토글 버튼 */}
-            <ThemeToggle />
           </div>
+
+          {/* 테마 토글 버튼 */}
+          <ThemeToggle />
         </div>
 
         {/* 간트 차트 영역 */}

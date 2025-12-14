@@ -120,7 +120,7 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
       }}
     >
       <div className="flex flex-1 items-center justify-between px-4">
-        <span style={{ color: 'var(--gantt-text-secondary)' }}>
+        <span style={{ color: 'var(--gantt-text-secondary)', fontSize: '0.875rem' }}>
           {viewMode === 'MASTER' ? (
             '공구공정표 Master'
           ) : (
