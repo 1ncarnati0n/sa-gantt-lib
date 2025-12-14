@@ -15,6 +15,7 @@ export {
 export {
     addWorkingDays,
     subtractWorkingDays,
+    countWorkingDays,
     addCalendarDays,
     DEFAULT_CALENDAR_SETTINGS,
     getTaskCalendarSettings,

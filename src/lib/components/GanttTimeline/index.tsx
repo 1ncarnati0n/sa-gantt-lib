@@ -171,8 +171,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             getTaskGroupDragDeltaDays,
         } = useGroupDrag({
             pixelsPerDay,
-            holidays,
-            calendarSettings,
             allTasks: allTasks || tasks,
             onGroupDrag,
         });

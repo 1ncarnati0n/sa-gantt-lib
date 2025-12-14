@@ -71,7 +71,7 @@ export interface MilestoneDragState {
     currentX: number;
 }
 
-/** 그룹 드래그 상태 */
+/** 그룹 드래그 상태 (D-2: 완전 투과 방식) */
 export interface GroupDragState {
     groupId: string;
     startX: number;
@@ -79,7 +79,7 @@ export interface GroupDragState {
     originalEndDate: Date;
     affectedTasks: ConstructionTask[];
     currentDeltaDays: number;
-    lastDeltaX: number;
+    // 휴일 스냅 관련 필드 제거됨 - 완전 투과 방식
 }
 
 /** 종속성 드래그 상태 */
