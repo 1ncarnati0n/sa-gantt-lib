@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { format } from 'date-fns';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { GANTT_LAYOUT } from '../../types';
@@ -8,7 +9,7 @@ import type { SidebarRowDetailProps } from './types';
 
 const { ROW_HEIGHT } = GANTT_LAYOUT;
 
-export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = ({
+export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
     task,
     rowIndex,
     isVirtualized,
@@ -236,4 +237,4 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = ({
             </div>
         </div>
     );
-};
+});

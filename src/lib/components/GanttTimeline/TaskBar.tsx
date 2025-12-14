@@ -12,7 +12,7 @@ const { BAR_HEIGHT } = GANTT_LAYOUT;
 /**
  * 태스크 바 컴포넌트 (Level 1 & Level 2)
  */
-export const TaskBar: React.FC<TaskBarProps> = ({
+export const TaskBar: React.FC<TaskBarProps> = React.memo(({
     task,
     y,
     minDate,
@@ -558,4 +558,4 @@ export const TaskBar: React.FC<TaskBarProps> = ({
             </g>
         );
     }
-};
+});
