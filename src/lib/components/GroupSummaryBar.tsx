@@ -142,9 +142,9 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
                 x={totalWidth / 2}
                 y={barY - 3}
                 textAnchor="middle"
-                className="font-medium"
+                className="font-bold"
                 fill={GANTT_COLORS.textSecondary}
-                style={{ fontSize: '10px' }}
+                style={{ fontSize: '11px' }}
             >
                 {group.name}
             </text>

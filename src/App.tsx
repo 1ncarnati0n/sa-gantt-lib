@@ -26,6 +26,8 @@ import {
   isValidAnchorDependencyData,
   serializeGanttDataForExport,
   parseImportedData,
+  // Korean Holidays
+  KOREAN_HOLIDAYS_ALL,
 } from './lib';
 import { useHistory } from './lib/hooks/useHistory';
 import mockData from './data/mock.json';
@@ -114,21 +116,15 @@ const loadInitialState = async (): Promise<AppState> => {
   return mockState;
 };
 
-// 휴일 목록
-const HOLIDAYS = [
-  parseISO('2024-05-05'),
-  parseISO('2024-06-06'),
-  parseISO('2024-08-15'),
-  parseISO('2024-10-03'),
-  parseISO('2024-12-25'),
-];
-
 // 캘린더 설정
 const CALENDAR_SETTINGS: CalendarSettings = {
   workOnSaturdays: true,   // 토요일은 작업일로 허용
   workOnSundays: false,    // 일요일은 휴일 유지
   workOnHolidays: false,
 };
+
+// 공휴일 데이터 (2025~2027 대한민국 공휴일)
+const HOLIDAYS = KOREAN_HOLIDAYS_ALL;
 
 function App() {
   // ====================================
@@ -875,102 +871,101 @@ function App() {
               </span>
             </h1>
 
-          {/* Undo/Redo 버튼 */}
-          <div
-            className="flex items-center gap-1 pl-3"
-            style={{ borderLeft: '1px solid var(--gantt-border)' }}
-          >
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: canUndo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
-                color: canUndo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
-                cursor: canUndo ? 'pointer' : 'not-allowed',
-              }}
-              title="실행 취소 (Ctrl+Z / Cmd+Z)"
+            {/* Undo/Redo 버튼 */}
+            <div
+              className="flex items-center gap-1 pl-3"
+              style={{ borderLeft: '1px solid var(--gantt-border)' }}
             >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-              <span className="hidden sm:inline">실행취소</span>
-              {historyLength.past > 0 && (
-                <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>({historyLength.past})</span>
-              )}
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: canRedo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
-                color: canRedo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
-                cursor: canRedo ? 'pointer' : 'not-allowed',
-              }}
-              title="다시 실행 (Ctrl+Shift+Z / Cmd+Shift+Z)"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
-              </svg>
-              <span className="hidden sm:inline">다시실행</span>
-              {historyLength.future > 0 && (
-                <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>({historyLength.future})</span>
-              )}
-            </button>
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: canUndo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
+                  color: canUndo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
+                  cursor: canUndo ? 'pointer' : 'not-allowed',
+                }}
+                title="실행 취소 (Ctrl+Z / Cmd+Z)"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+                <span className="hidden sm:inline">실행취소</span>
+                {historyLength.past > 0 && (
+                  <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>({historyLength.past})</span>
+                )}
+              </button>
+              <button
+                onClick={redo}
+                disabled={!canRedo}
+                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: canRedo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
+                  color: canRedo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
+                  cursor: canRedo ? 'pointer' : 'not-allowed',
+                }}
+                title="다시 실행 (Ctrl+Shift+Z / Cmd+Shift+Z)"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+                </svg>
+                <span className="hidden sm:inline">다시실행</span>
+                {historyLength.future > 0 && (
+                  <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>({historyLength.future})</span>
+                )}
+              </button>
+            </div>
+
+            {/* 변경사항 표시 */}
+            {hasUnsavedChanges && (
+              <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                변경사항 있음
+              </span>
+            )}
+
+            {/* 저장 완료 표시 */}
+            {saveStatus === 'saved' && !hasUnsavedChanges && (
+              <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                저장됨
+              </span>
+            )}
+
+            {/* 테마 토글 버튼 */}
+            <ThemeToggle />
           </div>
+        </div>
 
-          {/* 변경사항 표시 */}
-          {hasUnsavedChanges && (
-            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              변경사항 있음
-            </span>
-          )}
-
-          {/* 저장 완료 표시 */}
-          {saveStatus === 'saved' && !hasUnsavedChanges && (
-            <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-              저장됨
-            </span>
-          )}
-
-          {/* 테마 토글 버튼 */}
-          <ThemeToggle />
+        {/* 간트 차트 영역 */}
+        <div className="flex-1 overflow-hidden">
+          <GanttChart
+            tasks={tasks}
+            milestones={milestones}
+            calendarSettings={CALENDAR_SETTINGS}
+            onTaskUpdate={handleTaskUpdate}
+            onTaskCreate={handleTaskCreate}
+            onTaskDelete={handleTaskDelete}
+            onTaskReorder={handleTaskReorder}
+            onTaskGroup={handleTaskGroup}
+            onTaskUngroup={handleTaskUngroup}
+            onTaskMove={handleTaskMove}
+            onViewChange={handleViewChange}
+            onMilestoneCreate={handleMilestoneCreate}
+            onMilestoneUpdate={handleMilestoneUpdate}
+            onMilestoneDelete={handleMilestoneDelete}
+            anchorDependencies={anchorDependencies}
+            onAnchorDependencyCreate={handleAnchorDependencyCreate}
+            onAnchorDependencyDelete={handleAnchorDependencyDelete}
+            onSave={handleSave}
+            onReset={handleReset}
+            hasUnsavedChanges={hasUnsavedChanges}
+            saveStatus={saveStatus}
+            onExport={handleExport}
+            onImport={handleImport}
+          />
         </div>
       </div>
-
-      {/* 간트 차트 영역 */}
-      <div className="flex-1 overflow-hidden">
-        <GanttChart
-          tasks={tasks}
-          milestones={milestones}
-          holidays={HOLIDAYS}
-          calendarSettings={CALENDAR_SETTINGS}
-          onTaskUpdate={handleTaskUpdate}
-          onTaskCreate={handleTaskCreate}
-          onTaskDelete={handleTaskDelete}
-          onTaskReorder={handleTaskReorder}
-          onTaskGroup={handleTaskGroup}
-          onTaskUngroup={handleTaskUngroup}
-          onTaskMove={handleTaskMove}
-          onViewChange={handleViewChange}
-          onMilestoneCreate={handleMilestoneCreate}
-          onMilestoneUpdate={handleMilestoneUpdate}
-          onMilestoneDelete={handleMilestoneDelete}
-          anchorDependencies={anchorDependencies}
-          onAnchorDependencyCreate={handleAnchorDependencyCreate}
-          onAnchorDependencyDelete={handleAnchorDependencyDelete}
-          onSave={handleSave}
-          onReset={handleReset}
-          hasUnsavedChanges={hasUnsavedChanges}
-          saveStatus={saveStatus}
-          onExport={handleExport}
-          onImport={handleImport}
-        />
-      </div>
-    </div>
     </ThemeProvider>
   );
 }

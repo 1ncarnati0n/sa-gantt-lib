@@ -187,6 +187,14 @@ export {
     
     // Date Range
     calculateDateRange,
+
+    // Korean Holidays Data (2025~2027)
+    KOREAN_HOLIDAYS_2025,
+    KOREAN_HOLIDAYS_2026,
+    KOREAN_HOLIDAYS_2027,
+    KOREAN_HOLIDAYS_ALL,
+    getKoreanHolidaysByYear,
+    getKoreanHolidaysForYears,
 } from './utils/dateUtils';
 
 // Critical Path Utilities

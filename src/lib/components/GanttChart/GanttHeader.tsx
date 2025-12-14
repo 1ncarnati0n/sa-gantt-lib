@@ -105,26 +105,8 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 )}
             </div>
 
-            {/* 중앙: Focusing 버튼 + 줌 컨트롤 + 기준일 */}
+            {/* 중앙: 펼치기/접기 + Focusing 버튼 + 줌 컨트롤 + 기준일 */}
             <div className="flex items-center gap-4">
-                <button
-                    onClick={onScrollToFirst}
-                    className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-                    style={{
-                        backgroundColor: 'var(--gantt-bg-tertiary)',
-                        color: 'var(--gantt-text-secondary)',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
-                    }}
-                    title={viewMode === 'MASTER' ? '진행 중인 CP로 스크롤' : '진행 중인 작업으로 스크롤'}
-                >
-                    Focusing
-                </button>
-
                 {(onCollapseAll || onExpandAll) && (
                     <div
                         className="flex rounded p-0.5 gap-0.5"
@@ -170,6 +152,24 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         )}
                     </div>
                 )}
+
+                <button
+                    onClick={onScrollToFirst}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                    style={{
+                        backgroundColor: 'var(--gantt-bg-tertiary)',
+                        color: 'var(--gantt-text-secondary)',
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                    }}
+                    title={viewMode === 'MASTER' ? '진행 중인 CP로 스크롤' : '진행 중인 작업으로 스크롤'}
+                >
+                    Focusing
+                </button>
 
                 <div
                     className="flex rounded p-1"

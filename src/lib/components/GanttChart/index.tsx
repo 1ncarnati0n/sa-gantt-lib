@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useMemo, useState, useEffect } from 'react';
 import { addDays, differenceInDays } from 'date-fns';
-import { isHoliday, snapToWorkingDay } from '../../utils/dateUtils';
+import { isHoliday, snapToWorkingDay, KOREAN_HOLIDAYS_ALL } from '../../utils/dateUtils';
 import { GanttSidebar } from '../GanttSidebar';
 import { GanttTimeline, BarDragResult } from '../GanttTimeline';
 import { MilestoneEditModal } from '../MilestoneEditModal';
@@ -30,15 +30,15 @@ import { useGanttInit, useScrollToDate, useSidebarResize } from './hooks';
 export type { BarDragResult };
 
 const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
-    workOnSaturdays: false,
-    workOnSundays: false,
-    workOnHolidays: false,
+    workOnSaturdays: true,  // 건설 현장: 토요일 작업
+    workOnSundays: false,   // 일요일 휴일
+    workOnHolidays: false,  // 공휴일 휴일
 };
 
 export function GanttChart({
     tasks,
     milestones = [],
-    holidays = [],
+    holidays = KOREAN_HOLIDAYS_ALL,
     calendarSettings = DEFAULT_CALENDAR_SETTINGS,
     initialView = 'MASTER',
     initialZoomLevel = 'MONTH',
@@ -201,14 +201,6 @@ export function GanttChart({
         onViewChange?.(mode, cpId);
     }, [setViewMode, onViewChange]);
 
-    // 키보드 네비게이션 훅 (handleViewChange 정의 후에 호출)
-    useKeyboardNavigation({
-        visibleTasks,
-        viewMode,
-        onViewChange: handleViewChange,
-        focusTask,
-    });
-
     const handleTaskClick = useCallback((task: ConstructionTask) => {
         if (viewMode === 'MASTER' && task.type === 'CP') {
             handleViewChange('DETAIL', task.id);
@@ -298,6 +290,15 @@ export function GanttChart({
         setIsTaskEditModalOpen(true);
     }, []);
 
+    // 키보드 네비게이션 훅 (handleTaskDoubleClick 정의 후에 호출)
+    useKeyboardNavigation({
+        visibleTasks,
+        viewMode,
+        onViewChange: handleViewChange,
+        focusTask,
+        onTaskEdit: handleTaskDoubleClick,
+    });
+
     const handleCloseTaskEditModal = useCallback(() => {
         setIsTaskEditModalOpen(false);
         setEditingTask(null);
@@ -368,6 +369,7 @@ export function GanttChart({
     }, [tasks, onTaskUpdate, onError]);
 
     // Group Drag Handler
+    // 통합 스냅: taskUpdates에 이미 계산된 새 시작일을 사용
     const handleGroupDrag = useCallback(async (result: GroupDragResult) => {
         if (!onTaskUpdate && !onGroupDrag) return;
 
@@ -378,31 +380,49 @@ export function GanttChart({
             }
 
             if (onTaskUpdate) {
-                const dragDirection: 'left' | 'right' = result.deltaDays >= 0 ? 'right' : 'left';
+                // taskUpdates가 있으면 그대로 사용 (이미 통합 스냅 적용됨)
+                if (result.taskUpdates && result.taskUpdates.length > 0) {
+                    for (const update of result.taskUpdates) {
+                        const task = tasks.find(t => t.id === update.taskId);
+                        if (!task) continue;
 
-                for (const taskId of result.affectedTaskIds) {
-                    const task = tasks.find(t => t.id === taskId);
-                    if (!task) continue;
+                        // 종료일은 시작일 기준으로 동일한 기간 유지
+                        const duration = differenceInDays(task.endDate, task.startDate);
+                        const newEndDate = addDays(update.newStartDate, duration);
 
-                    // 1. 새 시작일 계산
-                    let newStartDate = addDays(task.startDate, result.deltaDays);
+                        const updatedTask: ConstructionTask = {
+                            ...task,
+                            startDate: update.newStartDate,
+                            endDate: newEndDate,
+                        };
 
-                    // 2. 휴일이면 드래그 방향에 따라 스냅
-                    if (isHoliday(newStartDate, holidays, calendarSettings)) {
-                        newStartDate = snapToWorkingDay(newStartDate, dragDirection, holidays, calendarSettings);
+                        await onTaskUpdate(updatedTask);
                     }
+                } else {
+                    // fallback: taskUpdates가 없으면 기존 방식 (호환성 유지)
+                    const dragDirection: 'left' | 'right' = result.deltaDays >= 0 ? 'right' : 'left';
 
-                    // 3. 종료일은 시작일 기준으로 동일한 기간 유지
-                    const duration = differenceInDays(task.endDate, task.startDate);
-                    const newEndDate = addDays(newStartDate, duration);
+                    for (const taskId of result.affectedTaskIds) {
+                        const task = tasks.find(t => t.id === taskId);
+                        if (!task) continue;
 
-                    const updatedTask: ConstructionTask = {
-                        ...task,
-                        startDate: newStartDate,
-                        endDate: newEndDate,
-                    };
+                        let newStartDate = addDays(task.startDate, result.deltaDays);
 
-                    await onTaskUpdate(updatedTask);
+                        if (isHoliday(newStartDate, holidays, calendarSettings)) {
+                            newStartDate = snapToWorkingDay(newStartDate, dragDirection, holidays, calendarSettings);
+                        }
+
+                        const duration = differenceInDays(task.endDate, task.startDate);
+                        const newEndDate = addDays(newStartDate, duration);
+
+                        const updatedTask: ConstructionTask = {
+                            ...task,
+                            startDate: newStartDate,
+                            endDate: newEndDate,
+                        };
+
+                        await onTaskUpdate(updatedTask);
+                    }
                 }
             }
         } catch (error) {

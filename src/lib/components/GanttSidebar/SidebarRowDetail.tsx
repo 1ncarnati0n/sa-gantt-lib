@@ -161,8 +161,8 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = ({
                     <span
                         className="truncate text-sm"
                         style={{
-                            fontWeight: isGroup ? 'normal' : 500,
-                            color: isGroup ? 'var(--gantt-text-muted)' : 'var(--gantt-text-primary)',
+                            fontWeight: 500,
+                            color: 'var(--gantt-text-primary)',
                             cursor: isGroup ? 'text' : 'default',
                         }}
                         onDoubleClick={(e) => {

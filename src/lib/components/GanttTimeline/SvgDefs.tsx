@@ -20,7 +20,7 @@ export const SvgDefs: React.FC = () => (
             <polygon points="0 0, 10 3.5, 0 7" fill={GANTT_COLORS.dependency} />
         </marker>
 
-        {/* 휴일 빗금 패턴 (간접작업 색상 + 반투명 배경) */}
+        {/* 휴일 빗금 패턴 (반투명 배경 + 빗금선) */}
         <pattern
             id="holidayHatchPattern"
             patternUnits="userSpaceOnUse"
@@ -28,27 +28,8 @@ export const SvgDefs: React.FC = () => (
             height="6"
             patternTransform="rotate(45)"
         >
-            <rect width="6" height="6" fill={GANTT_COLORS.bgPrimary} fillOpacity={0.6} />
+            <rect width="6" height="6" fill={GANTT_COLORS.bgPrimary} fillOpacity={0.7} />
             <line x1="0" y1="0" x2="0" y2="6" stroke={GANTT_COLORS.blue} strokeWidth="2" />
-        </pattern>
-
-        {/* 휴일 빗금 패턴 (더 진한 버전) */}
-        <pattern
-            id="holidayHatchPatternDark"
-            patternUnits="userSpaceOnUse"
-            width="8"
-            height="8"
-            patternTransform="rotate(45)"
-        >
-            <line
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="8"
-                stroke={GANTT_COLORS.textPrimary}
-                strokeWidth="3"
-                strokeOpacity={0.5}
-            />
         </pattern>
 
         {/* 종속성 화살표 마커 - 기본 */}

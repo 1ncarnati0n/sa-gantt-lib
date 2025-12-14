@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { format, addDays } from 'date-fns';
 import { GANTT_LAYOUT, GANTT_COLORS, GANTT_DRAG } from '../../types';
-import { dateToX, getTaskCalendarSettings, getHolidayOffsetsInDateRange } from '../../utils/dateUtils';
+import { dateToX, getTaskCalendarSettings, getHolidayOffsetsInDateRange, isHoliday } from '../../utils/dateUtils';
 import { calculateCriticalPath } from '../../utils/criticalPathUtils';
 import type { TaskBarProps } from './types';
 
@@ -69,6 +69,13 @@ export const TaskBar: React.FC<TaskBarProps> = ({
 
     const isDependencyDragging = dependencyDragDeltaDays !== 0;
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
+
+    // 휴일 착지 감지 (D-2: 완전 투과 방식)
+    // Task가 휴일에 착지했는지 확인하여 빗금 오버레이 표시
+    const isOnHoliday = useMemo(() => {
+        if (!calendarSettings) return false;
+        return isHoliday(effectiveStartDate, holidays, calendarSettings);
+    }, [effectiveStartDate, holidays, calendarSettings]);
 
     if (isMasterView) {
         // Level 1: CP 바
@@ -233,6 +240,35 @@ export const TaskBar: React.FC<TaskBarProps> = ({
                             opacity: 0.8,
                         }}
                     />
+                )}
+
+                {/* 휴일 착지 경고 오버레이 (D-2: 완전 투과 방식) */}
+                {isOnHoliday && showBar && (
+                    <g className="pointer-events-none">
+                        {/* 경고 테두리 */}
+                        <rect
+                            x={-2}
+                            y={-2}
+                            width={barWidth + 4}
+                            height={BAR_HEIGHT + 4}
+                            fill="none"
+                            stroke="#f59e0b"
+                            strokeWidth={2}
+                            strokeDasharray="4,2"
+                            rx={2}
+                            ry={2}
+                            opacity={0.9}
+                        />
+                        {/* 빗금 패턴 오버레이 */}
+                        <rect
+                            x={0}
+                            y={0}
+                            width={barWidth}
+                            height={BAR_HEIGHT}
+                            fill="url(#holidayHatchPattern)"
+                            opacity={0.5}
+                        />
+                    </g>
                 )}
 
                 {/* Focus Highlight Effect */}

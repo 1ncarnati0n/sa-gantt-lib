@@ -156,7 +156,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
                         className="truncate text-sm"
                         style={{
                             fontWeight: isGroup ? 'normal' : 500,
-                            color: isGroup ? 'var(--gantt-text-muted)' : 'var(--gantt-text-primary)',
+                            color: 'var(--gantt-text-primary)',
                             cursor: isGroup ? 'text' : 'default',
                         }}
                         onDoubleClick={(e) => {

@@ -2,7 +2,7 @@
 // SA-Gantt-Lib: 작업일 계산 유틸리티
 // ============================================
 
-import { addDays } from 'date-fns';
+import { addDays, isSameDay } from 'date-fns';
 import type { CalendarSettings, TaskData } from '../../types';
 import { isHoliday } from './holiday';
 
@@ -83,6 +83,61 @@ export const subtractWorkingDays = (
     }
 
     return currentDate;
+};
+
+/**
+ * 두 날짜 사이의 작업일 수 계산 (시작일 포함, 종료일 제외)
+ *
+ * @param startDate - 시작 날짜
+ * @param endDate - 종료 날짜
+ * @param holidays - 공휴일 목록
+ * @param settings - 캘린더 설정
+ * @returns 작업일 수 (endDate가 startDate보다 이전이면 음수)
+ *
+ * @example
+ * ```ts
+ * // 월요일(5/6)부터 금요일(5/10)까지의 작업일 수 (토/일 휴무)
+ * const days = countWorkingDays(
+ *   new Date('2024-05-06'),
+ *   new Date('2024-05-10'),
+ *   [],
+ *   { workOnSaturdays: false, workOnSundays: false, workOnHolidays: false }
+ * ); // 4 (월,화,수,목 = 4일)
+ * ```
+ */
+export const countWorkingDays = (
+    startDate: Date,
+    endDate: Date,
+    holidays: Date[] = [],
+    settings: CalendarSettings
+): number => {
+    // 같은 날이면 0 반환
+    if (isSameDay(startDate, endDate)) return 0;
+
+    const isForward = startDate < endDate;
+    let count = 0;
+    let current = new Date(startDate);
+    const target = new Date(endDate);
+
+    if (isForward) {
+        // 앞으로 진행: startDate부터 endDate 직전까지
+        while (current < target) {
+            if (!isHoliday(current, holidays, settings)) {
+                count++;
+            }
+            current = addDays(current, 1);
+        }
+    } else {
+        // 역순 진행: startDate부터 endDate까지 역방향
+        while (current > target) {
+            current = addDays(current, -1);
+            if (!isHoliday(current, holidays, settings)) {
+                count--;
+            }
+        }
+    }
+
+    return count;
 };
 
 /**

@@ -13,6 +13,8 @@ interface UseKeyboardNavigationOptions {
     onViewChange: (mode: ViewMode, cpId?: string) => void;
     /** Task 포커스 함수 (양방향 스크롤) */
     focusTask: (taskId: string) => void;
+    /** Task 편집 핸들러 (Enter 키) */
+    onTaskEdit?: (task: ConstructionTask) => void;
     /** 키보드 네비게이션 활성화 여부 */
     enabled?: boolean;
 }
@@ -20,12 +22,12 @@ interface UseKeyboardNavigationOptions {
 /**
  * 키보드 네비게이션 훅
  *
- * 화살표 키로 Task 간 이동, Enter로 Detail View 진입 등을 지원합니다.
+ * 화살표 키로 Task 간 이동, Enter로 편집 모달 열기 등을 지원합니다.
  *
  * 키 바인딩:
  * - ArrowUp: 이전 Task로 이동
  * - ArrowDown: 다음 Task로 이동
- * - Enter: Master View에서 CP 선택 시 Detail View 진입
+ * - Enter: 선택된 Task 편집 모달 열기
  * - Escape: 선택 해제
  * - Backspace: Detail View에서 Master View로 복귀
  */
@@ -34,6 +36,7 @@ export function useKeyboardNavigation({
     viewMode,
     onViewChange,
     focusTask,
+    onTaskEdit,
     enabled = true,
 }: UseKeyboardNavigationOptions) {
     const {
@@ -80,11 +83,14 @@ export function useKeyboardNavigation({
                 if (focusedTaskId) {
                     const task = visibleTasks.find(t => t.id === focusedTaskId);
                     if (task) {
-                        if (viewMode === 'MASTER' && task.type === 'CP') {
-                            // CP를 선택한 상태에서 Enter: Detail View로 진입
+                        // 마스터 뷰에서 CP(Level 1) 선택 시 → 디테일 뷰로 전환
+                        if (viewMode === 'MASTER' && task.wbsLevel === 1) {
                             onViewChange('DETAIL', task.id);
                         }
-                        // Detail View에서 Enter는 추후 편집 모달 등으로 확장 가능
+                        // 그 외에는 편집 모달 열기
+                        else if (onTaskEdit) {
+                            onTaskEdit(task);
+                        }
                     }
                 }
                 break;
@@ -118,7 +124,7 @@ export function useKeyboardNavigation({
                 }
                 break;
         }
-    }, [enabled, visibleTasks, viewMode, focusedTaskId, moveFocus, clearSelection, onViewChange, selectTask]);
+    }, [enabled, visibleTasks, viewMode, focusedTaskId, moveFocus, clearSelection, onViewChange, onTaskEdit, selectTask]);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
