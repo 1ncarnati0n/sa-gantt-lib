@@ -4,6 +4,7 @@ import { useCallback, RefObject } from 'react';
 import type { Virtualizer } from '@tanstack/react-virtual';
 import type { ConstructionTask } from '../types';
 import { dateToX } from '../utils/dateUtils';
+import { calculateGroupDateRange } from '../utils/groupUtils';
 
 interface UseTaskFocusOptions {
     /** 스크롤 컨테이너 ref */
@@ -12,6 +13,8 @@ interface UseTaskFocusOptions {
     virtualizer: Virtualizer<HTMLDivElement, Element> | null;
     /** 현재 보이는 Task 목록 */
     visibleTasks: ConstructionTask[];
+    /** 전체 Task 목록 (GROUP 날짜 계산용) */
+    allTasks?: ConstructionTask[];
     /** 날짜 범위의 시작 날짜 */
     minDate: Date;
     /** 픽셀/일 비율 */
@@ -37,6 +40,7 @@ export function useTaskFocus({
     scrollContainerRef,
     virtualizer,
     visibleTasks,
+    allTasks,
     minDate,
     pixelsPerDay,
     sidebarWidth,
@@ -64,9 +68,21 @@ export function useTaskFocus({
         const container = scrollContainerRef.current;
         if (!container) return;
 
+        // 날짜 범위 결정 (GROUP은 자식들의 범위로 계산)
+        let startDate = task.startDate;
+        let endDate = task.endDate;
+
+        if (task.type === 'GROUP' && allTasks) {
+            const dateRange = calculateGroupDateRange(task.id, allTasks);
+            if (dateRange) {
+                startDate = dateRange.startDate;
+                endDate = dateRange.endDate;
+            }
+        }
+
         // Task 날짜 범위의 중앙 계산
-        const taskCenterTime = task.startDate.getTime() +
-            (task.endDate.getTime() - task.startDate.getTime()) / 2;
+        const taskCenterTime = startDate.getTime() +
+            (endDate.getTime() - startDate.getTime()) / 2;
         const taskCenterDate = new Date(taskCenterTime);
 
         // 날짜를 X 좌표로 변환
@@ -92,7 +108,7 @@ export function useTaskFocus({
             left: Math.max(0, scrollTarget),
             behavior: options?.behavior ?? 'smooth',
         });
-    }, [scrollContainerRef, minDate, pixelsPerDay, sidebarWidth]);
+    }, [scrollContainerRef, minDate, pixelsPerDay, sidebarWidth, allTasks]);
 
     /**
      * Task로 양방향 스크롤 (세로 + 가로)

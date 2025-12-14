@@ -170,6 +170,7 @@ export function GanttChart({
         scrollContainerRef: scrollRef,
         virtualizer,
         visibleTasks,
+        allTasks: tasks,
         minDate,
         pixelsPerDay: ZOOM_CONFIG[zoomLevel].pixelsPerDay,
         sidebarWidth,

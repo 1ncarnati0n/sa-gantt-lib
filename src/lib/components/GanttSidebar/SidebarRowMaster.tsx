@@ -1,12 +1,13 @@
 'use client';
 
+import React from 'react';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
 import type { SidebarRowMasterProps } from './types';
 
 const { ROW_HEIGHT } = GANTT_LAYOUT;
 
-export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
+export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
     task,
     rowIndex,
     isVirtualized,
@@ -205,4 +206,4 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = ({
             </div>
         </div>
     );
-};
+});

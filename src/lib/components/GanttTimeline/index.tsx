@@ -34,6 +34,7 @@ import { useMilestoneDrag } from './hooks/useMilestoneDrag';
 import { useGroupDrag } from './hooks/useGroupDrag';
 import { useAnchorConnection } from './hooks/useAnchorConnection';
 import { useDependencyDrag } from './hooks/useDependencyDrag';
+import { useGanttSelection } from '../../store/useGanttStore';
 
 // External components
 import { CriticalPathBar } from '../CriticalPathBar';
@@ -106,6 +107,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
         const isVirtualized = virtualRows && virtualRows.length > 0;
+
+        // 태스크 선택 훅
+        const { selectTask } = useGanttSelection();
 
         // 컨텍스트 메뉴 상태
         const [contextMenu, setContextMenu] = useState<{
@@ -446,6 +450,13 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         currentDeltaDays={getGroupDragDeltaDays(task.id)}
                                         onDragStart={handleGroupBarMouseDown}
                                         onToggle={onGroupToggle}
+                                        onClick={(e, groupId) => {
+                                            selectTask(groupId, {
+                                                ctrlKey: e.ctrlKey || e.metaKey,
+                                                shiftKey: e.shiftKey,
+                                                visibleTasks: tasks,
+                                            });
+                                        }}
                                         isFocused={focusedTaskId === task.id}
                                     />
                                 );

@@ -27,10 +27,11 @@ interface GroupSummaryBarProps {
         }
     ) => void;
     onToggle?: (groupId: string) => void;
+    onClick?: (e: React.MouseEvent, groupId: string) => void;
     isFocused?: boolean;
 }
 
-export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
+export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     group,
     allTasks,
     y,
@@ -40,6 +41,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
     currentDeltaDays = 0,
     onDragStart,
     onToggle,
+    onClick,
     isFocused = false,
 }) => {
     // 그룹의 날짜 범위 계산
@@ -159,7 +161,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
                 {progress}%
             </text>
 
-            {/* 히트 영역 (투명) - 더블클릭 및 드래그 */}
+            {/* 히트 영역 (투명) - 클릭, 더블클릭 및 드래그 */}
             <rect
                 x={0}
                 y={0}
@@ -167,9 +169,13 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = ({
                 height={BAR_HEIGHT}
                 fill="transparent"
                 className={isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick?.(e, group.id);
+                }}
                 onMouseDown={handleMouseDown}
                 onDoubleClick={handleDoubleClick}
             />
         </g>
     );
-};
+});
