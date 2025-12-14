@@ -187,7 +187,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             hoveredAnchor,
             selectedDepId,
             hoveredDepId,
-            isConnecting,
             handleAnchorClick,
             handleAnchorHover,
             handleDependencyClick,
@@ -216,8 +215,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             onDependencyDrag: onAnchorDependencyDrag,
         });
 
-        // 호버된 태스크 ID 상태 (앵커 표시용)
-        const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+        // 호버된 태스크 ID 상태 (앵커 표시용) - 현재 미사용
+        const [_hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
 
         const handleMilestoneDoubleClick = useCallback((milestone: Milestone) => {
             if (onMilestoneDoubleClick) {
@@ -526,8 +525,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const task = tasks[row.index];
                             if (!task || task.type !== 'TASK') return null;
 
-                            const isTaskHovered = hoveredTaskId === task.id;
-
                             return (
                                 <AnchorPoints
                                     key={`anchor-${row.key}`}
@@ -535,14 +532,13 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     rowIndex={row.index}
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
-                                    isHovered={isTaskHovered}
-                                    isConnecting={isConnecting}
                                     connectingFrom={connectingFrom}
                                     dependencies={anchorDependencies}
                                     onAnchorClick={handleAnchorClick}
                                     onAnchorHover={handleAnchorHover}
                                     holidays={holidays}
                                     calendarSettings={calendarSettings}
+                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
                                 />
                             );
                         })}

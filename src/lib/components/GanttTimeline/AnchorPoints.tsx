@@ -92,14 +92,14 @@ interface AnchorPointsProps {
     rowIndex: number;
     minDate: Date;
     pixelsPerDay: number;
-    isHovered: boolean;
-    isConnecting: boolean;
     connectingFrom?: { taskId: string; dayIndex: number } | null;
     dependencies: AnchorDependency[];
     onAnchorClick?: (taskId: string, dayIndex: number) => void;
     onAnchorHover?: (taskId: string, dayIndex: number | null) => void;
     holidays?: Date[];
     calendarSettings?: CalendarSettings;
+    /** 종속성 드래그 중 델타 (일 단위) - 앵커 실시간 동기화용 */
+    dependencyDragDeltaDays?: number;
 }
 
 /**
@@ -112,14 +112,13 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
     rowIndex,
     minDate,
     pixelsPerDay,
-    isHovered,
-    isConnecting,
     connectingFrom,
     dependencies,
     onAnchorClick,
     onAnchorHover,
     holidays,
     calendarSettings,
+    dependencyDragDeltaDays = 0,
 }) => {
     // 앵커 위치 계산 (작업일 기준, 휴일 위치 건너뛰기)
     const anchors = useMemo((): AnchorPosition[] => {
@@ -199,8 +198,16 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
             }
         }
 
+        // 종속성 드래그 중 앵커 위치 실시간 동기화
+        if (dependencyDragDeltaDays !== 0) {
+            const dragOffset = dependencyDragDeltaDays * pixelsPerDay;
+            result.forEach(anchor => {
+                anchor.x += dragOffset;
+            });
+        }
+
         return result;
-    }, [task, rowIndex, minDate, pixelsPerDay, holidays, calendarSettings]);
+    }, [task, rowIndex, minDate, pixelsPerDay, holidays, calendarSettings, dependencyDragDeltaDays]);
 
     // 이 태스크의 특정 dayIndex에 종속성이 연결되어 있는지 확인
     const isAnchorConnected = (dayIndex: number): boolean => {
@@ -258,9 +265,6 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
         );
     };
 
-    // 앵커 표시 조건
-    const shouldShowAnchors = isHovered || isConnecting;
-
     // 현재 연결 시작점인지 확인
     const isConnectingFromThis = (dayIndex: number): boolean => {
         return connectingFrom?.taskId === task.id && connectingFrom?.dayIndex === dayIndex;
@@ -274,7 +278,8 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                 const isPathBlocked = isInDependencyPath(anchorPos.dayIndex);
                 // 연결된 앵커 또는 경로상의 앵커는 비활성화
                 const isDisabled = isConnected || isPathBlocked;
-                const isVisible = shouldShowAnchors || isConnected;
+                // 연결된 앵커 또는 연결 시작점(초록 점)만 표시
+                const isVisible = isConnected || isConnectingStart;
 
                 return (
                     <g key={`anchor-${task.id}-${anchorPos.dayIndex}`}>
@@ -317,7 +322,7 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                                         : GANTT_COLORS.anchorStroke
                             }
                             strokeWidth={isDisabled ? 0 : GANTT_ANCHOR.STROKE_WIDTH}
-                            opacity={isVisible ? 1 : (isPathBlocked && shouldShowAnchors) ? 0.4 : 0}
+                            opacity={isVisible ? 1 : 0}
                             style={{
                                 cursor: isDisabled ? 'default' : 'pointer',
                                 transition: 'all 0.15s ease',
