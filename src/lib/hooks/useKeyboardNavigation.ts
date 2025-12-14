@@ -80,10 +80,17 @@ export function useKeyboardNavigation({
 
             case 'Enter':
                 e.preventDefault();
-                if (focusedTaskId && onTaskEdit) {
+                if (focusedTaskId) {
                     const task = visibleTasks.find(t => t.id === focusedTaskId);
                     if (task) {
-                        onTaskEdit(task);
+                        // 마스터 뷰에서 CP(Level 1) 선택 시 → 디테일 뷰로 전환
+                        if (viewMode === 'MASTER' && task.wbsLevel === 1) {
+                            onViewChange('DETAIL', task.id);
+                        }
+                        // 그 외에는 편집 모달 열기
+                        else if (onTaskEdit) {
+                            onTaskEdit(task);
+                        }
                     }
                 }
                 break;
