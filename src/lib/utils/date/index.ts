@@ -35,3 +35,13 @@ export {
     getPixelsPerDay,
     calculateDateRange,
 } from './conversion';
+
+// Korean holidays data (2025~2027)
+export {
+    KOREAN_HOLIDAYS_2025,
+    KOREAN_HOLIDAYS_2026,
+    KOREAN_HOLIDAYS_2027,
+    KOREAN_HOLIDAYS_ALL,
+    getKoreanHolidaysByYear,
+    getKoreanHolidaysForYears,
+} from './koreanHolidays';

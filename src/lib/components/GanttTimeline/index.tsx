@@ -323,37 +323,67 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
                         {/* Layer 2: 그리드 라인 */}
                         {Array.from({ length: totalDays }, (_, i) => {
-                            const x = (i + 1) * pixelsPerDay;
                             const date = addDays(minDate, i);
                             const dayOfWeek = getDay(date);
-
-                            let showLine = false;
-                            let strokeColor: string = GANTT_COLORS.grid;
+                            // SVG strokeWidth=1은 중심선 기준 양쪽 0.5px 확장되므로 -0.5px 보정
+                            const rightX = (i + 1) * pixelsPerDay - 0.5; // 날짜 오른쪽 경계
+                            const leftX = i * pixelsPerDay - 0.5; // 날짜 왼쪽 경계
 
                             if (zoomLevel === 'DAY') {
-                                showLine = true;
-                                strokeColor = dayOfWeek === 0 ? GANTT_COLORS.gridDark : GANTT_COLORS.grid;
-                            } else if (zoomLevel === 'WEEK') {
-                                showLine = dayOfWeek === 0;
-                                strokeColor = GANTT_COLORS.grid;
-                            } else if (zoomLevel === 'MONTH') {
-                                showLine = dayOfWeek === 0;
-                                strokeColor = GANTT_COLORS.grid;
+                                if (dayOfWeek === 0) {
+                                    // 일요일: 왼쪽 진한 선 (주 시작) + 오른쪽 일반 선 (날짜 구분)
+                                    return (
+                                        <g key={`vline-${i}`}>
+                                            <line
+                                                x1={leftX}
+                                                y1={0}
+                                                x2={leftX}
+                                                y2={chartHeight}
+                                                stroke={GANTT_COLORS.gridDark}
+                                                strokeWidth={1}
+                                            />
+                                            <line
+                                                x1={rightX}
+                                                y1={0}
+                                                x2={rightX}
+                                                y2={chartHeight}
+                                                stroke={GANTT_COLORS.grid}
+                                                strokeWidth={1}
+                                            />
+                                        </g>
+                                    );
+                                } else {
+                                    // 다른 요일: 오른쪽 일반 선만
+                                    return (
+                                        <line
+                                            key={`vline-${i}`}
+                                            x1={rightX}
+                                            y1={0}
+                                            x2={rightX}
+                                            y2={chartHeight}
+                                            stroke={GANTT_COLORS.grid}
+                                            strokeWidth={1}
+                                        />
+                                    );
+                                }
+                            } else if (zoomLevel === 'WEEK' || zoomLevel === 'MONTH') {
+                                // WEEK/MONTH: 일요일 왼쪽에 선만 (주의 시작 표시)
+                                if (dayOfWeek === 0) {
+                                    return (
+                                        <line
+                                            key={`vline-${i}`}
+                                            x1={leftX}
+                                            y1={0}
+                                            x2={leftX}
+                                            y2={chartHeight}
+                                            stroke={GANTT_COLORS.grid}
+                                            strokeWidth={1}
+                                        />
+                                    );
+                                }
                             }
 
-                            if (!showLine) return null;
-
-                            return (
-                                <line
-                                    key={`vline-${i}`}
-                                    x1={x}
-                                    y1={0}
-                                    x2={x}
-                                    y2={chartHeight}
-                                    stroke={strokeColor}
-                                    strokeWidth={1}
-                                />
-                            );
+                            return null;
                         })}
 
                         {/* Horizontal Lines */}

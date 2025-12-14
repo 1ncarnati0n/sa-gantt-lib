@@ -97,7 +97,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                                     width: pixelsPerDay,
                                     minWidth: pixelsPerDay,
                                     backgroundColor: bgColor,
-                                    borderRight: '1px solid var(--gantt-border-light)',
+                                    borderRight: '1px solid var(--gantt-border)',
                                 }}
                             >
                                 <span className="text-[10px] leading-none" style={{ color: textColor }}>
@@ -140,7 +140,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                             style={{
                                 width: g.days * pixelsPerDay,
                                 color: 'var(--gantt-text-secondary)',
-                                borderRight: '1px solid var(--gantt-border-light)',
+                                borderRight: '1px solid var(--gantt-border)',
                             }}
                         >
                             {g.label}
@@ -181,7 +181,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                                 className="flex h-full shrink-0 items-center justify-center"
                                 style={{
                                     width: g.days * pixelsPerDay,
-                                    borderRight: '1px solid var(--gantt-border)',
+                                    borderRight: i < yearGroups.length - 1 ? '2px solid var(--gantt-grid-dark)' : 'none',
                                 }}
                             >
                                 {g.label}
@@ -194,7 +194,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                         className="flex h-[32px] items-center text-xs font-medium"
                         style={{
                             minWidth: totalWidth,
-                            backgroundColor: 'var(--gantt-bg-primary)',
+                            backgroundColor: 'var(--gantt-bg-secondary)',
                             color: 'var(--gantt-text-secondary)',
                         }}
                     >
@@ -230,7 +230,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                                 className="flex shrink-0 items-center pl-2"
                                 style={{
                                     width: g.days * pixelsPerDay,
-                                    borderRight: '1px solid var(--gantt-border)',
+                                    borderRight: i < yearGroups.length - 1 ? '2px solid var(--gantt-grid-dark)' : 'none',
                                 }}
                             >
                                 {g.label}
@@ -243,7 +243,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                         className="flex h-[24px] items-center text-xs font-medium"
                         style={{
                             minWidth: totalWidth,
-                            backgroundColor: 'var(--gantt-bg-tertiary)',
+                            backgroundColor: 'var(--gantt-bg-secondary)',
                             borderBottom: '1px solid var(--gantt-border-light)',
                             color: 'var(--gantt-text-secondary)',
                         }}

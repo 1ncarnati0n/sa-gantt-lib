@@ -281,7 +281,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 className="flex shrink-0 items-center justify-center text-xs"
                                 style={{
                                     width: col.width,
-                                    color: 'var(--gantt-text-muted)',
+                                    color: 'var(--gantt-text-primary)',
                                     borderRight: '1px solid var(--gantt-border-light)',
                                 }}
                             >

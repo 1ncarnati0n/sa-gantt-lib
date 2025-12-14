@@ -304,7 +304,7 @@
             "type": "TASK",
             "name": "보,슬라브 철근조립",
             "startDate": "2026-05-04",
-            "endDate": "2026-05-09",
+            "endDate": "2026-05-10",
             "task": {
                 "netWorkDays": 5,
                 "indirectWorkDaysPre": 0,
@@ -352,7 +352,7 @@
             "type": "TASK",
             "name": "거푸집 해체정리",
             "startDate": "2026-05-16",
-            "endDate": "2026-06-03",
+            "endDate": "2026-06-04",
             "task": {
                 "netWorkDays": 16,
                 "indirectWorkDaysPre": 0,
@@ -392,7 +392,7 @@
             "type": "TASK",
             "name": "벽 철근조립",
             "startDate": "2026-06-05",
-            "endDate": "2026-06-11",
+            "endDate": "2026-06-12",
             "task": {
                 "netWorkDays": 5,
                 "indirectWorkDaysPre": 0,
@@ -608,8 +608,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-08-15",
-            "endDate": "2026-08-17",
+            "startDate": "2026-08-18",
+            "endDate": "2026-08-20",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -634,8 +634,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-08-17",
-            "endDate": "2026-08-17",
+            "startDate": "2026-08-18",
+            "endDate": "2026-08-18",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1206,8 +1206,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-09-24",
-            "endDate": "2026-09-25",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-29",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1222,8 +1222,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-09-25",
-            "endDate": "2026-09-26",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-29",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1238,8 +1238,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-09-26",
-            "endDate": "2026-09-28",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-30",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1343,8 +1343,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-10-03",
-            "endDate": "2026-10-05",
+            "startDate": "2026-10-06",
+            "endDate": "2026-10-08",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1369,8 +1369,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-10-05",
-            "endDate": "2026-10-05",
+            "startDate": "2026-10-06",
+            "endDate": "2026-10-06",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1401,7 +1401,7 @@
             "type": "TASK",
             "name": "유로폼조립",
             "startDate": "2026-10-07",
-            "endDate": "2026-10-14",
+            "endDate": "2026-10-15",
             "task": {
                 "netWorkDays": 6,
                 "indirectWorkDaysPre": 0,
@@ -1473,7 +1473,7 @@
             "type": "CP",
             "name": "지하골조: B2F, B1F 2단",
             "startDate": "2026-04-24",
-            "endDate": "2026-08-21",
+            "endDate": "2026-08-24",
             "cp": {
                 "workDaysTotal": 93,
                 "nonWorkDaysTotal": 14
@@ -1748,8 +1748,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "끊어치기 작업",
-            "startDate": "2026-05-05",
-            "endDate": "2026-05-07",
+            "startDate": "2026-05-06",
+            "endDate": "2026-05-08",
             "task": {
                 "netWorkDays": 2,
                 "indirectWorkDaysPre": 0,
@@ -1822,7 +1822,7 @@
             "type": "TASK",
             "name": "지하2층 거푸집설치",
             "startDate": "2026-05-01",
-            "endDate": "2026-05-21",
+            "endDate": "2026-05-22",
             "task": {
                 "netWorkDays": 17,
                 "indirectWorkDaysPre": 0,
@@ -1838,7 +1838,7 @@
             "type": "TASK",
             "name": "보,슬라브 철근조립",
             "startDate": "2026-05-22",
-            "endDate": "2026-05-28",
+            "endDate": "2026-05-29",
             "task": {
                 "netWorkDays": 5,
                 "indirectWorkDaysPre": 0,
@@ -1886,7 +1886,7 @@
             "type": "TASK",
             "name": "거푸집 해체정리",
             "startDate": "2026-06-03",
-            "endDate": "2026-06-20",
+            "endDate": "2026-06-22",
             "task": {
                 "netWorkDays": 16,
                 "indirectWorkDaysPre": 0,
@@ -2038,7 +2038,7 @@
             "type": "TASK",
             "name": "거푸집 해체정리",
             "startDate": "2026-08-08",
-            "endDate": "2026-08-21",
+            "endDate": "2026-08-24",
             "task": {
                 "netWorkDays": 12,
                 "indirectWorkDaysPre": 0,
@@ -2425,8 +2425,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-09-24",
-            "endDate": "2026-09-25",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-29",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -2441,8 +2441,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-09-25",
-            "endDate": "2026-09-26",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-29",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -2457,8 +2457,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-09-26",
-            "endDate": "2026-09-28",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-30",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -2562,8 +2562,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-10-03",
-            "endDate": "2026-10-05",
+            "startDate": "2026-10-06",
+            "endDate": "2026-10-08",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -2588,8 +2588,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-10-05",
-            "endDate": "2026-10-05",
+            "startDate": "2026-10-06",
+            "endDate": "2026-10-06",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -2651,8 +2651,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-10-09",
-            "endDate": "2026-10-10",
+            "startDate": "2026-10-10",
+            "endDate": "2026-10-11",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -3024,7 +3024,7 @@
             "type": "TASK",
             "name": "지하2층 거푸집설치",
             "startDate": "2026-05-18",
-            "endDate": "2026-06-06",
+            "endDate": "2026-06-09",
             "task": {
                 "netWorkDays": 17,
                 "indirectWorkDaysPre": 0,
@@ -3417,8 +3417,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-09-24",
-            "endDate": "2026-09-25",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-29",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -3433,8 +3433,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-09-25",
-            "endDate": "2026-09-26",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-29",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -3449,8 +3449,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-09-26",
-            "endDate": "2026-09-28",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-30",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -3554,8 +3554,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-10-03",
-            "endDate": "2026-10-05",
+            "startDate": "2026-10-06",
+            "endDate": "2026-10-08",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -3580,8 +3580,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-10-05",
-            "endDate": "2026-10-05",
+            "startDate": "2026-10-06",
+            "endDate": "2026-10-06",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -3643,8 +3643,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-10-09",
-            "endDate": "2026-10-10",
+            "startDate": "2026-10-10",
+            "endDate": "2026-10-11",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -4175,6 +4175,45 @@
                 "indirectWorkDaysPre": 0,
                 "indirectWorkDaysPost": 2,
                 "indirectWorkNamePost": "양생"
+            },
+            "dependencies": []
+        },
+        {
+            "id": "group-1765683972316",
+            "parentId": null,
+            "wbsLevel": 1,
+            "type": "GROUP",
+            "name": "테스트 공구",
+            "startDate": "2025-12-14",
+            "endDate": "2026-01-22",
+            "dependencies": []
+        },
+        {
+            "id": "cp-1765683949170",
+            "parentId": "group-1765683972316",
+            "wbsLevel": 1,
+            "type": "CP",
+            "name": "테스트 CP",
+            "startDate": "2025-12-24",
+            "endDate": "2025-12-30",
+            "cp": {
+                "workDaysTotal": 5,
+                "nonWorkDaysTotal": 0
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1765684001777",
+            "parentId": "cp-1765683949170",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "새 공정",
+            "startDate": "2025-12-24",
+            "endDate": "2025-12-30",
+            "task": {
+                "netWorkDays": 5,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
             },
             "dependencies": []
         }

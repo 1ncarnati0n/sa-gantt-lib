@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useMemo, useState, useEffect } from 'react';
 import { addDays, differenceInDays } from 'date-fns';
-import { isHoliday, snapToWorkingDay } from '../../utils/dateUtils';
+import { isHoliday, snapToWorkingDay, KOREAN_HOLIDAYS_ALL } from '../../utils/dateUtils';
 import { GanttSidebar } from '../GanttSidebar';
 import { GanttTimeline, BarDragResult } from '../GanttTimeline';
 import { MilestoneEditModal } from '../MilestoneEditModal';
@@ -30,15 +30,15 @@ import { useGanttInit, useScrollToDate, useSidebarResize } from './hooks';
 export type { BarDragResult };
 
 const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
-    workOnSaturdays: false,
-    workOnSundays: false,
-    workOnHolidays: false,
+    workOnSaturdays: true,  // 건설 현장: 토요일 작업
+    workOnSundays: false,   // 일요일 휴일
+    workOnHolidays: false,  // 공휴일 휴일
 };
 
 export function GanttChart({
     tasks,
     milestones = [],
-    holidays = [],
+    holidays = KOREAN_HOLIDAYS_ALL,
     calendarSettings = DEFAULT_CALENDAR_SETTINGS,
     initialView = 'MASTER',
     initialZoomLevel = 'MONTH',
