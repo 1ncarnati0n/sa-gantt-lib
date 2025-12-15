@@ -56,8 +56,14 @@ export interface AnchorDependency {
 /** 앵커 종속성 드래그 결과 */
 export interface AnchorDependencyDragResult {
     sourceTaskId: string;             // 드래그 시작한 태스크 ID
-    deltaDays: number;                // 이동한 일수
+    deltaDays: number;                // 이동한 일수 (참고용 - 하위 호환성)
     affectedTaskIds: string[];        // 함께 이동한 연결된 태스크 ID 목록
+    /** 각 태스크의 스냅된 새 날짜 정보 (신규: 휴일 스냅 적용됨) */
+    taskUpdates?: Array<{
+        taskId: string;
+        newStartDate: Date;
+        newEndDate: Date;
+    }>;
 }
 
 // ============================================
