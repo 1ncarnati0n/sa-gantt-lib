@@ -4194,10 +4194,10 @@
             "wbsLevel": 1,
             "type": "CP",
             "name": "테스트 CP",
-            "startDate": "2026-02-19",
-            "endDate": "2026-03-07",
+            "startDate": "2026-02-12",
+            "endDate": "2026-03-06",
             "cp": {
-                "workDaysTotal": 13,
+                "workDaysTotal": 19,
                 "nonWorkDaysTotal": 5
             },
             "dependencies": []
@@ -4218,10 +4218,10 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "테스트공정 1",
-            "startDate": "2026-02-19",
-            "endDate": "2026-02-24",
+            "startDate": "2026-02-12",
+            "endDate": "2026-02-23",
             "task": {
-                "netWorkDays": 5,
+                "netWorkDays": 7,
                 "indirectWorkDaysPre": 0,
                 "indirectWorkDaysPost": 0
             },
@@ -4233,8 +4233,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "테스트공정 2",
-            "startDate": "2026-02-23",
-            "endDate": "2026-03-02",
+            "startDate": "2026-02-19",
+            "endDate": "2026-02-27",
             "task": {
                 "netWorkDays": 3,
                 "indirectWorkDaysPre": 2,
@@ -4250,10 +4250,35 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "테스트공정 3",
-            "startDate": "2026-03-03",
-            "endDate": "2026-03-07",
+            "startDate": "2026-02-28",
+            "endDate": "2026-03-06",
             "task": {
                 "netWorkDays": 5,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
+            },
+            "dependencies": []
+        },
+        {
+            "id": "group-1765770735396",
+            "parentId": "cp-1765683949170",
+            "wbsLevel": 2,
+            "type": "GROUP",
+            "name": "새 그룹",
+            "startDate": "2026-02-19",
+            "endDate": "2026-02-28",
+            "dependencies": []
+        },
+        {
+            "id": "task-1765764976545",
+            "parentId": "group-1765770735396",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "새 공정",
+            "startDate": "2026-02-19",
+            "endDate": "2026-02-23",
+            "task": {
+                "netWorkDays": 4,
                 "indirectWorkDaysPre": 0,
                 "indirectWorkDaysPost": 0
             },

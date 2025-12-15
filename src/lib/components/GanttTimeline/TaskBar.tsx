@@ -27,6 +27,7 @@ export const TaskBar: React.FC<TaskBarProps> = React.memo(({
     onDragStart,
     onDoubleClick,
     groupDragDeltaDays = 0,
+    groupDragInfo,
     dependencyDragDeltaDays = 0,
     onDependencyDragStart,
     hasDependency = false,
@@ -43,7 +44,7 @@ export const TaskBar: React.FC<TaskBarProps> = React.memo(({
     const isDragging = !!dragInfo;
 
     // 성능 최적화: effectiveDates 메모이제이션
-    // 드래그 우선순위: dragInfo > dependencyDrag > groupDrag > 기본
+    // 드래그 우선순위: dragInfo > dependencyDrag > groupDragInfo > groupDragDeltaDays > 기본
     const { effectiveStartDate, effectiveEndDate } = useMemo(() => {
         // 1. 직접 드래그 중
         if (dragInfo) {
@@ -56,16 +57,23 @@ export const TaskBar: React.FC<TaskBarProps> = React.memo(({
                 effectiveEndDate: addDays(task.endDate, dependencyDragDeltaDays),
             };
         }
-        // 3. 그룹 드래그 중
+        // 3. 그룹 드래그 중 (새 방식: 스냅된 날짜 직접 사용)
+        if (groupDragInfo) {
+            return {
+                effectiveStartDate: groupDragInfo.startDate,
+                effectiveEndDate: groupDragInfo.endDate,
+            };
+        }
+        // 4. 그룹 드래그 중 (구 방식: deltaDays만 있는 경우)
         if (groupDragDeltaDays !== 0) {
             return {
                 effectiveStartDate: addDays(task.startDate, groupDragDeltaDays),
                 effectiveEndDate: addDays(task.endDate, groupDragDeltaDays),
             };
         }
-        // 4. 기본값
+        // 5. 기본값
         return { effectiveStartDate: task.startDate, effectiveEndDate: task.endDate };
-    }, [task.startDate, task.endDate, dragInfo, dependencyDragDeltaDays, groupDragDeltaDays]);
+    }, [task.startDate, task.endDate, dragInfo, dependencyDragDeltaDays, groupDragInfo, groupDragDeltaDays]);
 
     const isDependencyDragging = dependencyDragDeltaDays !== 0;
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
@@ -515,21 +523,6 @@ export const TaskBar: React.FC<TaskBarProps> = React.memo(({
                     >
                         {task.name}
                     </text>
-                )}
-
-                {/* 드래그 중 건너뛴 휴일 영역 표시 */}
-                {isDragging && dragInfo?.skippedHolidayDays && dragInfo.skippedHolidayDays > 0 && (
-                    <rect
-                        x={dragInfo.dragDirection === 'left'
-                            ? barWidth  // 왼쪽 드래그: 휴일이 task 오른쪽에 있음
-                            : -dragInfo.skippedHolidayDays * pixelsPerDay  // 오른쪽 드래그: 휴일이 task 왼쪽에 있음
-                        }
-                        y={0}
-                        width={dragInfo.skippedHolidayDays * pixelsPerDay}
-                        height={BAR_HEIGHT}
-                        fill="url(#holidayHatchPattern)"
-                        className="pointer-events-none opacity-70"
-                    />
                 )}
 
                 {/* Drag preview */}

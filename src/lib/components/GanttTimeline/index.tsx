@@ -173,9 +173,12 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             handleGroupBarMouseDown,
             getGroupDragDeltaDays,
             getTaskGroupDragDeltaDays,
+            getTaskDragInfo,
         } = useGroupDrag({
             pixelsPerDay,
             allTasks: allTasks || tasks,
+            holidays,
+            calendarSettings,
             onGroupDrag,
         });
 
@@ -477,6 +480,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     isDraggable={!isMasterView && !!onBarDrag}
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
+                                    groupDragInfo={getTaskDragInfo(task.id)}
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
                                     onDragStart={handleBarMouseDown}
                                     onDependencyDragStart={handleDependencyBarMouseDown}
@@ -567,6 +571,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     calendarSettings={calendarSettings}
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
+                                    groupDragInfo={getTaskDragInfo(task.id)}
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
                                     isFocused={focusedTaskId === task.id}
                                 />

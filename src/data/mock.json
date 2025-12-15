@@ -4195,65 +4195,63 @@
             "type": "CP",
             "name": "테스트 CP",
             "startDate": "2026-02-19",
-            "endDate": "2026-03-07",
+            "endDate": "2026-02-26",
             "cp": {
-                "workDaysTotal": 13,
-                "nonWorkDaysTotal": 5
+                "workDaysTotal": 7,
+                "nonWorkDaysTotal": 0
             },
             "dependencies": []
         },
         {
-            "id": "group-1765684109664",
+            "id": "group-1765770735396",
             "parentId": "cp-1765683949170",
             "wbsLevel": 2,
             "type": "GROUP",
-            "name": "테스트그룹",
-            "startDate": "2025-12-24",
-            "endDate": "2026-01-09",
+            "name": "새 그룹",
+            "startDate": "2026-02-19",
+            "endDate": "2026-02-28",
             "dependencies": []
         },
         {
-            "id": "task-1765684001777",
-            "parentId": "group-1765684109664",
+            "id": "task-1765764976545",
+            "parentId": "group-1765770735396",
             "wbsLevel": 2,
             "type": "TASK",
-            "name": "테스트공정 1",
+            "name": "새 공정 1",
             "startDate": "2026-02-19",
-            "endDate": "2026-02-24",
+            "endDate": "2026-02-23",
             "task": {
-                "netWorkDays": 5,
+                "netWorkDays": 4,
                 "indirectWorkDaysPre": 0,
                 "indirectWorkDaysPost": 0
             },
             "dependencies": []
         },
         {
-            "id": "task-1765684045310",
-            "parentId": "group-1765684109664",
+            "id": "task-1765772669927",
+            "parentId": "group-1765770735396",
             "wbsLevel": 2,
             "type": "TASK",
-            "name": "테스트공정 2",
-            "startDate": "2026-02-23",
-            "endDate": "2026-03-02",
+            "name": "새 공정 2",
+            "startDate": "2026-02-24",
+            "endDate": "2026-02-25",
             "task": {
-                "netWorkDays": 3,
-                "indirectWorkDaysPre": 2,
-                "indirectWorkDaysPost": 3,
-                "indirectWorkNamePre": "선 작업",
-                "indirectWorkNamePost": "양생"
+                "netWorkDays": 2,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
             },
             "dependencies": []
         },
         {
-            "id": "task-1765684046237",
-            "parentId": "group-1765684109664",
+            "id": "task-1765773889918",
+            "parentId": "group-1765770735396",
             "wbsLevel": 2,
             "type": "TASK",
-            "name": "테스트공정 3",
-            "startDate": "2026-03-03",
-            "endDate": "2026-03-07",
+            "name": "새 공정 3",
+            "startDate": "2026-02-26",
+            "endDate": "2026-02-26",
             "task": {
-                "netWorkDays": 5,
+                "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
                 "indirectWorkDaysPost": 0
             },
@@ -4283,18 +4281,18 @@
             "targetDayIndex": 0
         },
         {
-            "id": "dep-1765714329746-hygtq3q0w",
-            "sourceTaskId": "task-1765684045310",
-            "targetTaskId": "task-1765684046237",
-            "sourceDayIndex": 8,
+            "id": "dep-1765776645877-0y1oj3y9z",
+            "sourceTaskId": "task-1765764976545",
+            "targetTaskId": "task-1765772669927",
+            "sourceDayIndex": 4,
             "targetDayIndex": 0
         },
         {
-            "id": "dep-1765719580602-lwwkj3zjq",
-            "sourceTaskId": "task-1765684001777",
-            "targetTaskId": "task-1765684045310",
-            "sourceDayIndex": 5,
-            "targetDayIndex": 2
+            "id": "dep-1765776647528-6cr9xw4za",
+            "sourceTaskId": "task-1765772669927",
+            "targetTaskId": "task-1765773889918",
+            "sourceDayIndex": 2,
+            "targetDayIndex": 0
         }
     ]
 }

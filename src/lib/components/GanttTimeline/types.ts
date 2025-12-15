@@ -20,9 +20,6 @@ export interface DragInfo {
     indirectWorkDaysPre: number;
     indirectWorkDaysPost: number;
     netWorkDays: number;
-    // 스킵된 휴일 영역 정보 (빗금 표시용)
-    skippedHolidayDays?: number;
-    dragDirection?: 'left' | 'right';
 }
 
 /** Bar 드래그 결과 콜백 파라미터 */
@@ -59,8 +56,6 @@ export interface BarDragState {
     currentNetWorkDays: number;
     currentIndirectWorkDaysPost: number;
     lastDeltaX: number;
-    skippedHolidayDays: number;
-    dragDirection: 'left' | 'right';
 }
 
 /** 마일스톤 드래그 상태 */
@@ -136,6 +131,8 @@ export interface TaskBarProps {
     ) => void;
     onDoubleClick?: () => void;
     groupDragDeltaDays?: number;
+    /** 그룹 드래그 시 스냅된 날짜 정보 (새 방식: deltaDays보다 우선) */
+    groupDragInfo?: { startDate: Date; endDate: Date } | null;
     // 앵커 종속성 관련 Props
     dependencyDragDeltaDays?: number;
     onDependencyDragStart?: (
