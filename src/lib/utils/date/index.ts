@@ -46,3 +46,12 @@ export {
     getKoreanHolidaysByYear,
     getKoreanHolidaysForYears,
 } from './koreanHolidays';
+
+// Validation utilities
+export {
+    isValidDate,
+    isValidDateRange,
+    validateTaskDates,
+    parseDateSafe,
+    isSameDay,
+} from './validation';

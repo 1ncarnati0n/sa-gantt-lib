@@ -1,11 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
 import type { SidebarRowMasterProps } from './types';
 
 const { ROW_HEIGHT } = GANTT_LAYOUT;
+
+/** 숫자 포맷팅 - 정수면 그대로, 소수면 1자리까지 표시 */
+const formatNum = (n: number): string => Number.isInteger(n) ? n.toString() : n.toFixed(1);
 
 export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
     task,
@@ -44,10 +47,8 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
     cpSummary,
     onTaskClick,
 }) => {
-    const formatNum = (n: number) => Number.isInteger(n) ? n.toString() : n.toFixed(1);
-
-    // 행 스타일 계산
-    const getRowStyle = () => {
+    // 행 스타일 계산 (메모이제이션)
+    const rowStyle = useMemo(() => {
         let backgroundColor = 'var(--gantt-bg-primary)';
         let borderColor = 'var(--gantt-border-light)';
         let boxShadow = 'none';
@@ -85,7 +86,21 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                 transform: `translateY(${rowStart}px)`,
             } : {}),
         };
-    };
+    }, [isDragging, isDragOver, dragOverPosition, isFocused, isSelected, isGroup, isVirtualized, rowStart]);
+
+    // 토글 핸들러 메모이제이션
+    const handleToggle = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onToggle(task.id);
+    }, [onToggle, task.id]);
+
+    // 편집 시작 핸들러 메모이제이션
+    const handleStartEdit = useCallback((e: React.MouseEvent) => {
+        if (onTaskUpdate) {
+            e.stopPropagation();
+            onStartEdit(task);
+        }
+    }, [onTaskUpdate, onStartEdit, task]);
 
     return (
         <div
@@ -98,7 +113,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
             onClick={(e) => onRowClick(e, task, rowIndex)}
             onContextMenu={(e) => onContextMenu(e, task)}
             className="box-border flex items-center transition-all duration-150"
-            style={getRowStyle()}
+            style={rowStyle}
             onDoubleClick={() => {
                 if (isGroup && canExpand) {
                     onToggle(task.id);
@@ -129,10 +144,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
             >
                 {canExpand ? (
                     <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onToggle(task.id);
-                        }}
+                        onClick={handleToggle}
                         className="mr-1 shrink-0 rounded p-1"
                         style={{ color: 'var(--gantt-text-muted)' }}
                     >
@@ -166,12 +178,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                             color: 'var(--gantt-text-primary)',
                             cursor: isGroup ? 'text' : 'default',
                         }}
-                        onDoubleClick={(e) => {
-                            if (onTaskUpdate) {
-                                e.stopPropagation();
-                                onStartEdit(task);
-                            }
-                        }}
+                        onDoubleClick={handleStartEdit}
                         title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
                     >
                         {task.name}

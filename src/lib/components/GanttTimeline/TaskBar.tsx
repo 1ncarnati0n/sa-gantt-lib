@@ -5,6 +5,7 @@ import { format, addDays } from 'date-fns';
 import { GANTT_LAYOUT, GANTT_COLORS, GANTT_DRAG } from '../../types';
 import { dateToX, getTaskCalendarSettings, getHolidayOffsetsInDateRange, isHoliday } from '../../utils/dateUtils';
 import { calculateCriticalPath } from '../../utils/criticalPathUtils';
+import { collectDescendantTasks } from '../../utils/groupUtils';
 import type { TaskBarProps } from './types';
 
 const { BAR_HEIGHT } = GANTT_LAYOUT;
@@ -94,23 +95,8 @@ export const TaskBar: React.FC<TaskBarProps> = React.memo(({
     }, [effectiveStartDate, holidays, calendarSettings]);
 
     if (isMasterView) {
-        // Level 1: CP 바
-        const collectDescendantTasks = (parentId: string) => {
-            const result: typeof allTasks = [];
-            allTasks.forEach(t => {
-                if (t.parentId === parentId) {
-                    if (t.type === 'TASK' && t.wbsLevel === 2) {
-                        result.push(t);
-                    }
-                    if (t.type === 'GROUP') {
-                        result.push(...collectDescendantTasks(t.id));
-                    }
-                }
-            });
-            return result;
-        };
-
-        const childTasks = collectDescendantTasks(task.id);
+        // Level 1: CP 바 - 통합된 collectDescendantTasks 사용
+        const childTasks = collectDescendantTasks(task.id, allTasks, { wbsLevel: 2 });
         const cpSummary = calculateCriticalPath(
             childTasks,
             holidays,
