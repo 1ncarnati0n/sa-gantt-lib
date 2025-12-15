@@ -29,6 +29,7 @@ export const TaskBar: React.FC<TaskBarProps> = React.memo(({
     groupDragDeltaDays = 0,
     groupDragInfo,
     dependencyDragDeltaDays = 0,
+    dependencyDragInfo,
     onDependencyDragStart,
     hasDependency = false,
     onMouseEnter,
@@ -44,38 +45,45 @@ export const TaskBar: React.FC<TaskBarProps> = React.memo(({
     const isDragging = !!dragInfo;
 
     // 성능 최적화: effectiveDates 메모이제이션
-    // 드래그 우선순위: dragInfo > dependencyDrag > groupDragInfo > groupDragDeltaDays > 기본
+    // 드래그 우선순위: dragInfo > dependencyDragInfo > dependencyDragDeltaDays > groupDragInfo > groupDragDeltaDays > 기본
     const { effectiveStartDate, effectiveEndDate } = useMemo(() => {
         // 1. 직접 드래그 중
         if (dragInfo) {
             return { effectiveStartDate: dragInfo.startDate, effectiveEndDate: dragInfo.endDate };
         }
-        // 2. 종속성 드래그 중
+        // 2. 종속성 드래그 중 (새 방식: 스냅된 날짜 - 우선)
+        if (dependencyDragInfo) {
+            return {
+                effectiveStartDate: dependencyDragInfo.startDate,
+                effectiveEndDate: dependencyDragInfo.endDate,
+            };
+        }
+        // 3. 종속성 드래그 중 (구 방식: deltaDays - 하위 호환성)
         if (dependencyDragDeltaDays !== 0) {
             return {
                 effectiveStartDate: addDays(task.startDate, dependencyDragDeltaDays),
                 effectiveEndDate: addDays(task.endDate, dependencyDragDeltaDays),
             };
         }
-        // 3. 그룹 드래그 중 (새 방식: 스냅된 날짜 직접 사용)
+        // 4. 그룹 드래그 중 (새 방식: 스냅된 날짜 직접 사용)
         if (groupDragInfo) {
             return {
                 effectiveStartDate: groupDragInfo.startDate,
                 effectiveEndDate: groupDragInfo.endDate,
             };
         }
-        // 4. 그룹 드래그 중 (구 방식: deltaDays만 있는 경우)
+        // 5. 그룹 드래그 중 (구 방식: deltaDays만 있는 경우)
         if (groupDragDeltaDays !== 0) {
             return {
                 effectiveStartDate: addDays(task.startDate, groupDragDeltaDays),
                 effectiveEndDate: addDays(task.endDate, groupDragDeltaDays),
             };
         }
-        // 5. 기본값
+        // 6. 기본값
         return { effectiveStartDate: task.startDate, effectiveEndDate: task.endDate };
-    }, [task.startDate, task.endDate, dragInfo, dependencyDragDeltaDays, groupDragInfo, groupDragDeltaDays]);
+    }, [task.startDate, task.endDate, dragInfo, dependencyDragInfo, dependencyDragDeltaDays, groupDragInfo, groupDragDeltaDays]);
 
-    const isDependencyDragging = dependencyDragDeltaDays !== 0;
+    const isDependencyDragging = dependencyDragDeltaDays !== 0 || !!dependencyDragInfo;
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
 
     // 휴일 착지 감지 (D-2: 완전 투과 방식)

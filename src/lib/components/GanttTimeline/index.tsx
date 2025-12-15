@@ -207,6 +207,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             taskHasDependency,
             handleDependencyBarMouseDown,
             getTaskDeltaDays: getDependencyDragDeltaDays,
+            getTaskDragInfo: getDependencyDragInfo,  // 신규: 스냅된 날짜 정보
             isDraggingTask: _isDependencyDraggingTask,
             getConnectedTaskIds,
         } = useDependencyDrag({
@@ -217,6 +218,16 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             dependencies: anchorDependencies,
             onDependencyDrag: onAnchorDependencyDrag,
         });
+
+        // 통합 델타 함수: 종속성 드래그 + 그룹 드래그 델타 결합
+        const getCombinedTaskDeltaDays = useCallback((taskId: string): number => {
+            // 종속성 드래그 델타 확인
+            const dependencyDelta = getDependencyDragDeltaDays(taskId);
+            if (dependencyDelta !== 0) return dependencyDelta;
+
+            // 그룹 드래그 델타 확인
+            return getTaskGroupDragDeltaDays(taskId);
+        }, [getDependencyDragDeltaDays, getTaskGroupDragDeltaDays]);
 
         // 호버된 태스크 ID 상태 (앵커 표시용) - 현재 미사용
         const [_hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
@@ -482,6 +493,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     groupDragInfo={getTaskDragInfo(task.id)}
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
+                                    dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     onDragStart={handleBarMouseDown}
                                     onDependencyDragStart={handleDependencyBarMouseDown}
                                     hasDependency={taskHasDependency(task.id)}
@@ -508,7 +520,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 onDependencyHover={handleDependencyHover}
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
-                                getTaskDeltaDays={getDependencyDragDeltaDays}
+                                getTaskDeltaDays={getCombinedTaskDeltaDays}
                             />
                         )}
 
@@ -521,7 +533,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 pixelsPerDay={pixelsPerDay}
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
-                                getTaskDeltaDays={getDependencyDragDeltaDays}
+                                getTaskDeltaDays={getCombinedTaskDeltaDays}
                             />
                         )}
 
@@ -543,7 +555,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     onAnchorHover={handleAnchorHover}
                                     holidays={holidays}
                                     calendarSettings={calendarSettings}
-                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
+                                    dependencyDragDeltaDays={getCombinedTaskDeltaDays(task.id)}
                                 />
                             );
                         })}
@@ -573,6 +585,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     groupDragInfo={getTaskDragInfo(task.id)}
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
+                                    dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     isFocused={focusedTaskId === task.id}
                                 />
                             );

@@ -77,6 +77,17 @@ export interface GroupDragState {
     // 휴일 스냅 관련 필드 제거됨 - 완전 투과 방식
 }
 
+/** 태스크별 드래그 정보 (그룹/종속성 드래그 시 사용) */
+export interface TaskDragInfo {
+    originalStartDate: Date;
+    originalEndDate: Date;
+    indirectWorkDaysPre: number;
+    netWorkDays: number;
+    indirectWorkDaysPost: number;
+    currentStartDate: Date;
+    currentEndDate: Date;
+}
+
 /** 종속성 드래그 상태 */
 export interface DependencyDragState {
     sourceTaskId: string;
@@ -86,7 +97,13 @@ export interface DependencyDragState {
     connectedTasks: ConstructionTask[];
     currentDeltaDays: number;
     lastDeltaX: number;
-    taskDeltaMap: Map<string, number>;
+    taskDeltaMap: Map<string, number>;  // 하위 호환성용 (deprecated)
+
+    // 크리티컬 패스 유지를 위한 신규 필드 (useGroupDrag와 동일)
+    taskDragInfoMap: Map<string, TaskDragInfo>;
+    referenceTask: ConstructionTask | null;
+    workingDaysOffsets: Map<string, number>;
+    currentDeltaWorkingDays: number;
 }
 
 // ============================================
@@ -135,6 +152,8 @@ export interface TaskBarProps {
     groupDragInfo?: { startDate: Date; endDate: Date } | null;
     // 앵커 종속성 관련 Props
     dependencyDragDeltaDays?: number;
+    /** 종속성 드래그 시 스냅된 날짜 정보 (새 방식: deltaDays보다 우선) */
+    dependencyDragInfo?: { startDate: Date; endDate: Date } | null;
     onDependencyDragStart?: (
         e: React.MouseEvent,
         taskId: string,
