@@ -109,7 +109,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         const isVirtualized = virtualRows && virtualRows.length > 0;
 
         // 태스크 선택 훅
-        const { selectTask } = useGanttSelection();
+        const { selectTask, clearSelection: clearTaskSelection } = useGanttSelection();
 
         // 컨텍스트 메뉴 상태
         const [contextMenu, setContextMenu] = useState<{
@@ -262,9 +262,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         const handleSvgClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
             // 클릭된 요소가 SVG 자체일 때만 선택 해제 (task bar, anchor, dependency line 등이 아닐 때)
             if (e.target === e.currentTarget) {
-                clearSelection();
+                clearSelection();        // 앵커/종속성 선택 해제
+                clearTaskSelection();    // 태스크 선택 해제
             }
-        }, [clearSelection]);
+        }, [clearSelection, clearTaskSelection]);
 
         // Row data (virtualized or full)
         const rowData = isVirtualized
