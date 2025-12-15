@@ -37,9 +37,17 @@ export const addWorkingDays = (
     settings: CalendarSettings
 ): Date => {
     let currentDate = new Date(startDate);
-    let daysAdded = 0;
 
-    if (days <= 0) return currentDate;
+    // 0이면 원본 반환
+    if (days === 0) return currentDate;
+
+    // 음수: 역방향 이동 (subtractWorkingDays 활용)
+    if (days < 0) {
+        return subtractWorkingDays(currentDate, Math.abs(days), holidays, settings);
+    }
+
+    // 양수: 기존 로직
+    let daysAdded = 0;
 
     // 소수점이 있으면 올림 처리하여 날짜 계산
     const wholeDays = Math.ceil(days);
@@ -138,6 +146,53 @@ export const countWorkingDays = (
     }
 
     return count;
+};
+
+/**
+ * 작업일 기준으로 N칸 이동 (그룹 드래그용)
+ *
+ * countWorkingDays와 addWorkingDays의 off-by-one 차이를 보정:
+ * - countWorkingDays(A, B) = N (A부터 B 전날까지 작업일 "개수")
+ * - addWorkingDays(A, N) = A에서 N번째 작업일 (A가 1번째)
+ * - moveByWorkingDays(A, N) = A에서 N칸 이동한 날짜
+ *
+ * @param startDate - 시작 날짜
+ * @param days - 이동할 작업일 수 (0=제자리, 양수=앞으로, 음수=뒤로)
+ * @param holidays - 공휴일 목록
+ * @param settings - 캘린더 설정
+ * @returns 이동한 날짜
+ *
+ * @example
+ * ```ts
+ * // 월요일에서 1작업일 앞으로 이동 = 화요일
+ * const nextDay = moveByWorkingDays(monday, 1, [], settings);
+ *
+ * // 금요일에서 1작업일 뒤로 이동 = 목요일
+ * const prevDay = moveByWorkingDays(friday, -1, [], settings);
+ *
+ * // countWorkingDays와 일관성 보장:
+ * // countWorkingDays(A, B) = N 이면
+ * // moveByWorkingDays(A, N) = B
+ * ```
+ */
+export const moveByWorkingDays = (
+    startDate: Date,
+    days: number,
+    holidays: Date[] = [],
+    settings: CalendarSettings
+): Date => {
+    // 0이면 원본 복사본 반환
+    if (days === 0) return new Date(startDate);
+
+    if (days > 0) {
+        // 양수: N칸 앞으로 이동
+        // addWorkingDays(A, N)은 A에서 N번째 작업일을 반환 (A가 1번째)
+        // 따라서 N칸 이동하려면 N+1을 전달
+        return addWorkingDays(startDate, days + 1, holidays, settings);
+    } else {
+        // 음수: N칸 뒤로 이동
+        return subtractWorkingDays(startDate, Math.abs(days), holidays, settings);
+    }
 };
 
 /**
