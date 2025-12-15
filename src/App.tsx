@@ -17,6 +17,7 @@ import {
   calculateDualCalendarDates,
   DropPosition,
   AnchorDependency,
+  AnchorDependencyDragResult,
   ThemeProvider,
   ThemeToggle,
   // DataService
@@ -830,6 +831,39 @@ function App() {
     });
   }, [setAppState]);
 
+  // 종속성 드래그 핸들러 - 연결된 태스크들을 함께 이동
+  const handleAnchorDependencyDrag = useCallback((result: AnchorDependencyDragResult) => {
+    try {
+      // taskUpdates를 먼저 추출 (TypeScript control flow 분석을 위해)
+      const { taskUpdates } = result;
+
+      // taskUpdates가 없으면 무시 (하위 호환성)
+      if (!taskUpdates || taskUpdates.length === 0) {
+        console.warn('Dependency drag: no taskUpdates provided');
+        return;
+      }
+
+      setAppState(prev => {
+        const newTasks = prev.tasks.map(task => {
+          const update = taskUpdates.find(u => u.taskId === task.id);
+          if (update) {
+            return {
+              ...task,
+              startDate: update.newStartDate,
+              endDate: update.newEndDate,
+            };
+          }
+          return task;
+        });
+        console.log('Dependency drag completed:', result.sourceTaskId, '(affected tasks:', result.affectedTaskIds.length, ')');
+        return { ...prev, tasks: newTasks };
+      });
+    } catch (error) {
+      console.error('Failed to apply dependency drag:', error);
+      alert('종속성 드래그 적용 중 오류가 발생했습니다.');
+    }
+  }, [setAppState]);
+
   if (tasks.length === 0) {
     return (
       <ThemeProvider>
@@ -954,6 +988,7 @@ function App() {
             anchorDependencies={anchorDependencies}
             onAnchorDependencyCreate={handleAnchorDependencyCreate}
             onAnchorDependencyDelete={handleAnchorDependencyDelete}
+            onAnchorDependencyDrag={handleAnchorDependencyDrag}
             onSave={handleSave}
             onReset={handleReset}
             hasUnsavedChanges={hasUnsavedChanges}
