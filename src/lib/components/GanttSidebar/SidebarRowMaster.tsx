@@ -99,8 +99,14 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
             onContextMenu={(e) => onContextMenu(e, task)}
             className="box-border flex items-center transition-all duration-150"
             style={getRowStyle()}
-            onDoubleClick={() => !isGroup && onTaskClick(task)}
-            title={!isGroup ? '더블클릭하여 상세 공정표 보기' : undefined}
+            onDoubleClick={() => {
+                if (isGroup && canExpand) {
+                    onToggle(task.id);
+                } else if (!isGroup) {
+                    onTaskClick(task);
+                }
+            }}
+            title={isGroup && canExpand ? '더블클릭하여 접기/펼치기' : !isGroup ? '더블클릭하여 상세 공정표 보기' : undefined}
         >
             {/* Drag Handle */}
             {onTaskReorder && (

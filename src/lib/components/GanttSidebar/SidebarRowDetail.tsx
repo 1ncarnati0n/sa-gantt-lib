@@ -99,14 +99,16 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
             onDragEnd={onDragEnd}
             onClick={(e) => onRowClick(e, task, rowIndex)}
             onDoubleClick={() => {
-                if (!isGroup && task.type === 'TASK' && onTaskDoubleClick) {
+                if (isGroup && canExpand) {
+                    onToggle(task.id);
+                } else if (!isGroup && task.type === 'TASK' && onTaskDoubleClick) {
                     onTaskDoubleClick(task);
                 }
             }}
             onContextMenu={(e) => onContextMenu(e, task)}
             className="box-border flex items-center transition-colors"
             style={getRowStyle()}
-            title={!isGroup && task.type === 'TASK' ? '더블클릭하여 공정 설정' : undefined}
+            title={isGroup && canExpand ? '더블클릭하여 접기/펼치기' : !isGroup && task.type === 'TASK' ? '더블클릭하여 공정 설정' : undefined}
         >
             {/* Drag Handle */}
             {onTaskReorder && (
