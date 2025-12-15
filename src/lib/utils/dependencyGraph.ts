@@ -194,6 +194,131 @@ export const hasAnyDependency = (
 };
 
 // ============================================
+// 순환 참조 감지
+// ============================================
+
+/**
+ * 순환 참조 감지 결과
+ */
+export interface CycleDetectionResult {
+    /** 순환 참조 존재 여부 */
+    hasCycle: boolean;
+    /** 순환 경로 (taskId 배열). 순환이 없으면 빈 배열 */
+    cyclePath: string[];
+}
+
+/**
+ * 종속성 그래프에서 순환 참조 감지 (DFS 기반)
+ *
+ * @param graph 종속성 그래프
+ * @returns 순환 감지 결과 (순환 여부 + 순환 경로)
+ *
+ * @example
+ * const graph = buildDependencyGraph(tasks, dependencies);
+ * const result = detectCyclicDependency(graph);
+ * if (result.hasCycle) {
+ *     console.log('Cycle detected:', result.cyclePath.join(' -> '));
+ * }
+ */
+export const detectCyclicDependency = (
+    graph: DependencyGraph
+): CycleDetectionResult => {
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+    const parentMap = new Map<string, string | null>();
+
+    /**
+     * DFS를 통한 순환 감지
+     * @returns 순환이 발견되면 순환 시작 노드 ID, 없으면 null
+     */
+    const dfs = (nodeId: string): string | null => {
+        visited.add(nodeId);
+        recursionStack.add(nodeId);
+
+        const outgoing = graph.outgoingEdges.get(nodeId) || [];
+
+        for (const dep of outgoing) {
+            const targetId = dep.targetTaskId;
+
+            // 아직 방문하지 않은 노드
+            if (!visited.has(targetId)) {
+                parentMap.set(targetId, nodeId);
+                const cycleStart = dfs(targetId);
+                if (cycleStart !== null) {
+                    return cycleStart;
+                }
+            }
+            // 현재 재귀 스택에 있는 노드를 다시 만남 -> 순환 발견
+            else if (recursionStack.has(targetId)) {
+                parentMap.set(targetId, nodeId);
+                return targetId;
+            }
+        }
+
+        recursionStack.delete(nodeId);
+        return null;
+    };
+
+    // 모든 노드에서 DFS 시작
+    for (const nodeId of graph.nodes.keys()) {
+        if (!visited.has(nodeId)) {
+            parentMap.set(nodeId, null);
+            const cycleStart = dfs(nodeId);
+
+            if (cycleStart !== null) {
+                // 순환 경로 재구성
+                const cyclePath: string[] = [cycleStart];
+                let current: string | null = parentMap.get(cycleStart) ?? null;
+
+                while (current !== null && current !== cycleStart) {
+                    cyclePath.unshift(current);
+                    current = parentMap.get(current) ?? null;
+                }
+
+                // 순환 완성을 위해 시작점 추가
+                if (current === cycleStart) {
+                    cyclePath.unshift(cycleStart);
+                }
+
+                return { hasCycle: true, cyclePath };
+            }
+        }
+    }
+
+    return { hasCycle: false, cyclePath: [] };
+};
+
+/**
+ * 새 종속성 추가 시 순환이 발생하는지 미리 검사
+ *
+ * @param sourceTaskId 출발 태스크 ID
+ * @param targetTaskId 도착 태스크 ID
+ * @param tasks 모든 태스크 목록
+ * @param existingDependencies 기존 종속성 목록
+ * @returns 순환 발생 시 true
+ */
+export const wouldCreateCycle = (
+    sourceTaskId: string,
+    targetTaskId: string,
+    tasks: ConstructionTask[],
+    existingDependencies: AnchorDependency[]
+): boolean => {
+    // 임시 종속성 생성
+    const tempDependency: AnchorDependency = {
+        id: '__temp_cycle_check__',
+        sourceTaskId,
+        targetTaskId,
+        sourceDayIndex: 0,
+        targetDayIndex: 0,
+    };
+
+    const graph = buildDependencyGraph(tasks, [...existingDependencies, tempDependency]);
+    const result = detectCyclicDependency(graph);
+
+    return result.hasCycle;
+};
+
+// ============================================
 // 위상 정렬 및 겹침 방지 로직
 // ============================================
 

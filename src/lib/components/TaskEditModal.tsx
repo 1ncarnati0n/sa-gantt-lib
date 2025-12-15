@@ -147,8 +147,8 @@ interface TaskEditModalProps {
     task: ConstructionTask | null;
     isOpen: boolean;
     onClose: () => void;
-    onSave: (task: ConstructionTask) => void;
-    onDelete?: (taskId: string) => void;
+    onSave: (task: ConstructionTask) => void | Promise<void>;
+    onDelete?: (taskId: string) => void | Promise<void>;
 }
 
 /** 삭제 확인 모달 컴포넌트 (React Portal 사용) */
@@ -285,6 +285,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const [holidayWork, setHolidayWork] = useState(false);       // 공휴일 작업 (체크 시 작업)
 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     // 시작일 상태
     const [startDateStr, setStartDateStr] = useState('');
@@ -383,8 +384,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         startDateStr,
     ]);
 
-    const handleSave = () => {
-        if (!task || !task.task) return;
+    const handleSave = async () => {
+        if (!task || !task.task || isSaving) return;
 
         // 새 시작일 파싱
         const newStartDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : task.startDate;
@@ -409,21 +410,36 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             task: updatedTaskData,
         };
 
-        console.log('[TaskEditModal] Save button clicked:', updatedTask);
-        onSave(updatedTask);
-        // 모달은 닫지 않음 - hasChanges가 false가 되면 "닫기" 버튼으로 변경
+        setIsSaving(true);
+        try {
+            console.log('[TaskEditModal] Save button clicked:', updatedTask);
+            await onSave(updatedTask);
+            // 모달은 닫지 않음 - hasChanges가 false가 되면 "닫기" 버튼으로 변경
+        } catch (error) {
+            console.error('[TaskEditModal] Save failed:', error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDeleteClick = () => {
         setShowDeleteConfirm(true);
     };
 
-    const handleDeleteConfirm = () => {
-        if (task && onDelete) {
-            onDelete(task.id);
+    const handleDeleteConfirm = async () => {
+        if (!task || !onDelete || isSaving) return;
+
+        setIsSaving(true);
+        try {
+            await onDelete(task.id);
+            setShowDeleteConfirm(false);
+            onClose();
+        } catch (error) {
+            console.error('[TaskEditModal] Delete failed:', error);
+            setShowDeleteConfirm(false);
+        } finally {
+            setIsSaving(false);
         }
-        setShowDeleteConfirm(false);
-        onClose();
     };
 
     const handleDeleteCancel = () => {

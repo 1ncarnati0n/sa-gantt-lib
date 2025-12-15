@@ -37,8 +37,8 @@ interface MilestoneEditModalProps {
     isOpen: boolean;
     isNew?: boolean;
     onClose: () => void;
-    onSave: (milestone: Milestone) => void;
-    onDelete?: (milestoneId: string) => void;
+    onSave: (milestone: Milestone) => void | Promise<void>;
+    onDelete?: (milestoneId: string) => void | Promise<void>;
 }
 
 /** 삭제 확인 모달 컴포넌트 (React Portal 사용) */
@@ -166,6 +166,7 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
     const [dateStr, setDateStr] = useState('');
     const [milestoneType, setMilestoneType] = useState<MilestoneType>('MASTER');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [closeHovered, setCloseHovered] = useState(false);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -214,8 +215,8 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
         );
     }, [milestone, isOpen, name, description, dateStr, milestoneType]);
 
-    const handleSave = () => {
-        if (!milestone || !name.trim()) return;
+    const handleSave = async () => {
+        if (!milestone || !name.trim() || isSaving) return;
 
         const updatedMilestone: Milestone = {
             ...milestone,
@@ -225,19 +226,35 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({
             milestoneType,
         };
 
-        onSave(updatedMilestone);
-        // 모달은 닫지 않음 - hasChanges가 false가 되면 "닫기" 버튼으로 변경
+        setIsSaving(true);
+        try {
+            await onSave(updatedMilestone);
+            // 모달은 닫지 않음 - hasChanges가 false가 되면 "닫기" 버튼으로 변경
+        } catch (error) {
+            console.error('[MilestoneEditModal] Save failed:', error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDeleteClick = () => {
         setShowDeleteConfirm(true);
     };
 
-    const handleDeleteConfirm = () => {
-        if (milestone && onDelete) {
-            onDelete(milestone.id);
+    const handleDeleteConfirm = async () => {
+        if (!milestone || !onDelete || isSaving) return;
+
+        setIsSaving(true);
+        try {
+            await onDelete(milestone.id);
+            setShowDeleteConfirm(false);
+            onClose();
+        } catch (error) {
+            console.error('[MilestoneEditModal] Delete failed:', error);
+            setShowDeleteConfirm(false);
+        } finally {
+            setIsSaving(false);
         }
-        setShowDeleteConfirm(false);
     };
 
     const handleDeleteCancel = () => {

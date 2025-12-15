@@ -67,8 +67,8 @@
         },
         {
             "id": "milestone-1765412923698",
-            "date": "2026-11-08",
-            "name": "102동 지상골조 완",
+            "date": "2026-11-05",
+            "name": "101동 지상 골조 완료",
             "type": "MILESTONE",
             "milestoneType": "DETAIL"
         }
@@ -107,7 +107,7 @@
             "startDate": "2026-04-06",
             "endDate": "2026-08-01",
             "cp": {
-                "workDaysTotal": 93,
+                "workDaysTotal": 92,
                 "nonWorkDaysTotal": 14
             },
             "dependencies": []
@@ -119,7 +119,7 @@
             "type": "CP",
             "name": "지상골조: F1, F2~7, F8, PH",
             "startDate": "2026-08-03",
-            "endDate": "2026-10-17",
+            "endDate": "2026-11-04",
             "cp": {
                 "workDaysTotal": 64,
                 "nonWorkDaysTotal": 51.5
@@ -303,8 +303,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "보,슬라브 철근조립",
-            "startDate": "2026-05-04",
-            "endDate": "2026-05-10",
+            "startDate": "2026-05-02",
+            "endDate": "2026-05-09",
             "task": {
                 "netWorkDays": 5,
                 "indirectWorkDaysPre": 0,
@@ -376,8 +376,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-06-04",
-            "endDate": "2026-06-04",
+            "startDate": "2026-06-05",
+            "endDate": "2026-06-05",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -391,8 +391,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "벽 철근조립",
-            "startDate": "2026-06-05",
-            "endDate": "2026-06-12",
+            "startDate": "2026-06-08",
+            "endDate": "2026-06-13",
             "task": {
                 "netWorkDays": 5,
                 "indirectWorkDaysPre": 0,
@@ -407,10 +407,10 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "지하1층 거푸집 설치",
-            "startDate": "2026-06-11",
-            "endDate": "2026-07-01",
+            "startDate": "2026-06-13",
+            "endDate": "2026-07-02",
             "task": {
-                "netWorkDays": 17,
+                "netWorkDays": 16,
                 "indirectWorkDaysPre": 0,
                 "indirectWorkDaysPost": 0.5,
                 "indirectWorkNamePost": "검측"
@@ -423,8 +423,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "보,슬라브 철근조립",
-            "startDate": "2026-07-01",
-            "endDate": "2026-07-07",
+            "startDate": "2026-07-02",
+            "endDate": "2026-07-08",
             "task": {
                 "netWorkDays": 5,
                 "indirectWorkDaysPre": 0,
@@ -439,8 +439,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "1차 마감작업",
-            "startDate": "2026-07-07",
-            "endDate": "2026-07-09",
+            "startDate": "2026-07-08",
+            "endDate": "2026-07-10",
             "task": {
                 "netWorkDays": 2,
                 "indirectWorkDaysPre": 0,
@@ -455,8 +455,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "1차 타설",
-            "startDate": "2026-07-09",
-            "endDate": "2026-07-12",
+            "startDate": "2026-07-10",
+            "endDate": "2026-07-13",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -471,8 +471,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "2차 마감작업",
-            "startDate": "2026-07-13",
-            "endDate": "2026-07-15",
+            "startDate": "2026-07-14",
+            "endDate": "2026-07-16",
             "task": {
                 "netWorkDays": 2,
                 "indirectWorkDaysPre": 0,
@@ -487,8 +487,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "2차 타설",
-            "startDate": "2026-07-15",
-            "endDate": "2026-07-18",
+            "startDate": "2026-07-16",
+            "endDate": "2026-07-19",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -634,8 +634,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-08-18",
-            "endDate": "2026-08-18",
+            "startDate": "2026-08-21",
+            "endDate": "2026-08-21",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -649,8 +649,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "갱폼설치",
-            "startDate": "2026-08-18",
-            "endDate": "2026-08-20",
+            "startDate": "2026-08-22",
+            "endDate": "2026-08-24",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -665,8 +665,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "옹벽 철근조립",
-            "startDate": "2026-08-19",
-            "endDate": "2026-08-20",
+            "startDate": "2026-08-24",
+            "endDate": "2026-08-25",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -681,8 +681,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-08-20",
-            "endDate": "2026-08-21",
+            "startDate": "2026-08-25",
+            "endDate": "2026-08-26",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -697,8 +697,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-08-21",
-            "endDate": "2026-08-22",
+            "startDate": "2026-08-26",
+            "endDate": "2026-08-27",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -713,8 +713,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-08-22",
-            "endDate": "2026-08-24",
+            "startDate": "2026-08-27",
+            "endDate": "2026-08-29",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -739,8 +739,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-08-24",
-            "endDate": "2026-08-24",
+            "startDate": "2026-08-29",
+            "endDate": "2026-08-29",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -754,8 +754,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "갱폼설치",
-            "startDate": "2026-08-25",
-            "endDate": "2026-08-27",
+            "startDate": "2026-08-31",
+            "endDate": "2026-09-02",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -770,8 +770,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "옹벽 철근조립",
-            "startDate": "2026-08-26",
-            "endDate": "2026-08-27",
+            "startDate": "2026-09-01",
+            "endDate": "2026-09-02",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -786,8 +786,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-08-27",
-            "endDate": "2026-08-28",
+            "startDate": "2026-09-02",
+            "endDate": "2026-09-03",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -802,8 +802,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-08-28",
-            "endDate": "2026-08-29",
+            "startDate": "2026-09-03",
+            "endDate": "2026-09-04",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -818,8 +818,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-08-29",
-            "endDate": "2026-08-31",
+            "startDate": "2026-09-04",
+            "endDate": "2026-09-06",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -844,8 +844,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-08-31",
-            "endDate": "2026-08-31",
+            "startDate": "2026-09-07",
+            "endDate": "2026-09-07",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -859,8 +859,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "갱폼설치",
-            "startDate": "2026-09-01",
-            "endDate": "2026-09-03",
+            "startDate": "2026-09-08",
+            "endDate": "2026-09-10",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -875,8 +875,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "옹벽 철근조립",
-            "startDate": "2026-09-02",
-            "endDate": "2026-09-03",
+            "startDate": "2026-09-09",
+            "endDate": "2026-09-10",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -891,8 +891,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-09-03",
-            "endDate": "2026-09-04",
+            "startDate": "2026-09-10",
+            "endDate": "2026-09-11",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -907,8 +907,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-09-04",
-            "endDate": "2026-09-05",
+            "startDate": "2026-09-11",
+            "endDate": "2026-09-12",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -923,8 +923,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-09-05",
-            "endDate": "2026-09-07",
+            "startDate": "2026-09-12",
+            "endDate": "2026-09-14",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -949,8 +949,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-09-07",
-            "endDate": "2026-09-07",
+            "startDate": "2026-09-14",
+            "endDate": "2026-09-14",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -964,8 +964,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "갱폼설치",
-            "startDate": "2026-09-08",
-            "endDate": "2026-09-10",
+            "startDate": "2026-09-15",
+            "endDate": "2026-09-17",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -980,8 +980,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "옹벽 철근조립",
-            "startDate": "2026-09-09",
-            "endDate": "2026-09-10",
+            "startDate": "2026-09-16",
+            "endDate": "2026-09-17",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -996,8 +996,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-09-10",
-            "endDate": "2026-09-11",
+            "startDate": "2026-09-17",
+            "endDate": "2026-09-18",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1012,8 +1012,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-09-11",
-            "endDate": "2026-09-12",
+            "startDate": "2026-09-18",
+            "endDate": "2026-09-19",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1028,8 +1028,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-09-12",
-            "endDate": "2026-09-14",
+            "startDate": "2026-09-19",
+            "endDate": "2026-09-21",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1054,8 +1054,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-09-14",
-            "endDate": "2026-09-14",
+            "startDate": "2026-09-21",
+            "endDate": "2026-09-21",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1069,8 +1069,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "갱폼설치",
-            "startDate": "2026-09-15",
-            "endDate": "2026-09-17",
+            "startDate": "2026-09-22",
+            "endDate": "2026-09-24",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1085,8 +1085,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "옹벽 철근조립",
-            "startDate": "2026-09-16",
-            "endDate": "2026-09-17",
+            "startDate": "2026-09-23",
+            "endDate": "2026-09-24",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1101,8 +1101,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-09-17",
-            "endDate": "2026-09-18",
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-29",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1117,8 +1117,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-09-18",
-            "endDate": "2026-09-19",
+            "startDate": "2026-09-29",
+            "endDate": "2026-09-30",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1133,8 +1133,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-09-19",
-            "endDate": "2026-09-21",
+            "startDate": "2026-09-30",
+            "endDate": "2026-10-02",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1159,8 +1159,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-09-21",
-            "endDate": "2026-09-21",
+            "startDate": "2026-10-02",
+            "endDate": "2026-10-02",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1174,8 +1174,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "갱폼설치",
-            "startDate": "2026-09-22",
-            "endDate": "2026-09-24",
+            "startDate": "2026-10-06",
+            "endDate": "2026-10-08",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1190,8 +1190,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "옹벽 철근조립",
-            "startDate": "2026-09-23",
-            "endDate": "2026-09-24",
+            "startDate": "2026-10-07",
+            "endDate": "2026-10-08",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1206,8 +1206,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-09-28",
-            "endDate": "2026-09-29",
+            "startDate": "2026-10-08",
+            "endDate": "2026-10-09",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1222,8 +1222,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-09-28",
-            "endDate": "2026-09-29",
+            "startDate": "2026-10-10",
+            "endDate": "2026-10-11",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1238,8 +1238,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-09-28",
-            "endDate": "2026-09-30",
+            "startDate": "2026-10-12",
+            "endDate": "2026-10-14",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1264,8 +1264,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-09-28",
-            "endDate": "2026-09-28",
+            "startDate": "2026-10-14",
+            "endDate": "2026-10-14",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1279,8 +1279,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "갱폼설치",
-            "startDate": "2026-09-29",
-            "endDate": "2026-10-01",
+            "startDate": "2026-10-15",
+            "endDate": "2026-10-17",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1295,8 +1295,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "옹벽 철근조립",
-            "startDate": "2026-09-30",
-            "endDate": "2026-10-01",
+            "startDate": "2026-10-16",
+            "endDate": "2026-10-17",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1311,8 +1311,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "알폼조립",
-            "startDate": "2026-10-01",
-            "endDate": "2026-10-02",
+            "startDate": "2026-10-17",
+            "endDate": "2026-10-18",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1327,8 +1327,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-10-02",
-            "endDate": "2026-10-03",
+            "startDate": "2026-10-19",
+            "endDate": "2026-10-20",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1343,8 +1343,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-10-06",
-            "endDate": "2026-10-08",
+            "startDate": "2026-10-20",
+            "endDate": "2026-10-22",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1369,8 +1369,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "먹매김",
-            "startDate": "2026-10-06",
-            "endDate": "2026-10-06",
+            "startDate": "2026-10-22",
+            "endDate": "2026-10-22",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1384,8 +1384,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "옹벽 철근조립",
-            "startDate": "2026-10-06",
-            "endDate": "2026-10-07",
+            "startDate": "2026-10-23",
+            "endDate": "2026-10-24",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1400,8 +1400,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "유로폼조립",
-            "startDate": "2026-10-07",
-            "endDate": "2026-10-15",
+            "startDate": "2026-10-24",
+            "endDate": "2026-10-31",
             "task": {
                 "netWorkDays": 6,
                 "indirectWorkDaysPre": 0,
@@ -1416,8 +1416,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "슬라브 철근조립",
-            "startDate": "2026-10-14",
-            "endDate": "2026-10-15",
+            "startDate": "2026-10-31",
+            "endDate": "2026-11-01",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -1432,8 +1432,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "타설",
-            "startDate": "2026-10-15",
-            "endDate": "2026-10-17",
+            "startDate": "2026-11-02",
+            "endDate": "2026-11-04",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -4194,10 +4194,10 @@
             "wbsLevel": 1,
             "type": "CP",
             "name": "테스트 CP",
-            "startDate": "2026-02-19",
-            "endDate": "2026-02-26",
+            "startDate": "2026-03-03",
+            "endDate": "2026-03-18",
             "cp": {
-                "workDaysTotal": 7,
+                "workDaysTotal": 14,
                 "nonWorkDaysTotal": 0
             },
             "dependencies": []
@@ -4218,8 +4218,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "새 공정 1",
-            "startDate": "2026-02-19",
-            "endDate": "2026-02-23",
+            "startDate": "2026-03-03",
+            "endDate": "2026-03-06",
             "task": {
                 "netWorkDays": 4,
                 "indirectWorkDaysPre": 0,
@@ -4233,8 +4233,8 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "새 공정 2",
-            "startDate": "2026-02-24",
-            "endDate": "2026-02-25",
+            "startDate": "2026-03-07",
+            "endDate": "2026-03-09",
             "task": {
                 "netWorkDays": 2,
                 "indirectWorkDaysPre": 0,
@@ -4248,8 +4248,63 @@
             "wbsLevel": 2,
             "type": "TASK",
             "name": "새 공정 3",
-            "startDate": "2026-02-26",
-            "endDate": "2026-02-26",
+            "startDate": "2026-03-10",
+            "endDate": "2026-03-10",
+            "task": {
+                "netWorkDays": 1,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
+            },
+            "dependencies": []
+        },
+        {
+            "id": "group-1765801744680",
+            "parentId": "cp-1765683949170",
+            "wbsLevel": 2,
+            "type": "GROUP",
+            "name": "새 그룹",
+            "startDate": "2026-03-11",
+            "endDate": "2026-03-18",
+            "dependencies": []
+        },
+        {
+            "id": "task-1765788696330",
+            "parentId": "group-1765801744680",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "새 공정 1",
+            "startDate": "2026-03-11",
+            "endDate": "2026-03-14",
+            "task": {
+                "netWorkDays": 4,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1765788696331",
+            "parentId": "group-1765801744680",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "새 공정 2",
+            "startDate": "2026-03-16",
+            "endDate": "2026-03-17",
+            "task": {
+                "netWorkDays": 2,
+                "indirectWorkDaysPre": 0,
+                "indirectWorkDaysPost": 0
+            },
+            "dependencies": []
+        },
+        {
+            "id": "task-1765788696332",
+            "parentId": "group-1765801744680",
+            "wbsLevel": 2,
+            "type": "TASK",
+            "name": "새 공정 3",
+            "startDate": "2026-03-18",
+            "endDate": "2026-03-18",
             "task": {
                 "netWorkDays": 1,
                 "indirectWorkDaysPre": 0,
@@ -4281,17 +4336,360 @@
             "targetDayIndex": 0
         },
         {
-            "id": "dep-1765776645877-0y1oj3y9z",
+            "id": "dep-1765781209306-9fmyq1xwz",
             "sourceTaskId": "task-1765764976545",
             "targetTaskId": "task-1765772669927",
             "sourceDayIndex": 4,
             "targetDayIndex": 0
         },
         {
-            "id": "dep-1765776647528-6cr9xw4za",
+            "id": "dep-1765781211024-9dt52i7ad",
             "sourceTaskId": "task-1765772669927",
             "targetTaskId": "task-1765773889918",
             "sourceDayIndex": 2,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765783512372-s4h6rc9up",
+            "sourceTaskId": "task-1764833942933",
+            "targetTaskId": "task-1764833950015",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765783514540-h2wsdpm3k",
+            "sourceTaskId": "task-1764833950015",
+            "targetTaskId": "task-1764833957364",
+            "sourceDayIndex": 2,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765783535039-p0157pab0",
+            "sourceTaskId": "task-1764915451096",
+            "targetTaskId": "task-1764915572757",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765783537505-y4zihn841",
+            "sourceTaskId": "task-1764915572757",
+            "targetTaskId": "task-1764915648200",
+            "sourceDayIndex": 5,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765783557588-hlragepf9",
+            "sourceTaskId": "task-1764915648200",
+            "targetTaskId": "task-1764915903807",
+            "sourceDayIndex": 17,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765783559856-0b30xs86z",
+            "sourceTaskId": "task-1764915903807",
+            "targetTaskId": "task-1764915992145",
+            "sourceDayIndex": 5,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765783561655-2sfshyqk4",
+            "sourceTaskId": "task-1764915992145",
+            "targetTaskId": "task-1764916119980",
+            "sourceDayIndex": 2,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765783563738-cw6drbwx7",
+            "sourceTaskId": "task-1764916119980",
+            "targetTaskId": "task-1764916170743",
+            "sourceDayIndex": 4,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785852569-ob884t1v6",
+            "sourceTaskId": "task-1764916082203",
+            "targetTaskId": "task-1765175749907",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785857002-g21olz3vz",
+            "sourceTaskId": "task-1765175749907",
+            "targetTaskId": "task-1764916098741",
+            "sourceDayIndex": 5,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785869735-9q7nu5tsc",
+            "sourceTaskId": "task-1764916098741",
+            "targetTaskId": "task-1764917122853",
+            "sourceDayIndex": 16,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785871485-uabvxwp95",
+            "sourceTaskId": "task-1764917122853",
+            "targetTaskId": "task-1764917189561",
+            "sourceDayIndex": 5,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785874252-8cckczoyr",
+            "sourceTaskId": "task-1764917189561",
+            "targetTaskId": "task-1764917256784",
+            "sourceDayIndex": 2,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785876035-h6pybhu3j",
+            "sourceTaskId": "task-1764917256784",
+            "targetTaskId": "task-1764917346141",
+            "sourceDayIndex": 4,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785877652-7qbo4llsp",
+            "sourceTaskId": "task-1764917346141",
+            "targetTaskId": "task-1764917379035",
+            "sourceDayIndex": 2,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785885885-47haopxwp",
+            "sourceTaskId": "task-1764917379035",
+            "targetTaskId": "task-1764917417904",
+            "sourceDayIndex": 4,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785959037-gkf9p7x8x",
+            "sourceTaskId": "task-1764917719562",
+            "targetTaskId": "task-1764917915587",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785961406-phw6gzxlg",
+            "sourceTaskId": "task-1764917915587",
+            "targetTaskId": "task-1764917970308",
+            "sourceDayIndex": 2,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785962870-p9bm9tk7c",
+            "sourceTaskId": "task-1764917970308",
+            "targetTaskId": "task-1764918001817",
+            "sourceDayIndex": 2,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785965075-qf0r2y6u6",
+            "sourceTaskId": "task-1764918001817",
+            "targetTaskId": "task-1764918956774",
+            "sourceDayIndex": 4,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785970704-jseq1vub1",
+            "sourceTaskId": "task-1764918956774",
+            "targetTaskId": "task-1764919071225",
+            "sourceDayIndex": 2,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785994986-drszeeeja",
+            "sourceTaskId": "task-1764922764832",
+            "targetTaskId": "task-1764922809284",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785996903-dhhx7efqq",
+            "sourceTaskId": "task-1764922809284",
+            "targetTaskId": "task-1764922851457",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765785998670-4h23ulxzg",
+            "sourceTaskId": "task-1764922851457",
+            "targetTaskId": "task-1764922904568",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786000723-n7d9v066g",
+            "sourceTaskId": "task-1764922904568",
+            "targetTaskId": "task-1764922939554",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786002220-o3t9py77c",
+            "sourceTaskId": "task-1764922939554",
+            "targetTaskId": "task-1764923004395",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786004237-cfw2d0wn7",
+            "sourceTaskId": "task-1765165914390",
+            "targetTaskId": "task-1765165914391",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786005687-htkq4bnkq",
+            "sourceTaskId": "task-1765165914391",
+            "targetTaskId": "task-1765165914392",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786007470-hn6ixmnr2",
+            "sourceTaskId": "task-1765165914392",
+            "targetTaskId": "task-1765165914393",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786008720-89k26xeh0",
+            "sourceTaskId": "task-1765165914393",
+            "targetTaskId": "task-1765165914394",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786010169-24h5n7lph",
+            "sourceTaskId": "task-1765165914394",
+            "targetTaskId": "task-1765165914395",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786029870-08aek292k",
+            "sourceTaskId": "task-1765166235819",
+            "targetTaskId": "task-1765166235820",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786032304-35ddqkjj9",
+            "sourceTaskId": "task-1765166235820",
+            "targetTaskId": "task-1765166235821",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786034037-bu5gdcls3",
+            "sourceTaskId": "task-1765166235821",
+            "targetTaskId": "task-1765166235822",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786035654-a2nsx062q",
+            "sourceTaskId": "task-1765166235822",
+            "targetTaskId": "task-1765166235823",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786037140-xulc11irn",
+            "sourceTaskId": "task-1765166235823",
+            "targetTaskId": "task-1765166235824",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786108438-fhs20qmca",
+            "sourceTaskId": "task-1765166503038",
+            "targetTaskId": "task-1765166503039",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786112771-2a8cxb2er",
+            "sourceTaskId": "task-1765166503039",
+            "targetTaskId": "task-1765166503040",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786114938-qr3cxijun",
+            "sourceTaskId": "task-1765166503040",
+            "targetTaskId": "task-1765166503041",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786116888-22t1o82ix",
+            "sourceTaskId": "task-1765166503041",
+            "targetTaskId": "task-1765166503042",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786118741-wv8rneyre",
+            "sourceTaskId": "task-1765166503042",
+            "targetTaskId": "task-1765166503043",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786126208-42r3ibrwf",
+            "sourceTaskId": "task-1765166506073",
+            "targetTaskId": "task-1765166506074",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786130428-dqii5tbcv",
+            "sourceTaskId": "task-1765166506074",
+            "targetTaskId": "task-1765166506075",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786131938-k6o8l6ytq",
+            "sourceTaskId": "task-1765166506075",
+            "targetTaskId": "task-1765166506076",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786138441-gi5ktbr5v",
+            "sourceTaskId": "task-1765166506076",
+            "targetTaskId": "task-1765166506077",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765786140025-jbisjyw04",
+            "sourceTaskId": "task-1765166506077",
+            "targetTaskId": "task-1765166506078",
+            "sourceDayIndex": 1,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765788706485-e2dsrbi59",
+            "sourceTaskId": "task-1765788696330",
+            "targetTaskId": "task-1765788696331",
+            "sourceDayIndex": 4,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765788708753-wzn6cnupo",
+            "sourceTaskId": "task-1765788696331",
+            "targetTaskId": "task-1765788696332",
+            "sourceDayIndex": 2,
+            "targetDayIndex": 0
+        },
+        {
+            "id": "dep-1765807079716-5t13dj2it",
+            "sourceTaskId": "task-1765773889918",
+            "targetTaskId": "task-1765788696330",
+            "sourceDayIndex": 1,
             "targetDayIndex": 0
         }
     ]

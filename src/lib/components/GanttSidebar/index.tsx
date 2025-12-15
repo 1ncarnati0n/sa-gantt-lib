@@ -7,6 +7,7 @@ import {
     CriticalPathSummary,
 } from '../../types';
 import { calculateCriticalPath } from '../../utils/criticalPathUtils';
+import { collectDescendantTasks } from '../../utils/groupUtils';
 import { GanttSidebarContextMenu } from '../GanttSidebarContextMenu';
 import { GanttSidebarNewTaskForm } from '../GanttSidebarNewTaskForm';
 import { GanttSidebarNewCPForm } from '../GanttSidebarNewCPForm';
@@ -64,24 +65,10 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             const map = new Map<string, CriticalPathSummary>();
             if (viewMode !== 'MASTER') return map;
 
-            const collectDescendantTasks = (parentId: string): ConstructionTask[] => {
-                const result: ConstructionTask[] = [];
-                allTasks.forEach(t => {
-                    if (t.parentId === parentId) {
-                        if (t.type === 'TASK' && t.wbsLevel === 2) {
-                            result.push(t);
-                        }
-                        if (t.type === 'GROUP') {
-                            result.push(...collectDescendantTasks(t.id));
-                        }
-                    }
-                });
-                return result;
-            };
-
             allTasks.forEach(task => {
                 if (task.type === 'CP') {
-                    const childTasks = collectDescendantTasks(task.id);
+                    // 통합된 collectDescendantTasks 사용 (wbsLevel: 2 필터링)
+                    const childTasks = collectDescendantTasks(task.id, allTasks, { wbsLevel: 2 });
                     const summary = calculateCriticalPath(
                         childTasks,
                         holidays,
