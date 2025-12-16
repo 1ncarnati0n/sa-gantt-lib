@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth } from 'date-fns';
+import { format, addDays, getDay, getYear, isSameMonth, isSameWeek, getWeekOfMonth, isSameDay } from 'date-fns';
 import { GANTT_LAYOUT } from '../../types';
 import { isHoliday } from '../../utils/dateUtils';
 import type { TimelineHeaderProps } from './types';
@@ -78,9 +78,16 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                         let textColor = 'var(--gantt-text-secondary)';
                         let bgColor = 'transparent';
 
+                        // 공휴일 리스트에 있는지 체크 (토요일+공휴일인 경우 공휴일 스타일 우선)
+                        const isInHolidayList = holidays.some((h) => isSameDay(h, date));
+
                         if (isSunday) {
                             textColor = 'var(--gantt-sunday-text)';
                             bgColor = 'var(--gantt-sunday-bg)';
+                        } else if (isInHolidayList) {
+                            // 공휴일 리스트에 있으면 (토요일이어도) 공휴일 스타일 적용
+                            textColor = 'var(--gantt-holiday-text)';
+                            bgColor = 'var(--gantt-holiday-bg)';
                         } else if (isSaturday) {
                             textColor = 'var(--gantt-weekend-text)';
                             bgColor = 'var(--gantt-weekend-bg)';
