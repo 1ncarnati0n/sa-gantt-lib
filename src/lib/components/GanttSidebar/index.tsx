@@ -272,7 +272,6 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             height: MILESTONE_LANE_HEIGHT,
                             minWidth: totalWidth,
                             backgroundColor: 'var(--gantt-bg-secondary)',
-                            borderBottom: '1px solid var(--gantt-border-light)',
                         }}
                     >
                         {columns.map((col, idx) => (
