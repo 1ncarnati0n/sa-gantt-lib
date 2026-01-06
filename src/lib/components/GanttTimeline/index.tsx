@@ -314,7 +314,11 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         width={chartWidth}
                         height={MILESTONE_LANE_HEIGHT}
                         className="block"
-                        style={{ backgroundColor: 'var(--gantt-bg-primary)', overflow: 'visible' }}
+                        style={{
+                            backgroundColor: 'var(--gantt-bg-primary)',
+                            overflow: 'visible',
+                            borderBottom: '1px solid var(--gantt-border-light)'
+                        }}
                     >
                         <SvgDefs />
 
@@ -407,15 +411,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 />
                             );
                         })}
-                        {/* Milestone Lane 하단 경계선 */}
-                        <line
-                            x1={0}
-                            y1={MILESTONE_LANE_HEIGHT - 1}
-                            x2={chartWidth}
-                            y2={MILESTONE_LANE_HEIGHT - 1}
-                            stroke={GANTT_COLORS.grid}
-                            strokeWidth={1}
-                        />
                     </svg>
                 </div>
             );
