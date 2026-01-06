@@ -1,30 +1,29 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import ReactDOM from 'react-dom';
 import { X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ConstructionTask, TaskData } from '../types';
+import { DeleteConfirmModal, WorkDayCheckbox, CompactInputRow } from './ui';
 
 // ============================================
 // 공통 스타일 상수 (다크모드 지원)
 // ============================================
 const INPUT_BASE = "w-full rounded-md border px-3 py-2 text-sm";
-const FOCUS_BLUE = "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
-const FOCUS_RED = "focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20";
 const FOCUS_GREEN = "focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20";
 
-// 인라인 스타일용 객체
 const inputStyle: React.CSSProperties = {
     backgroundColor: 'var(--gantt-bg-primary)',
     borderColor: 'var(--gantt-border)',
     color: 'var(--gantt-text-secondary)',
 };
+
 const sectionCardStyle: React.CSSProperties = {
     backgroundColor: 'var(--gantt-bg-secondary)',
     borderRadius: '0.5rem',
     padding: '1rem',
 };
+
 const sectionTitleStyle: React.CSSProperties = {
     fontSize: '0.75rem',
     fontWeight: 600,
@@ -35,228 +34,15 @@ const sectionTitleStyle: React.CSSProperties = {
 };
 
 // ============================================
-// 내부 컴포넌트: WorkDayCheckbox
+// TaskEditModal Props
 // ============================================
-interface WorkDayCheckboxProps {
-    label: string;
-    checked: boolean;
-    onChange: (checked: boolean) => void;
-}
-
-const WorkDayCheckbox: React.FC<WorkDayCheckboxProps> = ({
-    label,
-    checked,
-    onChange,
-}) => {
-    const [isHovered, setIsHovered] = React.useState(false);
-    return (
-        <label
-            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
-            style={{
-                color: 'var(--gantt-text-secondary)',
-                backgroundColor: isHovered ? 'var(--gantt-bg-hover)' : 'transparent',
-            }}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-        >
-            <input
-                type="checkbox"
-                checked={checked}
-                onChange={(e) => onChange(e.target.checked)}
-                className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500"
-                style={{ borderColor: 'var(--gantt-border)' }}
-            />
-            <span className="font-medium">{label}</span>
-        </label>
-    );
-};
-
-// ============================================
-// 내부 컴포넌트: CompactInputRow
-// ============================================
-interface CompactInputRowProps {
-    label: string;
-    daysValue: string;
-    nameValue?: string;
-    onDaysChange: React.Dispatch<React.SetStateAction<string>>;
-    onNameChange?: (value: string) => void;
-    onKeyDown: (e: React.KeyboardEvent) => void;
-    onNumberChange: (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => void;
-    daysInputRef?: React.RefObject<HTMLInputElement | null>;
-    color?: 'blue' | 'red';
-    showNameInput?: boolean;
-}
-
-const CompactInputRow: React.FC<CompactInputRowProps> = ({
-    label,
-    daysValue,
-    nameValue = '',
-    onDaysChange,
-    onNameChange,
-    onKeyDown,
-    onNumberChange,
-    daysInputRef,
-    color = 'blue',
-    showNameInput = true,
-}) => {
-    const focusClass = color === 'red' ? FOCUS_RED : FOCUS_BLUE;
-    const labelBg = color === 'red' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700';
-
-    return (
-        <div className="flex items-center gap-3">
-            <span className={`w-20 shrink-0 rounded-md px-2 py-1.5 text-xs font-semibold text-center ${labelBg}`}>
-                {label}
-            </span>
-            <div className="flex flex-1 items-center gap-2">
-                <div className="relative">
-                    <input
-                        ref={daysInputRef}
-                        type="text"
-                        inputMode="decimal"
-                        value={daysValue}
-                        onChange={(e) => onNumberChange(onDaysChange, e.target.value)}
-                        onKeyDown={onKeyDown}
-                        placeholder="0"
-                        className={`w-20 ${INPUT_BASE} ${focusClass} text-center pr-6`}
-                        style={inputStyle}
-                    />
-                    <span
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-xs"
-                        style={{ color: 'var(--gantt-text-muted)' }}
-                    >
-                        일
-                    </span>
-                </div>
-                {showNameInput && onNameChange && (
-                    <input
-                        type="text"
-                        value={nameValue}
-                        onChange={(e) => onNameChange(e.target.value)}
-                        onKeyDown={onKeyDown}
-                        placeholder="작업명 (선택사항)"
-                        className={`flex-1 ${INPUT_BASE} ${focusClass}`}
-                        style={{ ...inputStyle, '--tw-placeholder-opacity': 1 } as React.CSSProperties}
-                    />
-                )}
-            </div>
-        </div>
-    );
-};
-
-interface TaskEditModalProps {
+export interface TaskEditModalProps {
     task: ConstructionTask | null;
     isOpen: boolean;
     onClose: () => void;
     onSave: (task: ConstructionTask) => void | Promise<void>;
     onDelete?: (taskId: string) => void | Promise<void>;
 }
-
-/** 삭제 확인 모달 컴포넌트 (React Portal 사용) */
-const DeleteConfirmModal: React.FC<{
-    taskName: string;
-    onConfirm: () => void;
-    onCancel: () => void;
-}> = ({ taskName, onConfirm, onCancel }) => {
-    const [cancelHovered, setCancelHovered] = React.useState(false);
-
-    return ReactDOM.createPortal(
-        <>
-            {/* Backdrop */}
-            <div
-                className="fixed inset-0 z-[60] bg-black/50 transition-opacity"
-                onClick={onCancel}
-            />
-
-            {/* Modal */}
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                <div
-                    className="w-[400px] rounded-xl shadow-2xl"
-                    style={{
-                        backgroundColor: 'var(--gantt-bg-primary)',
-                        border: '1px solid var(--gantt-border)',
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    {/* Header */}
-                    <div
-                        className="px-5 py-4"
-                        style={{ borderBottom: '1px solid var(--gantt-border-light)' }}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                                <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3
-                                    className="text-base font-bold"
-                                    style={{ color: 'var(--gantt-text-primary)' }}
-                                >
-                                    공정 삭제
-                                </h3>
-                                <p
-                                    className="text-sm"
-                                    style={{ color: 'var(--gantt-text-muted)' }}
-                                >
-                                    이 작업은 되돌릴 수 없습니다
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Body */}
-                    <div className="px-5 py-4">
-                        <div className="rounded-lg bg-red-50 p-4">
-                            <p
-                                className="text-sm mb-2"
-                                style={{ color: 'var(--gantt-text-secondary)' }}
-                            >
-                                다음 공정을 삭제하시겠습니까?
-                            </p>
-                            <p
-                                className="flex items-center gap-2 text-sm font-semibold"
-                                style={{ color: 'var(--gantt-text-primary)' }}
-                            >
-                                <span className="h-2 w-2 rounded-full bg-red-500" />
-                                {taskName}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div
-                        className="flex justify-end gap-3 px-5 py-4 rounded-b-xl"
-                        style={{
-                            borderTop: '1px solid var(--gantt-border-light)',
-                            backgroundColor: 'var(--gantt-bg-secondary)',
-                        }}
-                    >
-                        <button
-                            onClick={onCancel}
-                            className="rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
-                            style={{
-                                color: 'var(--gantt-text-secondary)',
-                                backgroundColor: cancelHovered ? 'var(--gantt-bg-hover)' : 'transparent',
-                            }}
-                            onMouseEnter={() => setCancelHovered(true)}
-                            onMouseLeave={() => setCancelHovered(false)}
-                        >
-                            취소
-                        </button>
-                        <button
-                            onClick={onConfirm}
-                            className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors shadow-sm"
-                        >
-                            삭제
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </>,
-        document.body
-    );
-};
 
 /**
  * Task 편집 모달
@@ -279,10 +65,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const [indirectWorkNamePre, setIndirectWorkNamePre] = useState('');
     const [indirectWorkNamePost, setIndirectWorkNamePost] = useState('');
 
-    // 작업일 설정 상태 (기본값: 토요일 작업, 일요일/공휴일 휴무)
-    const [saturdayOff, setSaturdayOff] = useState(false);       // 토요일 휴무 (체크 시 휴무)
-    const [sundayWork, setSundayWork] = useState(false);         // 일요일 작업 (체크 시 작업)
-    const [holidayWork, setHolidayWork] = useState(false);       // 공휴일 작업 (체크 시 작업)
+    // 작업일 설정 상태
+    const [saturdayOff, setSaturdayOff] = useState(false);
+    const [sundayWork, setSundayWork] = useState(false);
+    const [holidayWork, setHolidayWork] = useState(false);
 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -312,20 +98,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             setIndirectWorkNamePre(task.task.indirectWorkNamePre || '');
             setIndirectWorkNamePost(task.task.indirectWorkNamePost || '');
 
-            // 작업일 설정 초기화 (기본값: 토요일 작업(true), 일요일/공휴일 휴무(false))
-            // workOnSaturdays: true가 기본 → saturdayOff는 false가 기본
-            // workOnSundays: false가 기본 → sundayWork는 false가 기본
-            // workOnHolidays: false가 기본 → holidayWork는 false가 기본
             setSaturdayOff(task.task.workOnSaturdays === false);
             setSundayWork(task.task.workOnSundays === true);
             setHolidayWork(task.task.workOnHolidays === true);
 
-            // 시작일 초기화
             setStartDateStr(format(task.startDate, 'yyyy-MM-dd'));
-
             setShowDeleteConfirm(false);
 
-            // 모달 열릴 때 첫 입력란에 포커스
             setTimeout(() => {
                 preInputRef.current?.focus();
             }, 100);
@@ -348,16 +127,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, showDeleteConfirm, onClose]);
 
-    // 변경 감지: 현재 상태와 task props 비교 (useMemo로 동기적 계산)
+    // 변경 감지
     const hasChanges = useMemo(() => {
-        if (!task || !task.task || !isOpen) {
-            return false;
-        }
+        if (!task || !task.task || !isOpen) return false;
 
         const currentPre = parseToNumber(indirectWorkDaysPreStr);
         const currentNet = parseToNumber(netWorkDaysStr);
         const currentPost = parseToNumber(indirectWorkDaysPostStr);
-        const currentStartDate = startDateStr;
 
         return (
             currentPre !== task.task.indirectWorkDaysPre ||
@@ -368,29 +144,16 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             (saturdayOff !== (task.task.workOnSaturdays === false)) ||
             (sundayWork !== (task.task.workOnSundays === true)) ||
             (holidayWork !== (task.task.workOnHolidays === true)) ||
-            currentStartDate !== format(task.startDate, 'yyyy-MM-dd')
+            startDateStr !== format(task.startDate, 'yyyy-MM-dd')
         );
-    }, [
-        task,
-        isOpen,
-        indirectWorkDaysPreStr,
-        netWorkDaysStr,
-        indirectWorkDaysPostStr,
-        indirectWorkNamePre,
-        indirectWorkNamePost,
-        saturdayOff,
-        sundayWork,
-        holidayWork,
-        startDateStr,
-    ]);
+    }, [task, isOpen, indirectWorkDaysPreStr, netWorkDaysStr, indirectWorkDaysPostStr,
+        indirectWorkNamePre, indirectWorkNamePost, saturdayOff, sundayWork, holidayWork, startDateStr]);
 
     const handleSave = async () => {
         if (!task || !task.task || isSaving) return;
 
-        // 새 시작일 파싱
         const newStartDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : task.startDate;
 
-        // 명시적으로 TaskData 객체 구성 (기존 데이터 보존 + 변경사항 적용)
         const updatedTaskData: TaskData = {
             ...task.task,
             indirectWorkDaysPre,
@@ -398,7 +161,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             indirectWorkDaysPost,
             indirectWorkNamePre: indirectWorkNamePre.trim() || undefined,
             indirectWorkNamePost: indirectWorkNamePost.trim() || undefined,
-            // 작업일 설정 (기본값과 다를 때만 저장)
             workOnSaturdays: saturdayOff ? false : undefined,
             workOnSundays: sundayWork ? true : undefined,
             workOnHolidays: holidayWork ? true : undefined,
@@ -412,18 +174,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
         setIsSaving(true);
         try {
-            console.log('[TaskEditModal] Save button clicked:', updatedTask);
             await onSave(updatedTask);
-            // 모달은 닫지 않음 - hasChanges가 false가 되면 "닫기" 버튼으로 변경
         } catch (error) {
             console.error('[TaskEditModal] Save failed:', error);
         } finally {
             setIsSaving(false);
         }
-    };
-
-    const handleDeleteClick = () => {
-        setShowDeleteConfirm(true);
     };
 
     const handleDeleteConfirm = async () => {
@@ -442,10 +198,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         }
     };
 
-    const handleDeleteCancel = () => {
-        setShowDeleteConfirm(false);
-    };
-
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -457,11 +209,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         setter: React.Dispatch<React.SetStateAction<string>>,
         value: string
     ) => {
-        // 소수점 입력 허용 (문자열로 유지)
         const cleaned = value.replace(/[^0-9.]/g, '');
-        // 소수점이 여러 개인 경우 첫 번째만 유지
         const parts = cleaned.split('.');
-        let sanitized = parts.length > 2
+        const sanitized = parts.length > 2
             ? parts[0] + '.' + parts.slice(1).join('')
             : cleaned;
         setter(sanitized);
@@ -561,7 +311,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     onNumberChange={handleNumberChange}
                                     daysInputRef={preInputRef}
                                     color="blue"
-                                    showNameInput={true}
                                 />
                                 <CompactInputRow
                                     label="순작업"
@@ -581,7 +330,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     onKeyDown={handleKeyDown}
                                     onNumberChange={handleNumberChange}
                                     color="blue"
-                                    showNameInput={true}
                                 />
                             </div>
                         </div>
@@ -651,11 +399,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                             backgroundColor: 'var(--gantt-bg-secondary)',
                         }}
                     >
-                        {/* 삭제 버튼 (왼쪽) */}
+                        {/* 삭제 버튼 */}
                         <div>
                             {onDelete && (
                                 <button
-                                    onClick={handleDeleteClick}
+                                    onClick={() => setShowDeleteConfirm(true)}
                                     className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                                 >
                                     <Trash2 size={16} />
@@ -664,7 +412,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                             )}
                         </div>
 
-                        {/* 저장/닫기 토글 버튼 (오른쪽) */}
+                        {/* 저장/닫기 버튼 */}
                         <button
                             onClick={hasChanges ? handleSave : onClose}
                             className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-all shadow-sm ${hasChanges
@@ -681,12 +429,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             {/* 삭제 확인 모달 */}
             {showDeleteConfirm && (
                 <DeleteConfirmModal
-                    taskName={task.name}
+                    itemName={task.name}
+                    title="공정 삭제"
                     onConfirm={handleDeleteConfirm}
-                    onCancel={handleDeleteCancel}
+                    onCancel={() => setShowDeleteConfirm(false)}
                 />
             )}
         </>
     );
 };
-
