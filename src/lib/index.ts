@@ -158,9 +158,11 @@ export {
     GANTT_DRAG,
     GANTT_SUMMARY,
     GANTT_STROKE,
+    // Phase 5 타입 헬퍼
+    getGanttColor,
 } from './types';
 
-export type { ColumnConfig } from './types';
+export type { ColumnConfig, GanttColorKey } from './types';
 
 // ============================================
 // Utilities
