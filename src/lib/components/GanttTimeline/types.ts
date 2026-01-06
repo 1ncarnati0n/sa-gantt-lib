@@ -175,6 +175,10 @@ export interface MilestoneMarkerProps {
     dragX?: number;
     onMouseDown?: (e: React.MouseEvent, milestone: Milestone) => void;
     onDoubleClick?: (milestone: Milestone) => void;
+    /** 렌더링 모드: 'header' (Milestone Lane), 'body' (Timeline Body) */
+    variant?: 'header' | 'body';
+    /** body variant에서 수직선 높이 */
+    lineHeight?: number;
 }
 
 /** TimelineHeader Props */

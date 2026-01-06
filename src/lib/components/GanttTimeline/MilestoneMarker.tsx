@@ -95,11 +95,12 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
     dragX,
     onMouseDown,
     onDoubleClick,
+    variant = 'header',
+    lineHeight,
 }) => {
     // milestoneType에 따른 스타일 결정
     const isDetail = milestone.milestoneType === 'DETAIL';
     const size = isDetail ? 8 : 11;  // DETAIL은 작은 마커
-    const y = MILESTONE_LANE_HEIGHT / 2;
     const currentX = isDragging && dragX !== undefined ? dragX : x;
 
     const markerColor = isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.milestone;
@@ -139,6 +140,71 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
         }
     };
 
+    // ====================================
+    // Body Variant: Timeline Body용 렌더링
+    // ====================================
+    if (variant === 'body') {
+        const markerY = 12;  // 상단에서 약간 아래 위치
+        const actualLineHeight = lineHeight || 1000;
+
+        // Body용 라벨 위치 계산
+        let bodyTextX: number;
+        let bodyTextAnchor: 'start' | 'middle' | 'end';
+
+        if (labelLevel === 0) {
+            bodyTextX = -8;
+            bodyTextAnchor = 'end';
+        } else if (labelLevel === 1) {
+            bodyTextX = 8;
+            bodyTextAnchor = 'start';
+        } else {
+            bodyTextX = 0;
+            bodyTextAnchor = 'middle';
+        }
+
+        return (
+            <g
+                transform={`translate(${currentX}, 0)`}
+                className="pointer-events-none"
+            >
+                {/* 전체 높이 수직선 */}
+                <line
+                    x1={0}
+                    y1={0}
+                    x2={0}
+                    y2={actualLineHeight}
+                    stroke={markerColor}
+                    strokeWidth={1.2}
+                    strokeDasharray="4, 5"
+                    className="opacity-90"
+                />
+
+                {/* 삼각형 마커 (상단) */}
+                <path
+                    d={`M ${-size / 2} ${markerY - size / 2} L ${size / 2} ${markerY - size / 2} L 0 ${markerY + size / 2} Z`}
+                    fill={markerColor}
+                    className="drop-shadow-sm"
+                />
+
+                {/* 라벨 (마커 옆) */}
+                <text
+                    x={bodyTextX}
+                    y={markerY + 4}
+                    textAnchor={bodyTextAnchor}
+                    className={`select-none text-[10px] ${isDetail ? 'font-medium' : 'font-bold'}`}
+                    fill={isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.textSecondary}
+                >
+                    {milestone.name}
+                </text>
+            </g>
+        );
+    }
+
+    // ====================================
+    // Header Variant: Milestone Lane용 렌더링 (기존 로직)
+    // ====================================
+    const y = MILESTONE_LANE_HEIGHT / 2;
+
     return (
         <g
             transform={`translate(${currentX}, ${y})`}
@@ -146,12 +212,12 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
             onMouseDown={handleMouseDown}
             onDoubleClick={handleDoubleClick}
         >
-            {/* Vertical Guide Line */}
+            {/* Vertical Guide Line - lineHeight prop으로 Content 영역까지 연장 */}
             <line
                 x1={0}
                 y1={0}
                 x2={0}
-                y2={1000}
+                y2={lineHeight || 1000}
                 stroke={isDragging ? dragColor : markerColor}
                 strokeWidth={isDragging ? 2 : 1.2}
                 strokeDasharray="4, 5"

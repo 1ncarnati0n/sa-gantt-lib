@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useMemo, useState, useCallback, useEffect } from 'react';
+import { forwardRef, useMemo, useState, useCallback, useEffect, memo } from 'react';
 import {
     ConstructionTask,
     GANTT_LAYOUT,
@@ -31,7 +31,7 @@ import type { GanttSidebarProps } from './types';
 
 const { ROW_HEIGHT, MILESTONE_LANE_HEIGHT } = GANTT_LAYOUT;
 
-export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
+export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
     ({
         tasks,
         allTasks,
@@ -57,6 +57,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         isAddingCP = false,
         onCancelAddCP,
         onTaskDoubleClick,
+        renderMode = 'all',
     }, ref) => {
         const isVirtualized = virtualRows && virtualRows.length > 0;
 
@@ -222,7 +223,102 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             };
         }, [activeCPId, allTasks]);
 
-        // Common container render
+        // ====================================
+        // Header Only 렌더링 (스크롤 외부용)
+        // ====================================
+        const renderHeaderOnly = () => (
+            <div
+                className="flex flex-col select-none shrink-0"
+                style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
+            >
+                <SidebarHeader
+                    viewMode={viewMode}
+                    activeGroupName={activeGroupName}
+                    activeCPName={activeCPName}
+                    columns={columns}
+                    resizingIndex={resizingIndex}
+                    selectedTaskIds={selectedTaskIds}
+                    tasks={tasks}
+                    onColumnResizeStart={handleColumnResizeStart}
+                    onColumnResizeDoubleClick={handleColumnResizeDoubleClick}
+                    onTaskGroup={onTaskGroup}
+                    onTaskUngroup={onTaskUngroup}
+                    onClearSelection={clearSelection}
+                />
+
+                {/* Milestone Lane Spacer */}
+                <div
+                    className="flex items-center"
+                    style={{
+                        height: MILESTONE_LANE_HEIGHT,
+                        minWidth: totalWidth,
+                        backgroundColor: 'var(--gantt-bg-secondary)',
+                        borderBottom: '1px solid var(--gantt-border-light)',
+                    }}
+                >
+                    {columns.map((col, idx) => (
+                        <div
+                            key={col.id}
+                            className="flex shrink-0 items-center justify-center text-xs"
+                            style={{
+                                width: col.width,
+                                color: 'var(--gantt-text-primary)',
+                                borderRight: '1px solid var(--gantt-border-light)',
+                            }}
+                        >
+                            {idx === 0 && 'Milestone'}
+                        </div>
+                    ))}
+                </div>
+
+                {resizingIndex !== null && (
+                    <div className="fixed inset-0 z-50 cursor-col-resize" />
+                )}
+            </div>
+        );
+
+        // ====================================
+        // Content Only 렌더링 (스크롤 내부용)
+        // ====================================
+        const renderContentOnly = (content: React.ReactNode) => (
+            <div
+                ref={ref}
+                className="relative flex-1 select-none"
+                style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
+                onClick={clearSelection}
+            >
+                <div
+                    style={{
+                        minWidth: totalWidth,
+                        height: isVirtualized ? totalHeight : tasks.length * ROW_HEIGHT + 100,
+                        position: 'relative',
+                    }}
+                    onClick={clearSelection}
+                >
+                    {content}
+                </div>
+
+                {contextMenu && (
+                    <GanttSidebarContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        taskId={contextMenu.taskId}
+                        selectedTaskIds={selectedTaskIds}
+                        tasks={tasks}
+                        onTaskGroup={onTaskGroup}
+                        onTaskUngroup={onTaskUngroup}
+                        onTaskDelete={onTaskDelete}
+                        onStartRename={handleStartRename}
+                        onClose={() => setContextMenu(null)}
+                        onDeselect={clearSelection}
+                    />
+                )}
+            </div>
+        );
+
+        // ====================================
+        // Full 렌더링 (기존 방식, 하위 호환용)
+        // ====================================
         const renderContainer = (content: React.ReactNode) => (
             <div
                 className="flex h-full flex-col select-none"
@@ -308,9 +404,22 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             </div>
         );
 
+        // ====================================
+        // renderMode에 따른 분기 함수
+        // ====================================
+        const renderByMode = (content: React.ReactNode) => {
+            if (renderMode === 'header') {
+                return renderHeaderOnly();
+            }
+            if (renderMode === 'content') {
+                return renderContentOnly(content);
+            }
+            return renderContainer(content);
+        };
+
         // Master View
         if (viewMode === 'MASTER') {
-            return renderContainer(
+            return renderByMode(
                 <>
                     {rowData.map((row) => {
                         const task = tasks[row.index];
@@ -366,7 +475,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                             columns={columns}
                             tasks={tasks}
                             onTaskCreate={onTaskCreate}
-                            onCancel={onCancelAddCP || (() => {})}
+                            onCancel={onCancelAddCP || (() => { })}
                             isVirtualized={isVirtualized!}
                             virtualRowIndex={tasks.length}
                             dragHandleWidth={dragHandleWidth}
@@ -377,7 +486,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
         }
 
         // Detail View
-        return renderContainer(
+        return renderByMode(
             <>
                 {rowData.map((row) => {
                     const task = tasks[row.index];
@@ -435,7 +544,7 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
                         tasks={tasks}
                         activeCPId={activeCPId}
                         onTaskCreate={onTaskCreate}
-                        onCancel={onCancelAddTask || (() => {})}
+                        onCancel={onCancelAddTask || (() => { })}
                         isVirtualized={isVirtualized!}
                         virtualRowIndex={tasks.length}
                     />
@@ -443,6 +552,6 @@ export const GanttSidebar = forwardRef<HTMLDivElement, GanttSidebarProps>(
             </>
         );
     }
-);
+));
 
 GanttSidebar.displayName = 'GanttSidebar';

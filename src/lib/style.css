@@ -504,5 +504,13 @@
   .gantt-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--gantt-text-muted);
   }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
