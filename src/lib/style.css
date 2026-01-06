@@ -18,8 +18,8 @@
 
   /* 마일스톤 */
   --gantt-milestone: #4B5563;
-  --gantt-milestone-detail: #F59E0B;
-  --gantt-milestone-detail-hover: #D97706;
+  --gantt-milestone-detail: #b30bf5;
+  --gantt-milestone-detail-hover: #d86bff;
 
   /* UI 요소 */
   --gantt-dependency: #9CA3AF;
@@ -57,7 +57,7 @@
   --gantt-sunday-text: #EF4444;
 
   /* 그룹/요약 바 */
-  --gantt-summary-bar: #9CA3AF;
+  --gantt-summary-bar: #888b90;
   --gantt-summary-progress: #6B7280;
 
   /* 앵커 포인트 */
@@ -93,8 +93,8 @@
 
   /* 마일스톤 - Master는 밝은 청록, Detail은 채도 낮춤 */
   --gantt-milestone: #67E8F9;
-  --gantt-milestone-detail: #CA8A04;
-  --gantt-milestone-detail-hover: #A16207;
+  --gantt-milestone-detail: #d86bff;
+  --gantt-milestone-detail-hover: #b30bf5;
 
   /* UI 요소 */
   --gantt-dependency: #6B7280;
@@ -307,7 +307,7 @@
   --color-gantt-resizer-active: var(--gantt-resizer-active);
 
   /* ===== Spacing ===== */
-  --spacing-gantt-row: 34px;
+  --spacing-gantt-row: 30px;
   --spacing-gantt-header: 80px;
   --spacing-gantt-milestone-lane: 40px;
   --spacing-gantt-bar: 14px;
