@@ -94,14 +94,14 @@ export type {
     ConstructionTask,
     Milestone,
     Dependency,
-    
+
     // Data Types
     CPData,
     TaskData,
     GroupData,
     TaskDates,
     GroupDragResult,
-    
+
     // Enum Types
     WbsLevel,
     ZoomLevel,
@@ -111,21 +111,21 @@ export type {
     DependencyType,
     TaskType,
     DropPosition,
-    
+
     // Settings
     CalendarSettings,
     Holiday,
-    
+
     // Props
     GanttChartProps,
     GanttSidebarProps,
     GanttTimelineProps,
-    
+
     // Store
     GanttUIState,
     GanttUIActions,
     GanttStore,
-    
+
     // Utility Types
     DateRange,
     Point,
@@ -165,26 +165,30 @@ export type { ColumnConfig } from './types';
 // ============================================
 // Utilities
 // ============================================
+
+// Class Name Utility
+export { cn } from './utils/cn';
+
 export {
     // Holiday/Weekend
     isHoliday,
     isWeekend,
-    
+
     // Working Days Calculation
     addWorkingDays,
     subtractWorkingDays,
     addCalendarDays,
-    
+
     // Dual Calendar (Construction-specific)
     calculateDualCalendarDates,
     getAnchorDate,
-    
+
     // Pixel/Date Conversion
     dateToX,
     xToDate,
     getDateRangeWidth,
     getPixelsPerDay,
-    
+
     // Date Range
     calculateDateRange,
 
