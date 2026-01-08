@@ -523,7 +523,7 @@ export function GanttChart({
                     {/* Sidebar Header */}
                     <div
                         className="shrink-0 relative"
-                        style={{ width: sidebarWidth + 4, backgroundColor: 'var(--gantt-bg-primary)' }}
+                        style={{ width: sidebarWidth + 4, overflow: 'hidden', willChange: 'width', backgroundColor: 'var(--gantt-bg-primary)' }}
                     >
                         <GanttSidebar
                             tasks={visibleTasks}
@@ -607,11 +607,11 @@ export function GanttChart({
                 <div ref={scrollRef} className="relative flex flex-1 overflow-auto scrollbar-hide" onScroll={handleContentScroll}>
                     <div
                         className="sticky left-0 z-10 flex shrink-0"
-                        style={{ width: sidebarWidth + 4 }}
+                        style={{ width: sidebarWidth + 4, willChange: 'width', alignSelf: 'flex-start' }}
                     >
                         <div
                             className="flex shrink-0 flex-col"
-                            style={{ width: sidebarWidth, backgroundColor: 'var(--gantt-bg-primary)' }}
+                            style={{ width: sidebarWidth, clipPath: 'inset(0)', backgroundColor: 'var(--gantt-bg-primary)' }}
                         >
                             <GanttSidebar
                                 tasks={visibleTasks}
@@ -640,6 +640,17 @@ export function GanttChart({
                                 onTaskDoubleClick={handleTaskDoubleClick}
                                 renderMode="content"
                             />
+
+                            {/* DETAIL 뷰: CriticalPathBar 높이(20px) + 하단 여백(50px) 동기화 */}
+                            {viewMode !== 'MASTER' && (
+                                <div
+                                    style={{
+                                        height: 70,
+                                        backgroundColor: 'var(--gantt-bg-secondary)',
+                                        borderTop: '2px solid var(--gantt-border)',
+                                    }}
+                                />
+                            )}
                         </div>
                     </div>
 

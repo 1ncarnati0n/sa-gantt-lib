@@ -119,8 +119,9 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
         textY = 4;
         textAnchor = 'start';
     } else {
+        // 충돌 시 마커 위에 배치 (Lane 내부 유지)
         textX = 0;
-        textY = 18;
+        textY = -12;
         textAnchor = 'middle';
     }
 
@@ -203,7 +204,8 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
     // ====================================
     // Header Variant: Milestone Lane용 렌더링 (기존 로직)
     // ====================================
-    const y = MILESTONE_LANE_HEIGHT / 2;
+    // 마커가 Lane 하단에 접하도록 위치 조정
+    const y = MILESTONE_LANE_HEIGHT - size / 2 - 2;
 
     return (
         <g
@@ -212,17 +214,7 @@ export const MilestoneMarker: React.FC<MilestoneMarkerProps> = ({
             onMouseDown={handleMouseDown}
             onDoubleClick={handleDoubleClick}
         >
-            {/* Vertical Guide Line - lineHeight prop으로 Content 영역까지 연장 */}
-            <line
-                x1={0}
-                y1={0}
-                x2={0}
-                y2={lineHeight || 1000}
-                stroke={isDragging ? dragColor : markerColor}
-                strokeWidth={isDragging ? 2 : 1.2}
-                strokeDasharray="4, 5"
-                className={isDragging ? 'opacity-100' : 'opacity-90'}
-            />
+            {/* 대시선은 Content SVG에서 직접 렌더링됨 (index.tsx) */}
 
             {/* Triangle Symbol */}
             <path

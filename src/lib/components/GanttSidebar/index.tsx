@@ -283,7 +283,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         const renderContentOnly = (content: React.ReactNode) => (
             <div
                 ref={ref}
-                className="relative flex-1 select-none"
+                className="relative select-none"
                 style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
                 onClick={clearSelection}
             >

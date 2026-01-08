@@ -448,8 +448,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             zoomLevel={zoomLevel}
                         />
 
-                        {/* 마일스톤은 Header SVG에서 overflow:visible로 렌더링됨 */}
-
                         {/* GROUP Row Background */}
                         {rowData.map((row) => {
                             const task = tasks[row.index];
@@ -688,6 +686,25 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
                                     dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     isFocused={focusedTaskId === task.id}
+                                />
+                            );
+                        })}
+
+                        {/* Layer 6.8: 마일스톤 대시선 (태스크 바 위에 렌더링) */}
+                        {milestoneLayouts.map((layout) => {
+                            const isDetail = layout.milestone.milestoneType === 'DETAIL';
+                            const lineColor = isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.milestone;
+                            return (
+                                <line
+                                    key={`ms-line-${layout.milestone.id}`}
+                                    x1={layout.x}
+                                    y1={0}
+                                    x2={layout.x}
+                                    y2={taskAreaHeight}
+                                    stroke={lineColor}
+                                    strokeWidth={1.2}
+                                    strokeDasharray="4, 5"
+                                    className="opacity-90 pointer-events-none"
                                 />
                             );
                         })}
@@ -1083,6 +1100,25 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
                                     dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     isFocused={focusedTaskId === task.id}
+                                />
+                            );
+                        })}
+
+                        {/* Layer 6.8: 마일스톤 대시선 (태스크 바 위에 렌더링) */}
+                        {milestoneLayouts.map((layout) => {
+                            const isDetail = layout.milestone.milestoneType === 'DETAIL';
+                            const lineColor = isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.milestone;
+                            return (
+                                <line
+                                    key={`ms-line-${layout.milestone.id}`}
+                                    x1={layout.x}
+                                    y1={MILESTONE_LANE_HEIGHT}
+                                    x2={layout.x}
+                                    y2={chartHeight}
+                                    stroke={lineColor}
+                                    strokeWidth={1.2}
+                                    strokeDasharray="4, 5"
+                                    className="opacity-90 pointer-events-none"
                                 />
                             );
                         })}
