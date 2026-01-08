@@ -414,7 +414,7 @@
   
   /* 간트 행 (Sidebar/Timeline 공통) */
   .gantt-row {
-    height: 34px;
+    height: 30px;
     display: flex;
     align-items: center;
     border-bottom: 1px solid var(--gantt-border);
@@ -503,6 +503,14 @@
   }
   .gantt-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--gantt-text-muted);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 

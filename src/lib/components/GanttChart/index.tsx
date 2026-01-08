@@ -80,6 +80,7 @@ export function GanttChart({
     // Refs
     const containerRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const headerTimelineRef = useRef<HTMLDivElement>(null);
 
     // Local States
     const [isAddingTask, setIsAddingTask] = useState(false);
@@ -90,6 +91,13 @@ export function GanttChart({
     const [editingTask, setEditingTask] = useState<ConstructionTask | null>(null);
     const [isTaskEditModalOpen, setIsTaskEditModalOpen] = useState(false);
     const [sidebarTotalWidth, setSidebarTotalWidth] = useState<number | null>(null);
+
+    // 좌우 스크롤 동기화 핸들러
+    const handleContentScroll = useCallback(() => {
+        if (scrollRef.current && headerTimelineRef.current) {
+            headerTimelineRef.current.scrollLeft = scrollRef.current.scrollLeft;
+        }
+    }, []);
 
     // Initialize
     useGanttInit({
@@ -157,6 +165,7 @@ export function GanttChart({
     const { virtualRows, totalHeight, virtualizer } = useGanttVirtualization({
         containerRef: scrollRef,
         count: visibleTasks.length,
+        overscan: 30, // 스크롤 시 렌더링 지연 방지를 위해 오버스캔 증가
     });
 
     // 날짜 범위 계산 (포커싱에 필요)
@@ -471,14 +480,50 @@ export function GanttChart({
                 canCreateMilestone={!!onMilestoneCreate}
             />
 
-            <div ref={scrollRef} className="relative flex flex-1 overflow-auto">
+            {/* ====================================
+             * Main Content Area (Header + Scrollable)
+             * 통합 리사이저를 위한 relative 컨테이너
+             * ==================================== */}
+            <div className="relative flex flex-1 flex-col overflow-hidden">
+                {/* 통합 리사이저 (전체 높이 커버) */}
                 <div
-                    className="sticky left-0 z-10 flex shrink-0 relative"
-                    style={{ width: sidebarWidth + 4 }}
+                    className="absolute z-30 cursor-col-resize transition-colors"
+                    style={{
+                        left: sidebarWidth,
+                        top: 0,
+                        bottom: 0,
+                        width: 4,
+                        backgroundColor: isResizing
+                            ? 'var(--gantt-resizer-active)'
+                            : 'var(--gantt-resizer)',
+                    }}
+                    onMouseDown={handleResizeStart}
+                    onDoubleClick={handleResizeDoubleClick}
+                    onMouseEnter={(e) => {
+                        if (!isResizing) {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-resizer-hover)';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (!isResizing) {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-resizer)';
+                        }
+                    }}
+                    title="드래그하여 너비 조절 / 더블클릭으로 초기화"
+                />
+
+                {/* ====================================
+                 * FIXED HEADER ROW (스크롤 외부)
+                 * Sidebar Header + Timeline Header + Milestone Lane
+                 * ==================================== */}
+                <div
+                    className="flex shrink-0 shadow-sm relative z-20"
+                    style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
                 >
+                    {/* Sidebar Header */}
                     <div
-                        className="flex shrink-0 flex-col overflow-hidden"
-                        style={{ width: sidebarWidth, backgroundColor: 'var(--gantt-bg-primary)' }}
+                        className="shrink-0 relative"
+                        style={{ width: sidebarWidth + 4, overflow: 'hidden', willChange: 'width', backgroundColor: 'var(--gantt-bg-primary)' }}
                     >
                         <GanttSidebar
                             tasks={visibleTasks}
@@ -505,73 +550,153 @@ export function GanttChart({
                             isAddingCP={isAddingCP}
                             onCancelAddCP={() => setIsAddingCP(false)}
                             onTaskDoubleClick={handleTaskDoubleClick}
+                            renderMode="header"
                         />
                     </div>
 
+                    {/* Timeline Header - overflowX:hidden(스크롤동기화) + overflowY:visible(마일스톤확장) */}
                     <div
-                        className="absolute top-0 right-0 h-full w-1 cursor-col-resize z-20 transition-colors"
+                        ref={headerTimelineRef}
+                        className="flex-1"
                         style={{
-                            backgroundColor: isResizing
-                                ? 'var(--gantt-resizer-active)'
-                                : 'var(--gantt-resizer)',
+                            overflowX: 'hidden',
+                            overflowY: 'visible',
+                            backgroundColor: 'var(--gantt-bg-primary)'
                         }}
-                        onMouseDown={handleResizeStart}
-                        onDoubleClick={handleResizeDoubleClick}
-                        onMouseEnter={(e) => {
-                            if (!isResizing) {
-                                e.currentTarget.style.backgroundColor = 'var(--gantt-resizer-hover)';
+                    >
+                        <GanttTimeline
+                            tasks={visibleTasks}
+                            allTasks={tasks}
+                            milestones={milestones}
+                            viewMode={viewMode}
+                            zoomLevel={zoomLevel}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            onTaskUpdate={onTaskUpdate}
+                            onBarDrag={handleBarDrag}
+                            onGroupDrag={handleGroupDrag}
+                            onMilestoneUpdate={onMilestoneUpdate}
+                            onMilestoneDoubleClick={handleMilestoneDoubleClick}
+                            onTaskDoubleClick={handleTaskDoubleClick}
+                            virtualRows={virtualRows}
+                            totalHeight={totalHeight}
+                            onGroupToggle={toggleTask}
+                            activeCPId={activeCPId}
+                            onContextMenuAddTask={
+                                viewMode === 'DETAIL' && activeCPId && onTaskCreate
+                                    ? handleContextMenuAddTask
+                                    : undefined
                             }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (!isResizing) {
-                                e.currentTarget.style.backgroundColor = 'var(--gantt-resizer)';
+                            onContextMenuAddMilestone={
+                                onMilestoneCreate ? handleContextMenuAddMilestone : undefined
                             }
-                        }}
-                        title="드래그하여 너비 조절 / 더블클릭으로 초기화"
-                    />
+                            anchorDependencies={anchorDependencies}
+                            onAnchorDependencyCreate={onAnchorDependencyCreate}
+                            onAnchorDependencyDelete={onAnchorDependencyDelete}
+                            onAnchorDependencyDrag={onAnchorDependencyDrag}
+                            focusedTaskId={focusedTaskId}
+                            renderMode="header"
+                        />
+                    </div>
                 </div>
 
-                <div
-                    className="relative flex flex-1 flex-col"
-                    style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
-                >
-                    <GanttTimeline
-                        tasks={visibleTasks}
-                        allTasks={tasks}
-                        milestones={milestones}
-                        viewMode={viewMode}
-                        zoomLevel={zoomLevel}
-                        holidays={holidays}
-                        calendarSettings={calendarSettings}
-                        onTaskUpdate={onTaskUpdate}
-                        onBarDrag={handleBarDrag}
-                        onGroupDrag={handleGroupDrag}
-                        onMilestoneUpdate={onMilestoneUpdate}
-                        onMilestoneDoubleClick={handleMilestoneDoubleClick}
-                        onTaskDoubleClick={handleTaskDoubleClick}
-                        virtualRows={virtualRows}
-                        totalHeight={totalHeight}
-                        onGroupToggle={toggleTask}
-                        activeCPId={activeCPId}
-                        onContextMenuAddTask={
-                            viewMode === 'DETAIL' && activeCPId && onTaskCreate
-                                ? handleContextMenuAddTask
-                                : undefined
-                        }
-                        onContextMenuAddMilestone={
-                            onMilestoneCreate ? handleContextMenuAddMilestone : undefined
-                        }
-                        anchorDependencies={anchorDependencies}
-                        onAnchorDependencyCreate={onAnchorDependencyCreate}
-                        onAnchorDependencyDelete={onAnchorDependencyDelete}
-                        onAnchorDependencyDrag={onAnchorDependencyDrag}
-                        focusedTaskId={focusedTaskId}
-                    />
-                </div>
+                {/* ====================================
+             * SCROLLABLE CONTENT ROW
+             * Sidebar Tasks + Timeline Tasks
+             * ==================================== */}
+                <div ref={scrollRef} className="relative flex flex-1 overflow-auto scrollbar-hide" onScroll={handleContentScroll}>
+                    <div
+                        className="sticky left-0 z-10 flex shrink-0"
+                        style={{ width: sidebarWidth + 4, willChange: 'width', alignSelf: 'flex-start' }}
+                    >
+                        <div
+                            className="flex shrink-0 flex-col"
+                            style={{ width: sidebarWidth, clipPath: 'inset(0)', backgroundColor: 'var(--gantt-bg-primary)' }}
+                        >
+                            <GanttSidebar
+                                tasks={visibleTasks}
+                                allTasks={tasks}
+                                viewMode={viewMode}
+                                expandedIds={expandedTaskIds}
+                                onToggle={toggleTask}
+                                onTaskClick={handleTaskClick}
+                                onTaskUpdate={onTaskUpdate}
+                                onTaskCreate={onTaskCreate}
+                                onTaskReorder={onTaskReorder}
+                                onTaskGroup={onTaskGroup}
+                                onTaskUngroup={onTaskUngroup}
+                                onTaskDelete={onTaskDelete}
+                                onTaskMove={onTaskMove}
+                                activeCPId={activeCPId}
+                                holidays={holidays}
+                                calendarSettings={calendarSettings}
+                                virtualRows={virtualRows}
+                                totalHeight={totalHeight}
+                                onTotalWidthChange={setSidebarTotalWidth}
+                                isAddingTask={isAddingTask}
+                                onCancelAddTask={() => setIsAddingTask(false)}
+                                isAddingCP={isAddingCP}
+                                onCancelAddCP={() => setIsAddingCP(false)}
+                                onTaskDoubleClick={handleTaskDoubleClick}
+                                renderMode="content"
+                            />
 
-                {isResizing && (
-                    <div className="fixed inset-0 z-50 cursor-col-resize" />
-                )}
+                            {/* DETAIL 뷰: CriticalPathBar 높이(20px) + 하단 여백(50px) 동기화 */}
+                            {viewMode !== 'MASTER' && (
+                                <div
+                                    style={{
+                                        height: 70,
+                                        backgroundColor: 'var(--gantt-bg-secondary)',
+                                        borderTop: '2px solid var(--gantt-border)',
+                                    }}
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    <div
+                        className="relative flex flex-1 flex-col"
+                        style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
+                    >
+                        <GanttTimeline
+                            tasks={visibleTasks}
+                            allTasks={tasks}
+                            milestones={milestones}
+                            viewMode={viewMode}
+                            zoomLevel={zoomLevel}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            onTaskUpdate={onTaskUpdate}
+                            onBarDrag={handleBarDrag}
+                            onGroupDrag={handleGroupDrag}
+                            onMilestoneUpdate={onMilestoneUpdate}
+                            onMilestoneDoubleClick={handleMilestoneDoubleClick}
+                            onTaskDoubleClick={handleTaskDoubleClick}
+                            virtualRows={virtualRows}
+                            totalHeight={totalHeight}
+                            onGroupToggle={toggleTask}
+                            activeCPId={activeCPId}
+                            onContextMenuAddTask={
+                                viewMode === 'DETAIL' && activeCPId && onTaskCreate
+                                    ? handleContextMenuAddTask
+                                    : undefined
+                            }
+                            onContextMenuAddMilestone={
+                                onMilestoneCreate ? handleContextMenuAddMilestone : undefined
+                            }
+                            anchorDependencies={anchorDependencies}
+                            onAnchorDependencyCreate={onAnchorDependencyCreate}
+                            onAnchorDependencyDelete={onAnchorDependencyDelete}
+                            onAnchorDependencyDrag={onAnchorDependencyDrag}
+                            focusedTaskId={focusedTaskId}
+                            renderMode="content"
+                        />
+                    </div>
+
+                    {isResizing && (
+                        <div className="fixed inset-0 z-50 cursor-col-resize" />
+                    )}
+                </div>
             </div>
 
             <MilestoneEditModal

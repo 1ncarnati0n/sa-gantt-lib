@@ -13,6 +13,8 @@ export interface UseGanttVirtualizationOptions {
     rowHeight?: number;
     /** 오버스캔 (화면 밖에 미리 렌더링할 행 수, 기본값: 5) */
     overscan?: number;
+    /** 마지막 행 아래 여백 (기본값: 50px) */
+    paddingEnd?: number;
 }
 
 export interface VirtualRow {
@@ -61,12 +63,14 @@ export function useGanttVirtualization({
     count,
     rowHeight = ROW_HEIGHT,
     overscan = 5,
+    paddingEnd = 50,
 }: UseGanttVirtualizationOptions) {
     const rowVirtualizer = useVirtualizer({
         count,
         getScrollElement: () => containerRef.current,
         estimateSize: () => rowHeight,
         overscan,
+        paddingEnd,
     });
 
     const virtualItems = rowVirtualizer.getVirtualItems();

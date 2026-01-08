@@ -19,6 +19,8 @@ interface DependencyLinesProps {
     calendarSettings?: CalendarSettings;
     /** 드래그 중인 태스크의 델타 일수를 반환하는 함수 */
     getTaskDeltaDays?: (taskId: string) => number;
+    /** Y축 오프셋 (기본값: MILESTONE_LANE_HEIGHT) */
+    offsetY?: number;
 }
 
 interface DependencyPathInfo {
@@ -33,6 +35,7 @@ interface DependencyPathInfo {
 /**
  * 앵커 좌표 계산 (작업일 기준 dayIndex → 달력일 변환)
  * @param deltaDays 드래그 중인 경우 적용할 델타 일수 (기본값 0)
+ * @param offsetY Y축 시작 오프셋
  */
 const getAnchorCoords = (
     task: ConstructionTask,
@@ -42,14 +45,15 @@ const getAnchorCoords = (
     pixelsPerDay: number,
     holidays: Date[] = [],
     calendarSettings?: CalendarSettings,
-    deltaDays: number = 0
+    deltaDays: number = 0,
+    offsetY: number = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT
 ): { x: number; y: number } => {
     const startOffset = differenceInDays(task.startDate, minDate) + deltaDays;
     const calendarOffset = workingDayToCalendarOffset(task, workingDayIndex, holidays, calendarSettings);
     const x = (startOffset + calendarOffset) * pixelsPerDay;
 
     const y =
-        GANTT_LAYOUT.MILESTONE_LANE_HEIGHT +
+        offsetY +
         rowIndex * GANTT_LAYOUT.ROW_HEIGHT +
         (GANTT_LAYOUT.ROW_HEIGHT - GANTT_LAYOUT.BAR_HEIGHT) / 2 +
         GANTT_LAYOUT.BAR_HEIGHT;
@@ -101,6 +105,7 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
     holidays,
     calendarSettings,
     getTaskDeltaDays,
+    offsetY,
 }) => {
     // 태스크 ID → 인덱스 맵
     const taskIndexMap = useMemo(() => {
@@ -151,7 +156,8 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                     pixelsPerDay,
                     holidays,
                     calendarSettings,
-                    sourceDelta
+                    sourceDelta,
+                    offsetY
                 );
                 const targetCoords = getAnchorCoords(
                     targetTask,
@@ -161,7 +167,8 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                     pixelsPerDay,
                     holidays,
                     calendarSettings,
-                    targetDelta
+                    targetDelta,
+                    offsetY
                 );
 
                 const path = createDependencyPath(
@@ -300,6 +307,8 @@ interface InBarConnectionLinesProps {
     calendarSettings?: CalendarSettings;
     /** 드래그 중인 태스크의 델타 일수를 반환하는 함수 */
     getTaskDeltaDays?: (taskId: string) => number;
+    /** Y축 오프셋 (기본값: MILESTONE_LANE_HEIGHT) */
+    offsetY?: number;
 }
 
 export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
@@ -310,6 +319,7 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
     holidays,
     calendarSettings,
     getTaskDeltaDays,
+    offsetY,
 }) => {
     // 태스크 ID → 인덱스 맵
     const taskIndexMap = useMemo(() => {
@@ -358,7 +368,8 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
                             pixelsPerDay,
                             holidays,
                             calendarSettings,
-                            deltaDays
+                            deltaDays,
+                            offsetY
                         );
                         const toCoords = getAnchorCoords(
                             task,
@@ -368,7 +379,8 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
                             pixelsPerDay,
                             holidays,
                             calendarSettings,
-                            deltaDays
+                            deltaDays,
+                            offsetY
                         );
 
                         connections.push({
@@ -383,7 +395,7 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
         });
 
         return connections;
-    }, [tasks, dependencies, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings, getTaskDeltaDays]);
+    }, [tasks, dependencies, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings, getTaskDeltaDays, offsetY]);
 
     if (inBarConnections.length === 0) return null;
 

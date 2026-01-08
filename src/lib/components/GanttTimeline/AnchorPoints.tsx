@@ -100,6 +100,8 @@ interface AnchorPointsProps {
     calendarSettings?: CalendarSettings;
     /** 종속성 드래그 중 델타 (일 단위) - 앵커 실시간 동기화용 */
     dependencyDragDeltaDays?: number;
+    /** Y축 오프셋 (기본값: MILESTONE_LANE_HEIGHT) */
+    offsetY?: number;
 }
 
 /**
@@ -119,6 +121,7 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
     holidays,
     calendarSettings,
     dependencyDragDeltaDays = 0,
+    offsetY = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT,
 }) => {
     // 앵커 위치 계산 (작업일 기준, 휴일 위치 건너뛰기)
     const anchors = useMemo((): AnchorPosition[] => {
@@ -126,7 +129,7 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
 
         // Y 좌표: 바 하단에 위치
         const y =
-            GANTT_LAYOUT.MILESTONE_LANE_HEIGHT +
+            offsetY +
             rowIndex * GANTT_LAYOUT.ROW_HEIGHT +
             (GANTT_LAYOUT.ROW_HEIGHT - GANTT_LAYOUT.BAR_HEIGHT) / 2 +
             GANTT_LAYOUT.BAR_HEIGHT;
@@ -207,7 +210,7 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
         }
 
         return result;
-    }, [task, rowIndex, minDate, pixelsPerDay, holidays, calendarSettings, dependencyDragDeltaDays]);
+    }, [task, rowIndex, minDate, pixelsPerDay, holidays, calendarSettings, dependencyDragDeltaDays, offsetY]);
 
     // 이 태스크의 특정 dayIndex에 종속성이 연결되어 있는지 확인
     const isAnchorConnected = (dayIndex: number): boolean => {
@@ -351,14 +354,15 @@ export const getAnchorPosition = (
     minDate: Date,
     pixelsPerDay: number,
     holidays: Date[] = [],
-    calendarSettings?: CalendarSettings
+    calendarSettings?: CalendarSettings,
+    offsetY: number = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT
 ): AnchorPosition => {
     const startOffset = differenceInDays(task.startDate, minDate);
     const calendarOffset = workingDayToCalendarOffset(task, workingDayIndex, holidays, calendarSettings);
     const x = (startOffset + calendarOffset) * pixelsPerDay;
 
     const y =
-        GANTT_LAYOUT.MILESTONE_LANE_HEIGHT +
+        offsetY +
         rowIndex * GANTT_LAYOUT.ROW_HEIGHT +
         (GANTT_LAYOUT.ROW_HEIGHT - GANTT_LAYOUT.BAR_HEIGHT) / 2 +
         GANTT_LAYOUT.BAR_HEIGHT;
