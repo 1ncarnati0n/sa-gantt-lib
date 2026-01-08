@@ -68,4 +68,7 @@ export {
 } from './constants';
 
 // Column config type
-export type { ColumnConfig } from './constants';
+export type { ColumnConfig, GanttColorKey } from './constants';
+
+// Color helper function
+export { getGanttColor } from './constants';

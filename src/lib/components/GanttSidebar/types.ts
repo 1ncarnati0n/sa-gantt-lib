@@ -33,6 +33,10 @@ export interface GanttSidebarProps {
     isAddingCP?: boolean;
     onCancelAddCP?: () => void;
     onTaskDoubleClick?: (task: ConstructionTask) => void;
+    /** 렌더링 모드: 'header' = Header+MS만, 'content' = Task Rows만, 'all' = 전체 */
+    renderMode?: 'header' | 'content' | 'all';
+    /** 스크롤 동기화용 scrollLeft 값 */
+    scrollLeft?: number;
 }
 
 export interface SidebarHeaderProps {

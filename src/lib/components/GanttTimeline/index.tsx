@@ -75,6 +75,8 @@ interface GanttTimelineProps {
     onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void;
     // 선택/포커스 관련
     focusedTaskId?: string | null;
+    /** 렌더링 모드: 'header' = Header+MS만, 'content' = Task 영역만, 'all' = 전체 */
+    renderMode?: 'header' | 'content' | 'all';
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
@@ -103,6 +105,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         onAnchorDependencyDelete,
         onAnchorDependencyDrag,
         focusedTaskId,
+        renderMode = 'all',
     }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
@@ -286,6 +289,513 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             ? virtualRows!
             : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }));
 
+        // ====================================
+        // Header Only 모드 (TimelineHeader + Milestone Lane)
+        // ====================================
+        if (renderMode === 'header') {
+            // Header 모드에서 마일스톤 수직선이 Content 영역까지 내려가도록 높이 계산
+            const taskAreaHeight = isVirtualized
+                ? (virtualTotalHeight || tasks.length * ROW_HEIGHT + 100)
+                : tasks.length * ROW_HEIGHT + 100;
+
+            return (
+                <div className="flex flex-col shrink-0" style={{ backgroundColor: 'var(--gantt-bg-primary)' }}>
+                    <TimelineHeader
+                        minDate={minDate}
+                        totalDays={totalDays}
+                        pixelsPerDay={pixelsPerDay}
+                        zoomLevel={zoomLevel}
+                        holidays={holidays}
+                        calendarSettings={calendarSettings}
+                    />
+
+                    {/* Milestone Lane SVG - overflow visible로 수직선이 Content까지 연장 */}
+                    <svg
+                        width={chartWidth}
+                        height={MILESTONE_LANE_HEIGHT}
+                        className="block"
+                        style={{
+                            backgroundColor: 'var(--gantt-bg-primary)',
+                            overflow: 'visible',
+                            borderBottom: '1px solid var(--gantt-border-light)'
+                        }}
+                    >
+                        <SvgDefs />
+
+                        {/* 주말/공휴일 배경색 */}
+                        <TimelineGrid
+                            minDate={minDate}
+                            totalDays={totalDays}
+                            chartHeight={MILESTONE_LANE_HEIGHT}
+                            pixelsPerDay={pixelsPerDay}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            zoomLevel={zoomLevel}
+                        />
+
+                        <rect x={0} y={0} width={chartWidth} height={MILESTONE_LANE_HEIGHT} fill="transparent" />
+
+                        {/* Milestone Lane 수직 그리드 라인 */}
+                        {Array.from({ length: totalDays }, (_, i) => {
+                            const date = addDays(minDate, i);
+                            const dayOfWeek = getDay(date);
+                            const rightX = (i + 1) * pixelsPerDay - 0.5;
+                            const leftX = i * pixelsPerDay - 0.5;
+
+                            if (zoomLevel === 'DAY') {
+                                if (dayOfWeek === 0) {
+                                    return (
+                                        <g key={`ms-vline-${i}`}>
+                                            <line
+                                                x1={leftX}
+                                                y1={0}
+                                                x2={leftX}
+                                                y2={taskAreaHeight + MILESTONE_LANE_HEIGHT}
+                                                stroke={GANTT_COLORS.gridDark}
+                                                strokeWidth={1}
+                                            />
+                                            <line
+                                                x1={rightX}
+                                                y1={0}
+                                                x2={rightX}
+                                                y2={taskAreaHeight + MILESTONE_LANE_HEIGHT}
+                                                stroke={GANTT_COLORS.grid}
+                                                strokeWidth={1}
+                                            />
+                                        </g>
+                                    );
+                                } else {
+                                    return (
+                                        <line
+                                            key={`ms-vline-${i}`}
+                                            x1={rightX}
+                                            y1={0}
+                                            x2={rightX}
+                                            y2={taskAreaHeight + MILESTONE_LANE_HEIGHT}
+                                            stroke={GANTT_COLORS.grid}
+                                            strokeWidth={1}
+                                        />
+                                    );
+                                }
+                            } else if (zoomLevel === 'WEEK' || zoomLevel === 'MONTH') {
+                                if (dayOfWeek === 0) {
+                                    return (
+                                        <line
+                                            key={`ms-vline-${i}`}
+                                            x1={leftX}
+                                            y1={0}
+                                            x2={leftX}
+                                            y2={taskAreaHeight + MILESTONE_LANE_HEIGHT}
+                                            stroke={GANTT_COLORS.grid}
+                                            strokeWidth={1}
+                                        />
+                                    );
+                                }
+                            }
+                            return null;
+                        })}
+
+                        {milestoneLayouts.map((layout) => {
+                            const isDragging = isMilestoneDragging(layout.milestone.id);
+                            return (
+                                <MilestoneMarker
+                                    key={layout.milestone.id}
+                                    milestone={layout.milestone}
+                                    x={layout.x}
+                                    labelLevel={layout.labelLevel}
+                                    isDragging={isDragging}
+                                    dragX={getMilestoneDragX(layout.milestone.id)}
+                                    onMouseDown={onMilestoneUpdate ? handleMilestoneMouseDown : undefined}
+                                    onDoubleClick={onMilestoneDoubleClick ? handleMilestoneDoubleClick : undefined}
+                                    lineHeight={taskAreaHeight + MILESTONE_LANE_HEIGHT}
+                                />
+                            );
+                        })}
+                    </svg>
+                </div>
+            );
+        }
+
+        // ====================================
+        // Content Only 모드 (Task Area만)
+        // ====================================
+        if (renderMode === 'content') {
+            // content 모드: GanttSidebar content 모드와 동일한 높이 사용
+            // Sidebar에서는: isVirtualized ? totalHeight : tasks.length * ROW_HEIGHT + 100
+            const taskAreaHeight = isVirtualized
+                ? (virtualTotalHeight || tasks.length * ROW_HEIGHT + 100)
+                : tasks.length * ROW_HEIGHT + 100;
+
+            return (
+                <div ref={ref} className="relative flex-1" style={{ backgroundColor: 'var(--gantt-bg-primary)' }}>
+                    <svg
+                        width={chartWidth}
+                        height={taskAreaHeight}
+                        className="block"
+                        onContextMenu={handleContextMenu}
+                        onClick={handleSvgClick}
+                    >
+                        <SvgDefs />
+
+                        {/* Layer 1: 배경 */}
+                        <TimelineGrid
+                            minDate={minDate}
+                            totalDays={totalDays}
+                            chartHeight={taskAreaHeight}
+                            pixelsPerDay={pixelsPerDay}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            zoomLevel={zoomLevel}
+                        />
+
+                        {/* GROUP Row Background */}
+                        {rowData.map((row) => {
+                            const task = tasks[row.index];
+                            if (!task || task.type !== 'GROUP') return null;
+
+                            return (
+                                <rect
+                                    key={`group-bg-${row.key}`}
+                                    x={0}
+                                    y={row.start}
+                                    width={chartWidth}
+                                    height={ROW_HEIGHT}
+                                    fill={GANTT_COLORS.bgSecondary}
+                                    fillOpacity={0.6}
+                                    className="pointer-events-none"
+                                />
+                            );
+                        })}
+
+                        {/* Layer 2: 그리드 라인 (수직) */}
+                        {Array.from({ length: totalDays }, (_, i) => {
+                            const date = addDays(minDate, i);
+                            const dayOfWeek = getDay(date);
+                            const rightX = (i + 1) * pixelsPerDay - 0.5;
+                            const leftX = i * pixelsPerDay - 0.5;
+
+                            if (zoomLevel === 'DAY') {
+                                if (dayOfWeek === 0) {
+                                    return (
+                                        <g key={`vline-${i}`}>
+                                            <line
+                                                x1={leftX}
+                                                y1={0}
+                                                x2={leftX}
+                                                y2={taskAreaHeight}
+                                                stroke={GANTT_COLORS.gridDark}
+                                                strokeWidth={1}
+                                            />
+                                            <line
+                                                x1={rightX}
+                                                y1={0}
+                                                x2={rightX}
+                                                y2={taskAreaHeight}
+                                                stroke={GANTT_COLORS.grid}
+                                                strokeWidth={1}
+                                            />
+                                        </g>
+                                    );
+                                } else {
+                                    return (
+                                        <line
+                                            key={`vline-${i}`}
+                                            x1={rightX}
+                                            y1={0}
+                                            x2={rightX}
+                                            y2={taskAreaHeight}
+                                            stroke={GANTT_COLORS.grid}
+                                            strokeWidth={1}
+                                        />
+                                    );
+                                }
+                            } else if (zoomLevel === 'WEEK' || zoomLevel === 'MONTH') {
+                                if (dayOfWeek === 0) {
+                                    return (
+                                        <line
+                                            key={`vline-${i}`}
+                                            x1={leftX}
+                                            y1={0}
+                                            x2={leftX}
+                                            y2={taskAreaHeight}
+                                            stroke={GANTT_COLORS.grid}
+                                            strokeWidth={1}
+                                        />
+                                    );
+                                }
+                            }
+
+                            return null;
+                        })}
+
+                        {/* Horizontal Lines */}
+                        {rowData.map((row) => (
+                            <line
+                                key={`line-${row.key}`}
+                                x1={0}
+                                y1={row.start + ROW_HEIGHT}
+                                x2={chartWidth}
+                                y2={row.start + ROW_HEIGHT}
+                                stroke={GANTT_COLORS.borderLight}
+                                strokeWidth={1}
+                            />
+                        ))}
+
+                        {/* Layer 4: 태스크 바 */}
+                        {rowData.map((row) => {
+                            const task = tasks[row.index];
+                            if (!task) return null;
+
+                            const y = row.start + (ROW_HEIGHT - BAR_HEIGHT) / 2;
+
+                            if (!isMasterView && task.type === 'GROUP') {
+                                return (
+                                    <GroupSummaryBar
+                                        key={`group-${row.key}`}
+                                        group={task}
+                                        allTasks={allTasks || tasks}
+                                        y={y}
+                                        minDate={minDate}
+                                        pixelsPerDay={pixelsPerDay}
+                                        isDraggable={!!onGroupDrag}
+                                        currentDeltaDays={getGroupDragDeltaDays(task.id)}
+                                        onDragStart={handleGroupBarMouseDown}
+                                        onToggle={onGroupToggle}
+                                        onClick={(e, groupId) => {
+                                            selectTask(groupId, {
+                                                ctrlKey: e.ctrlKey || e.metaKey,
+                                                shiftKey: e.shiftKey,
+                                                visibleTasks: tasks,
+                                            });
+                                        }}
+                                        isFocused={focusedTaskId === task.id}
+                                    />
+                                );
+                            }
+
+                            return (
+                                <TaskBar
+                                    key={row.key}
+                                    task={task}
+                                    y={y}
+                                    minDate={minDate}
+                                    pixelsPerDay={pixelsPerDay}
+                                    isMasterView={isMasterView}
+                                    renderMode="bar"
+                                    allTasks={allTasks || tasks}
+                                    holidays={holidays}
+                                    calendarSettings={calendarSettings}
+                                    isDraggable={!isMasterView && !!onBarDrag}
+                                    dragInfo={getDragInfo(task.id)}
+                                    groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
+                                    groupDragInfo={getTaskDragInfo(task.id)}
+                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
+                                    dependencyDragInfo={getDependencyDragInfo(task.id)}
+                                    onDragStart={handleBarMouseDown}
+                                    onDependencyDragStart={handleDependencyBarMouseDown}
+                                    hasDependency={taskHasDependency(task.id)}
+                                    isFocused={focusedTaskId === task.id}
+                                    onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
+                                        ? () => onTaskDoubleClick(task)
+                                        : undefined}
+                                    onMouseEnter={() => setHoveredTaskId(task.id)}
+                                    onMouseLeave={() => setHoveredTaskId(null)}
+                                />
+                            );
+                        })}
+
+                        {/* Layer 5: 종속성 선 */}
+                        {!isMasterView && anchorDependencies.length > 0 && (
+                            <DependencyLines
+                                tasks={tasks}
+                                dependencies={anchorDependencies}
+                                minDate={minDate}
+                                pixelsPerDay={pixelsPerDay}
+                                selectedDepId={selectedDepId}
+                                hoveredDepId={hoveredDepId}
+                                onDependencyClick={handleDependencyClick}
+                                onDependencyHover={handleDependencyHover}
+                                holidays={holidays}
+                                calendarSettings={calendarSettings}
+                                getTaskDeltaDays={getCombinedTaskDeltaDays}
+                                offsetY={0}
+                            />
+                        )}
+
+                        {/* Layer 5.5: 바 내 앵커 연결선 */}
+                        {!isMasterView && anchorDependencies.length > 0 && (
+                            <InBarConnectionLines
+                                tasks={tasks}
+                                dependencies={anchorDependencies}
+                                minDate={minDate}
+                                pixelsPerDay={pixelsPerDay}
+                                holidays={holidays}
+                                calendarSettings={calendarSettings}
+                                getTaskDeltaDays={getCombinedTaskDeltaDays}
+                                offsetY={0}
+                            />
+                        )}
+
+                        {/* Layer 6: 앵커 포인트 */}
+                        {!isMasterView && rowData.map((row) => {
+                            const task = tasks[row.index];
+                            if (!task || task.type !== 'TASK') return null;
+
+                            return (
+                                <AnchorPoints
+                                    key={`anchor-${row.key}`}
+                                    task={task}
+                                    rowIndex={row.index}
+                                    minDate={minDate}
+                                    pixelsPerDay={pixelsPerDay}
+                                    connectingFrom={connectingFrom}
+                                    dependencies={anchorDependencies}
+                                    onAnchorClick={handleAnchorClick}
+                                    onAnchorHover={handleAnchorHover}
+                                    holidays={holidays}
+                                    calendarSettings={calendarSettings}
+                                    dependencyDragDeltaDays={getCombinedTaskDeltaDays(task.id)}
+                                    offsetY={0}
+                                />
+                            );
+                        })}
+
+                        {/* Layer 6.5: 태스크 라벨 */}
+                        {rowData.map((row) => {
+                            const task = tasks[row.index];
+                            if (!task) return null;
+                            if (!isMasterView && task.type === 'GROUP') return null;
+
+                            const y = row.start + (ROW_HEIGHT - BAR_HEIGHT) / 2;
+
+                            return (
+                                <TaskBar
+                                    key={`label-${row.key}`}
+                                    task={task}
+                                    y={y}
+                                    minDate={minDate}
+                                    pixelsPerDay={pixelsPerDay}
+                                    isMasterView={isMasterView}
+                                    renderMode="label"
+                                    allTasks={allTasks || tasks}
+                                    holidays={holidays}
+                                    calendarSettings={calendarSettings}
+                                    dragInfo={getDragInfo(task.id)}
+                                    groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
+                                    groupDragInfo={getTaskDragInfo(task.id)}
+                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
+                                    dependencyDragInfo={getDependencyDragInfo(task.id)}
+                                    isFocused={focusedTaskId === task.id}
+                                />
+                            );
+                        })}
+
+                        {/* Layer 6.8: 마일스톤 대시선 (태스크 바 위에 렌더링) */}
+                        {milestoneLayouts.map((layout) => {
+                            const isDetail = layout.milestone.milestoneType === 'DETAIL';
+                            const lineColor = isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.milestone;
+                            return (
+                                <line
+                                    key={`ms-line-${layout.milestone.id}`}
+                                    x1={layout.x}
+                                    y1={0}
+                                    x2={layout.x}
+                                    y2={taskAreaHeight}
+                                    stroke={lineColor}
+                                    strokeWidth={1.2}
+                                    strokeDasharray="4, 5"
+                                    className="opacity-90 pointer-events-none"
+                                />
+                            );
+                        })}
+
+                        {/* Layer 7: 연결 프리뷰 선 */}
+                        {!isMasterView && connectingFrom && hoveredAnchor && connectingFrom.taskId !== hoveredAnchor.taskId && (() => {
+                            const sourceTask = tasks.find(t => t.id === connectingFrom.taskId);
+                            const targetTask = tasks.find(t => t.id === hoveredAnchor.taskId);
+                            const sourceIndex = tasks.findIndex(t => t.id === connectingFrom.taskId);
+                            const targetIndex = tasks.findIndex(t => t.id === hoveredAnchor.taskId);
+
+                            if (!sourceTask || !targetTask || sourceIndex < 0 || targetIndex < 0) return null;
+
+                            const sourcePos = getAnchorPosition(sourceTask, connectingFrom.dayIndex, sourceIndex, minDate, pixelsPerDay, holidays, calendarSettings, 0);
+                            const targetPos = getAnchorPosition(targetTask, hoveredAnchor.dayIndex, targetIndex, minDate, pixelsPerDay, holidays, calendarSettings, 0);
+
+                            return (
+                                <ConnectionPreviewLine
+                                    sourceX={sourcePos.x}
+                                    sourceY={sourcePos.y}
+                                    targetX={targetPos.x}
+                                    targetY={targetPos.y}
+                                />
+                            );
+                        })()}
+
+                        {/* Dependency Drag Info Indicator */}
+                        {isDependencyDragging && (() => {
+                            const connectedIds = getConnectedTaskIds();
+                            if (connectedIds.length <= 1) return null;
+
+                            return (
+                                <g className="dependency-drag-indicator">
+                                    <rect
+                                        x={10}
+                                        y={10}
+                                        width={180}
+                                        height={28}
+                                        rx={6}
+                                        fill={GANTT_COLORS.success}
+                                        fillOpacity={0.9}
+                                    />
+                                    <text
+                                        x={100}
+                                        y={28}
+                                        textAnchor="middle"
+                                        fill="white"
+                                        fontSize={12}
+                                        fontWeight={600}
+                                    >
+                                        🔗 연결된 {connectedIds.length}개 태스크 이동 중
+                                    </text>
+                                </g>
+                            );
+                        })()}
+                    </svg>
+
+                    {/* Critical Path Bar (Level 2에서만 표시) */}
+                    {!isMasterView && showCriticalPath && (
+                        <CriticalPathBar
+                            tasks={allTasks || tasks}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            minDate={minDate}
+                            pixelsPerDay={pixelsPerDay}
+                            totalWidth={chartWidth}
+                            activeCPId={activeCPId}
+                        />
+                    )}
+
+                    {/* 컨텍스트 메뉴 */}
+                    {contextMenu && onContextMenuAddMilestone && (
+                        <TimelineContextMenu
+                            x={contextMenu.x}
+                            y={contextMenu.y}
+                            clickedDate={contextMenu.clickedDate}
+                            viewMode={viewMode}
+                            onAddTask={onContextMenuAddTask}
+                            onAddMilestone={onContextMenuAddMilestone}
+                            onClose={handleContextMenuClose}
+                            selectedDependencyId={selectedDepId}
+                            onDeleteDependency={onAnchorDependencyDelete ? handleDepDelete : undefined}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        // ====================================
+        // All 모드 (기존 전체 렌더링)
+        // ====================================
         return (
             <div className="flex h-full w-full flex-col overflow-hidden" style={{ backgroundColor: 'var(--gantt-bg-primary)' }}>
                 <div ref={ref} className="relative flex-1">
@@ -521,6 +1031,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
                                 getTaskDeltaDays={getCombinedTaskDeltaDays}
+                                offsetY={0}
                             />
                         )}
 
@@ -534,6 +1045,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
                                 getTaskDeltaDays={getCombinedTaskDeltaDays}
+                                offsetY={0}
                             />
                         )}
 
@@ -556,6 +1068,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     holidays={holidays}
                                     calendarSettings={calendarSettings}
                                     dependencyDragDeltaDays={getCombinedTaskDeltaDays(task.id)}
+                                    offsetY={0}
                                 />
                             );
                         })}
@@ -591,6 +1104,25 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             );
                         })}
 
+                        {/* Layer 6.8: 마일스톤 대시선 (태스크 바 위에 렌더링) */}
+                        {milestoneLayouts.map((layout) => {
+                            const isDetail = layout.milestone.milestoneType === 'DETAIL';
+                            const lineColor = isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.milestone;
+                            return (
+                                <line
+                                    key={`ms-line-${layout.milestone.id}`}
+                                    x1={layout.x}
+                                    y1={MILESTONE_LANE_HEIGHT}
+                                    x2={layout.x}
+                                    y2={chartHeight}
+                                    stroke={lineColor}
+                                    strokeWidth={1.2}
+                                    strokeDasharray="4, 5"
+                                    className="opacity-90 pointer-events-none"
+                                />
+                            );
+                        })}
+
                         {/* Layer 7: 연결 프리뷰 선 */}
                         {!isMasterView && connectingFrom && hoveredAnchor && connectingFrom.taskId !== hoveredAnchor.taskId && (() => {
                             const sourceTask = tasks.find(t => t.id === connectingFrom.taskId);
@@ -600,8 +1132,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
                             if (!sourceTask || !targetTask || sourceIndex < 0 || targetIndex < 0) return null;
 
-                            const sourcePos = getAnchorPosition(sourceTask, connectingFrom.dayIndex, sourceIndex, minDate, pixelsPerDay, holidays, calendarSettings);
-                            const targetPos = getAnchorPosition(targetTask, hoveredAnchor.dayIndex, targetIndex, minDate, pixelsPerDay, holidays, calendarSettings);
+                            const sourcePos = getAnchorPosition(sourceTask, connectingFrom.dayIndex, sourceIndex, minDate, pixelsPerDay, holidays, calendarSettings, 0);
+                            const targetPos = getAnchorPosition(targetTask, hoveredAnchor.dayIndex, targetIndex, minDate, pixelsPerDay, holidays, calendarSettings, 0);
 
                             return (
                                 <ConnectionPreviewLine

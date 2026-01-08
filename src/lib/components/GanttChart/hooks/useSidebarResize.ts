@@ -47,7 +47,12 @@ export const useSidebarResize = ({
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizingRef.current) return;
             const delta = e.clientX - startX;
-            setSidebarWidth(startWidth + delta);
+            // 드래그 중에도 min/max 클램핑 적용
+            const newWidth = Math.max(
+                GANTT_LAYOUT.SIDEBAR_MIN_WIDTH,
+                Math.min(startWidth + delta, GANTT_LAYOUT.SIDEBAR_MAX_WIDTH)
+            );
+            setSidebarWidth(newWidth);
         };
 
         const handleMouseUp = () => {

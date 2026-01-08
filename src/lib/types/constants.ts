@@ -74,6 +74,33 @@ export const GANTT_COLORS = {
 } as const;
 
 /**
+ * GANTT_COLORS 객체의 키 타입
+ * IDE 자동완성 및 타입 검증에 활용
+ * 
+ * @example
+ * const colorKey: GanttColorKey = 'vermilion';
+ * const cssValue = GANTT_COLORS[colorKey];
+ */
+export type GanttColorKey = keyof typeof GANTT_COLORS;
+
+/**
+ * 타입 안전한 색상 접근 헬퍼
+ * 
+ * @param key - GANTT_COLORS의 키
+ * @returns CSS 변수 문자열 (예: 'var(--gantt-vermilion)')
+ * 
+ * @example
+ * // SVG fill 속성에서 사용
+ * <rect fill={getGanttColor('vermilion')} />
+ * 
+ * // 동적 색상 선택
+ * const barColor = getGanttColor(isWorkDay ? 'vermilion' : 'teal');
+ */
+export function getGanttColor(key: GanttColorKey): string {
+    return GANTT_COLORS[key];
+}
+
+/**
  * 정적 색상값 (SSR/폴백용)
  * CSS 변수가 아닌 실제 색상값이 필요한 경우 사용
  */
@@ -99,7 +126,7 @@ export const GANTT_COLORS_STATIC = {
 // ============================================
 
 export const GANTT_LAYOUT = {
-    ROW_HEIGHT: 34,
+    ROW_HEIGHT: 30,
     HEADER_HEIGHT: 80,
     MILESTONE_LANE_HEIGHT: 40,
     BAR_HEIGHT: 14,

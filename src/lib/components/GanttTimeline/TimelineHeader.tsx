@@ -162,7 +162,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = ({
 
     return (
         <div
-            className="sticky top-0 z-5 flex shrink-0 flex-col shadow-sm"
+            className="sticky top-0 z-5 flex shrink-0 flex-col"
             style={{
                 height: HEADER_HEIGHT,
                 minWidth: totalWidth,

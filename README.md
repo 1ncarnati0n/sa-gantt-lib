@@ -4,7 +4,7 @@
 
 **건설 공정표 전문 간트 차트 라이브러리**
 
-[![Version](https://img.shields.io/badge/version-0.1.0--beta-blue.svg)](https://github.com/your-repo/sa-gantt-lib)
+[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://github.com/your-repo/sa-gantt-lib)
 [![React](https://img.shields.io/badge/React-18%2F19-61dafb.svg)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178c6.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -511,16 +511,18 @@ tsc --noEmit
 
 ## 🗺️ 로드맵
 
-### v0.1.0-beta (현재)
+### v0.1.1 (현재)
 - [x] 기본 간트 차트 렌더링
 - [x] 2단계 뷰 시스템 (Master/Detail)
 - [x] 드래그 앤 드롭
 - [x] 마일스톤 관리
 - [x] Undo/Redo
-- [x] 앵커 기반 종속성 시스템 🆕
-- [x] 연결된 태스크 그룹 드래그 🆕
-- [x] DataService 추상화 (Supabase 준비) 🆕
-- [x] 상수 모듈화 (매직 넘버 제거) 🆕
+- [x] 앵커 기반 종속성 시스템
+- [x] 연결된 태스크 그룹 드래그
+- [x] DataService 추상화 (Supabase 준비)
+- [x] 상수 모듈화 (매직 넘버 제거)
+- [x] 마일스톤 대시선 연속 렌더링 (Header → Body) 🆕
+- [x] 그리드 라인 정렬 개선 🆕
 
 ### v0.2.0 (예정)
 - [ ] Supabase 연동 (SupabaseService)
