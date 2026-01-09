@@ -35,6 +35,20 @@ const getStorageKeys = (prefix: string) => ({
 // LocalStorageService Class
 // ============================================
 
+/**
+ * LocalStorage 할당량 초과 에러
+ */
+export class StorageQuotaExceededError extends Error {
+    constructor(
+        message: string,
+        public readonly currentSize: number,
+        public readonly attemptedKey: string
+    ) {
+        super(message);
+        this.name = 'StorageQuotaExceededError';
+    }
+}
+
 export class LocalStorageService implements DataService {
     private storageKeys: ReturnType<typeof getStorageKeys>;
     private debug: boolean;
@@ -48,6 +62,26 @@ export class LocalStorageService implements DataService {
     private log(...args: unknown[]): void {
         if (this.debug) {
             console.log('[LocalStorageService]', ...args);
+        }
+    }
+
+    /**
+     * localStorage에 안전하게 저장 (할당량 초과 처리 포함)
+     */
+    private safeSetItem(key: string, value: string): void {
+        try {
+            localStorage.setItem(key, value);
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+                const currentSize = this.getStorageSize();
+                throw new StorageQuotaExceededError(
+                    `저장 공간이 부족합니다. 현재 사용량: ${(currentSize / 1024).toFixed(1)}KB. ` +
+                    `일부 데이터를 삭제하거나 내보내기 후 초기화하세요.`,
+                    currentSize,
+                    key
+                );
+            }
+            throw error;
         }
     }
 
@@ -78,13 +112,8 @@ export class LocalStorageService implements DataService {
     }
 
     async saveTasks(tasks: ConstructionTask[]): Promise<void> {
-        try {
-            localStorage.setItem(this.storageKeys.TASKS, serializeTasks(tasks));
-            this.log('Saved', tasks.length, 'tasks');
-        } catch (error) {
-            console.error('Failed to save tasks to localStorage:', error);
-            throw error;
-        }
+        this.safeSetItem(this.storageKeys.TASKS, serializeTasks(tasks));
+        this.log('Saved', tasks.length, 'tasks');
     }
 
     async updateTask(id: string, updates: Partial<ConstructionTask>): Promise<ConstructionTask | null> {
@@ -159,13 +188,8 @@ export class LocalStorageService implements DataService {
     }
 
     async saveMilestones(milestones: Milestone[]): Promise<void> {
-        try {
-            localStorage.setItem(this.storageKeys.MILESTONES, serializeMilestones(milestones));
-            this.log('Saved', milestones.length, 'milestones');
-        } catch (error) {
-            console.error('Failed to save milestones to localStorage:', error);
-            throw error;
-        }
+        this.safeSetItem(this.storageKeys.MILESTONES, serializeMilestones(milestones));
+        this.log('Saved', milestones.length, 'milestones');
     }
 
     async updateMilestone(id: string, updates: Partial<Milestone>): Promise<Milestone | null> {
@@ -240,16 +264,11 @@ export class LocalStorageService implements DataService {
     }
 
     async saveDependencies(dependencies: AnchorDependency[]): Promise<void> {
-        try {
-            localStorage.setItem(
-                this.storageKeys.ANCHOR_DEPENDENCIES,
-                serializeAnchorDependencies(dependencies)
-            );
-            this.log('Saved', dependencies.length, 'dependencies');
-        } catch (error) {
-            console.error('Failed to save dependencies to localStorage:', error);
-            throw error;
-        }
+        this.safeSetItem(
+            this.storageKeys.ANCHOR_DEPENDENCIES,
+            serializeAnchorDependencies(dependencies)
+        );
+        this.log('Saved', dependencies.length, 'dependencies');
     }
 
     async createDependency(dependency: AnchorDependency): Promise<AnchorDependency> {

@@ -17,7 +17,11 @@ export type { DataService, GanttData, DataServiceOptions } from './DataService';
 // ============================================
 // Services
 // ============================================
-export { LocalStorageService, createLocalStorageService } from './LocalStorageService';
+export {
+    LocalStorageService,
+    createLocalStorageService,
+    StorageQuotaExceededError,
+} from './LocalStorageService';
 
 // 향후 추가:
 // export { SupabaseService, createSupabaseService } from './SupabaseService';
