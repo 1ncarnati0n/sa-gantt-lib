@@ -172,9 +172,9 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
         ? Array.from(selectedTaskIds).map(id => tasks.find(t => t.id === id)?.name || id)
         : [tasks.find(t => t.id === taskId)?.name || taskId];
 
-    return (
+    return ReactDOM.createPortal(
         <div
-            className="fixed z-[100] min-w-[160px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            className="fixed z-[9999] min-w-[160px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
             style={{ left: x, top: y }}
             onClick={(e) => e.stopPropagation()}
         >
@@ -260,7 +260,8 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
                     onCancel={handleDeleteCancel}
                 />
             )}
-        </div>
+        </div>,
+        document.body
     );
 };
 

@@ -18,18 +18,31 @@ import type { GanttData } from './DataService';
 
 /**
  * Task 데이터 유효성 검증
+ * ConstructionTask의 필수 필드를 모두 검증
  */
 export const isValidTaskData = (data: unknown): data is Record<string, unknown> & {
     id: string;
+    parentId: string | null;
+    wbsLevel: 1 | 2;
+    type: 'GROUP' | 'CP' | 'TASK';
+    name: string;
     startDate: string;
     endDate: string;
 } => {
     if (!data || typeof data !== 'object') return false;
     const obj = data as Record<string, unknown>;
     return (
+        // 필수 문자열 필드
         typeof obj.id === 'string' &&
+        typeof obj.name === 'string' &&
         typeof obj.startDate === 'string' &&
-        typeof obj.endDate === 'string'
+        typeof obj.endDate === 'string' &&
+        // parentId: null 또는 string
+        (obj.parentId === null || typeof obj.parentId === 'string') &&
+        // wbsLevel: 1 또는 2
+        (obj.wbsLevel === 1 || obj.wbsLevel === 2) &&
+        // type: 'GROUP', 'CP', 'TASK' 중 하나
+        (obj.type === 'GROUP' || obj.type === 'CP' || obj.type === 'TASK')
     );
 };
 
@@ -94,13 +107,27 @@ export const deserializeTasks = (json: string): ConstructionTask[] | null => {
             return null;
         }
 
-        return parsed
-            .filter(isValidTaskData)
-            .map((t) => ({
-                ...t,
-                startDate: parseISO(t.startDate),
-                endDate: parseISO(t.endDate),
-            })) as ConstructionTask[];
+        const validTasks = parsed.filter(isValidTaskData);
+        if (validTasks.length !== parsed.length) {
+            console.warn(
+                `[deserializeTasks] ${parsed.length - validTasks.length}개의 유효하지 않은 Task가 필터링됨`
+            );
+        }
+
+        return validTasks.map((t): ConstructionTask => ({
+            id: t.id,
+            parentId: t.parentId,
+            wbsLevel: t.wbsLevel,
+            type: t.type,
+            name: t.name,
+            startDate: parseISO(t.startDate),
+            endDate: parseISO(t.endDate),
+            // 선택적 필드 (타입 가드 통과 후 안전하게 접근)
+            cp: t.cp as ConstructionTask['cp'],
+            task: t.task as ConstructionTask['task'],
+            group: t.group as ConstructionTask['group'],
+            dependencies: (t.dependencies ?? []) as ConstructionTask['dependencies'],
+        }));
     } catch (error) {
         console.error('Failed to deserialize tasks:', error);
         return null;
