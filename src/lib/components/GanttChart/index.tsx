@@ -65,7 +65,9 @@ export function GanttChart({
     hasUnsavedChanges,
     saveStatus,
     onExport,
+    onExportExcel,
     onImport,
+    loadedFileName,
     onError,
     className,
     style,
@@ -475,7 +477,9 @@ export function GanttChart({
                 onSave={onSave}
                 onReset={onReset}
                 onExport={onExport}
+                onExportExcel={onExportExcel}
                 onImport={onImport}
+                loadedFileName={loadedFileName}
                 canCreateTask={!!onTaskCreate}
                 canCreateMilestone={!!onMilestoneCreate}
             />

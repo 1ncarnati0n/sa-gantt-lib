@@ -255,4 +255,8 @@ export {
     parseImportedData,
     parseMockTasks,
     parseMockMilestones,
+    // Excel Export
+    exportToExcel,
 } from './services';
+
+export type { ExcelExportData } from './services';
