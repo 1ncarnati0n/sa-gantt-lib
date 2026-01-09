@@ -196,12 +196,28 @@ export const moveByWorkingDays = (
 };
 
 /**
- * 달력일 기준으로 날짜 추가 (휴일 포함)
+ * 달력일 기준으로 N일간 작업 후 종료일 계산 (휴일 포함)
+ *
+ * 건설 공정 규칙: "N일간 작업" = 시작일 포함 N일
+ * - 예: 1/1 시작, 5일간 작업 → 종료일 1/5 (1/1, 1/2, 1/3, 1/4, 1/5)
+ * - 계산: startDate + (N - 1)
+ *
  * 소수점 일수는 올림 처리 (예: 2.3일 → 3일)
+ *
+ * @param startDate - 작업 시작일 (첫째 날)
+ * @param days - 작업 기간 (일 수, 시작일 포함)
+ * @returns 작업 종료일
+ *
+ * @example
+ * ```ts
+ * // 1/1 시작, 5일간 작업 → 1/5 종료
+ * addCalendarDays(new Date('2024-01-01'), 5);
+ * // 결과: 2024-01-05
+ * ```
  */
 export const addCalendarDays = (startDate: Date, days: number): Date => {
     if (days <= 0) return startDate;
-    // 소수점이 있으면 올림 처리하여 날짜 계산
+    // N일간 작업 = 시작일(1일차) + 나머지(N-1일)
     const wholeDays = Math.ceil(days);
     return addDays(startDate, wholeDays - 1);
 };

@@ -1,15 +1,33 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { produce, enablePatches, applyPatches, Patch } from 'immer';
 import { shallowEqualHistoryState } from '../utils/comparisonUtils';
+
+// Immer patches 기능 활성화
+enablePatches();
+
+/**
+ * 패치 기반 히스토리 항목
+ * 전체 상태 대신 변경 패치만 저장하여 메모리 효율 향상
+ */
+interface PatchEntry {
+    /** 되돌리기용 패치 */
+    undo: Patch[];
+    /** 다시 실행용 패치 */
+    redo: Patch[];
+}
 
 /**
  * 히스토리 상태 인터페이스
  */
 interface HistoryState<T> {
-    past: T[];
+    /** 이전 변경 패치들 */
+    past: PatchEntry[];
+    /** 현재 상태 */
     present: T;
-    future: T[];
+    /** 취소된 변경 패치들 */
+    future: PatchEntry[];
 }
 
 /**
@@ -40,7 +58,7 @@ interface UseHistoryReturn<T> {
 const MAX_HISTORY_LENGTH = 50;
 
 /**
- * 깊은 복사 유틸리티 함수
+ * 깊은 복사 유틸리티 함수 (초기화 시에만 사용)
  * Date 객체와 Set 등 특수 타입도 처리
  */
 function deepClone<T>(obj: T): T {
@@ -75,20 +93,23 @@ function deepClone<T>(obj: T): T {
 
 /**
  * Undo/Redo 기능을 제공하는 히스토리 관리 훅
- * 
+ *
+ * Immer의 patches 기능을 활용하여 전체 상태 대신 변경 패치만 저장합니다.
+ * 이를 통해 메모리 사용량을 크게 줄이면서 동일한 기능을 제공합니다.
+ *
  * @param initialState 초기 상태
  * @returns 히스토리 관리 함수들과 현재 상태
- * 
+ *
  * @example
  * ```tsx
  * const { present, set, undo, redo, canUndo, canRedo } = useHistory({ count: 0 });
- * 
+ *
  * // 상태 변경 (히스토리에 기록됨)
  * set({ count: 1 });
- * 
+ *
  * // 이전 값으로 되돌리기
  * undo(); // count: 0
- * 
+ *
  * // 다시 실행
  * redo(); // count: 1
  * ```
@@ -105,6 +126,7 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
 
     /**
      * 상태 변경 (히스토리에 기록)
+     * Immer의 produceWithPatches를 사용하여 패치만 저장
      */
     const set = useCallback((newState: T | ((prev: T) => T)) => {
         setHistory(prev => {
@@ -123,13 +145,35 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
             }
 
             // 이전 상태와 동일하면 무시 (얕은 비교로 성능 최적화)
-            if (shallowEqualHistoryState(prev.present as Record<string, unknown>, resolvedState as Record<string, unknown>)) {
+            if (shallowEqualHistoryState(
+                prev.present as Record<string, unknown>,
+                resolvedState as Record<string, unknown>
+            )) {
                 return prev;
             }
 
-            // 새 히스토리 추가
-            const newPast = [...prev.past, deepClone(prev.present)];
-            
+            // Immer를 사용하여 패치 생성
+            let patches: Patch[] = [];
+            let inversePatches: Patch[] = [];
+
+            const nextState = produce(
+                prev.present,
+                (draft) => {
+                    // 새 상태로 교체
+                    Object.keys(draft as object).forEach(key => {
+                        delete (draft as Record<string, unknown>)[key];
+                    });
+                    Object.assign(draft as object, resolvedState);
+                },
+                (p, ip) => {
+                    patches = p;
+                    inversePatches = ip;
+                }
+            );
+
+            // 새 히스토리 항목 추가
+            const newPast = [...prev.past, { undo: inversePatches, redo: patches }];
+
             // 최대 개수 초과 시 오래된 것 제거
             if (newPast.length > MAX_HISTORY_LENGTH) {
                 newPast.shift();
@@ -137,7 +181,7 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
 
             return {
                 past: newPast,
-                present: deepClone(resolvedState),
+                present: nextState,
                 future: [], // 새 변경 시 future 초기화
             };
         });
@@ -145,34 +189,42 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
 
     /**
      * 실행 취소 (Undo)
+     * 저장된 inversePatches를 적용하여 이전 상태로 복원
      */
     const undo = useCallback(() => {
         setHistory(prev => {
             if (prev.past.length === 0) return prev;
 
             const newPast = [...prev.past];
-            const previousState = newPast.pop()!;
+            const lastEntry = newPast.pop()!;
+
+            // inversePatches 적용하여 이전 상태 복원
+            const previousState = applyPatches(prev.present as object, lastEntry.undo) as T;
 
             return {
                 past: newPast,
                 present: previousState,
-                future: [deepClone(prev.present), ...prev.future],
+                future: [lastEntry, ...prev.future],
             };
         });
     }, []);
 
     /**
      * 다시 실행 (Redo)
+     * 저장된 patches를 적용하여 다음 상태로 이동
      */
     const redo = useCallback(() => {
         setHistory(prev => {
             if (prev.future.length === 0) return prev;
 
             const newFuture = [...prev.future];
-            const nextState = newFuture.shift()!;
+            const nextEntry = newFuture.shift()!;
+
+            // patches 적용하여 다음 상태 복원
+            const nextState = applyPatches(prev.present as object, nextEntry.redo) as T;
 
             return {
-                past: [...prev.past, deepClone(prev.present)],
+                past: [...prev.past, nextEntry],
                 present: nextState,
                 future: newFuture,
             };
@@ -219,4 +271,3 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
 }
 
 export default useHistory;
-

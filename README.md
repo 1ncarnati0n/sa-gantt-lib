@@ -38,7 +38,7 @@
   - 드래그 앤 드롭 (바 이동, 리사이즈)
   - 줌 레벨 (일/주/월)
   - 마일스톤 관리
-  - Undo/Redo 지원
+  - Undo/Redo 지원 (Immer patches 기반 메모리 최적화) 🆕
 
 - **데이터 서비스 추상화** 🆕
   - `DataService` 인터페이스로 저장소 분리
@@ -79,6 +79,7 @@
 | 기술 | 버전 | 용도 |
 |------|------|------|
 | Zustand | ^5.0.8 | 경량 상태 관리 라이브러리 |
+| Immer | ^10.x | 불변 상태 업데이트 및 히스토리 최적화 🆕 |
 
 ### UI & Visualization
 
@@ -249,6 +250,7 @@ export { GANTT_ANCHOR, GANTT_DRAG, GANTT_SUMMARY, GANTT_STROKE };  // 🆕
 
 // 데이터 서비스 (🆕)
 export { LocalStorageService, createLocalStorageService };
+export { StorageQuotaExceededError };  // 할당량 초과 에러 🆕
 export { serializeGanttDataForExport, parseImportedData };
 ```
 
@@ -521,8 +523,11 @@ tsc --noEmit
 - [x] 연결된 태스크 그룹 드래그
 - [x] DataService 추상화 (Supabase 준비)
 - [x] 상수 모듈화 (매직 넘버 제거)
-- [x] 마일스톤 대시선 연속 렌더링 (Header → Body) 🆕
-- [x] 그리드 라인 정렬 개선 🆕
+- [x] 마일스톤 대시선 연속 렌더링 (Header → Body)
+- [x] 그리드 라인 정렬 개선
+- [x] useHistory Immer patches 기반 메모리 최적화 🆕
+- [x] LocalStorage 할당량 초과 에러 처리 🆕
+- [x] 타입 가드 강화 (serializers) 🆕
 
 ### v0.2.0 (예정)
 - [ ] Supabase 연동 (SupabaseService)

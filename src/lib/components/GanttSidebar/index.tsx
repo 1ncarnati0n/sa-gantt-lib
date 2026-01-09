@@ -210,12 +210,10 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
 
             // CP의 parentId로 상위 GROUP 찾기
             if (!activeCP.parentId) {
-                console.log('[GanttSidebar] activeCP has no parentId:', activeCP);
                 return { activeGroupName: undefined, activeCPName: cpName };
             }
 
             const parentGroup = allTasks.find(t => t.id === activeCP.parentId);
-            console.log('[GanttSidebar] parentGroup:', parentGroup?.name, 'for CP:', cpName);
 
             return {
                 activeGroupName: parentGroup?.name,

@@ -260,14 +260,20 @@ export const useBarDrag = ({
         if (dragState) {
             const cursor = getDragCursor(dragState.dragType);
             document.body.style.cursor = cursor;
+        } else {
+            // dragState가 null이면 커서 초기화
+            document.body.style.cursor = '';
         }
+
         return () => {
+            // cleanup: 항상 커서 초기화
+            document.body.style.cursor = '';
             if (cleanupRef.current) {
                 cleanupRef.current();
                 cleanupRef.current = null;
             }
         };
-    }, [dragState?.dragType]);
+    }, [dragState]);
 
     // ========================================
     // 드래그 시작
