@@ -7,7 +7,7 @@ import { GanttSidebar } from '../GanttSidebar';
 import { GanttTimeline, BarDragResult } from '../GanttTimeline';
 import { MilestoneEditModal } from '../MilestoneEditModal';
 import { TaskEditModal } from '../TaskEditModal';
-import { useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion, useGanttSelection } from '../../store/useGanttStore';
+import { useGanttViewState, useGanttViewActions, useGanttSidebar, useGanttExpansion, useGanttSelection, useGanttCompactMode } from '../../store/useGanttStore';
 import { useGanttVirtualization } from '../../hooks/useGanttVirtualization';
 import { useTaskFocus } from '../../hooks/useTaskFocus';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
@@ -19,6 +19,7 @@ import {
     CalendarSettings,
     GroupDragResult,
     ZOOM_CONFIG,
+    getLayoutValues,
 } from '../../types';
 
 // Sub-components
@@ -78,6 +79,13 @@ export function GanttChart({
     const { sidebarWidth, setSidebarWidth } = useGanttSidebar();
     const { expandedTaskIds, toggleTask, expandAll, collapseAll } = useGanttExpansion();
     const { focusedTaskId } = useGanttSelection();
+    const { isCompactMode, toggleCompactMode } = useGanttCompactMode();
+
+    // Compact Mode Layout Values (Detail View only)
+    const layoutValues = useMemo(() =>
+        getLayoutValues(viewMode === 'DETAIL' && isCompactMode),
+        [viewMode, isCompactMode]
+    );
 
     // Refs
     const containerRef = useRef<HTMLDivElement>(null);
@@ -163,11 +171,13 @@ export function GanttChart({
         }
     }, [childrenMap, viewMode, activeCPId, expandedTaskIds]);
 
-    // Virtualization
+    // Virtualization (동적 행 높이: GROUP은 30px, TASK는 compact ? 12px : 30px)
     const { virtualRows, totalHeight, virtualizer } = useGanttVirtualization({
         containerRef: scrollRef,
         count: visibleTasks.length,
         overscan: 30, // 스크롤 시 렌더링 지연 방지를 위해 오버스캔 증가
+        rowHeight: layoutValues.rowHeight,
+        tasks: visibleTasks, // 동적 행 높이 계산을 위해 tasks 전달
     });
 
     // 날짜 범위 계산 (포커싱에 필요)
@@ -461,8 +471,10 @@ export function GanttChart({
                 isAddingCP={isAddingCP}
                 hasUnsavedChanges={hasUnsavedChanges}
                 saveStatus={saveStatus}
+                isCompactMode={viewMode === 'DETAIL' ? isCompactMode : false}
                 onViewChange={handleViewChange}
                 onZoomChange={setZoomLevel}
+                onToggleCompact={viewMode === 'DETAIL' ? toggleCompactMode : undefined}
                 onStartAddTask={() => setIsAddingTask(true)}
                 onStartAddCP={() => setIsAddingCP(true)}
                 onStartAddMilestone={handleStartAddMilestone}
@@ -555,6 +567,7 @@ export function GanttChart({
                             onCancelAddCP={() => setIsAddingCP(false)}
                             onTaskDoubleClick={handleTaskDoubleClick}
                             renderMode="header"
+                            rowHeight={layoutValues.rowHeight}
                         />
                     </div>
 
@@ -596,6 +609,8 @@ export function GanttChart({
                             }
                             anchorDependencies={anchorDependencies}
                             onAnchorDependencyCreate={onAnchorDependencyCreate}
+                            rowHeight={layoutValues.rowHeight}
+                            barHeight={layoutValues.barHeight}
                             onAnchorDependencyDelete={onAnchorDependencyDelete}
                             onAnchorDependencyDrag={onAnchorDependencyDrag}
                             focusedTaskId={focusedTaskId}
@@ -643,6 +658,7 @@ export function GanttChart({
                                 onCancelAddCP={() => setIsAddingCP(false)}
                                 onTaskDoubleClick={handleTaskDoubleClick}
                                 renderMode="content"
+                                rowHeight={layoutValues.rowHeight}
                             />
 
                             {/* DETAIL 뷰: CriticalPathBar 높이(20px) + 하단 여백(50px) 동기화 */}
@@ -694,6 +710,8 @@ export function GanttChart({
                             onAnchorDependencyDrag={onAnchorDependencyDrag}
                             focusedTaskId={focusedTaskId}
                             renderMode="content"
+                            rowHeight={layoutValues.rowHeight}
+                            barHeight={layoutValues.barHeight}
                         />
                     </div>
 

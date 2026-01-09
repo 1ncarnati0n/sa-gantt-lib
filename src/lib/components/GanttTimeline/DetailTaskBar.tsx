@@ -17,6 +17,7 @@ export interface DetailTaskBarProps {
     y: number;
     minDate: Date;
     pixelsPerDay: number;
+    barHeight?: number;
     renderMode?: TaskBarRenderMode;
     holidays?: Date[];
     calendarSettings?: CalendarSettings;
@@ -61,6 +62,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
     y,
     minDate,
     pixelsPerDay,
+    barHeight,
     renderMode = 'full',
     holidays = [],
     calendarSettings,
@@ -78,6 +80,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
     onMouseLeave,
     isFocused = false,
 }) => {
+    const effectiveBarHeight = barHeight ?? BAR_HEIGHT;
     const showBar = renderMode === 'full' || renderMode === 'bar';
     const showLabel = renderMode === 'full' || renderMode === 'label';
 
@@ -179,7 +182,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     x={-4}
                     y={-4}
                     width={barWidth + 8}
-                    height={BAR_HEIGHT + 8}
+                    height={effectiveBarHeight + 8}
                     fill="none"
                     stroke={GANTT_COLORS.success}
                     strokeWidth={2}
@@ -198,7 +201,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                         x={-2}
                         y={-2}
                         width={barWidth + 4}
-                        height={BAR_HEIGHT + 4}
+                        height={effectiveBarHeight + 4}
                         fill="none"
                         stroke="#f59e0b"
                         strokeWidth={2}
@@ -211,7 +214,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                         x={0}
                         y={0}
                         width={barWidth}
-                        height={BAR_HEIGHT}
+                        height={effectiveBarHeight}
                         fill="url(#holidayHatchPattern)"
                         opacity={0.5}
                     />
@@ -224,7 +227,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     x={-3}
                     y={-3}
                     width={barWidth + 6}
-                    height={BAR_HEIGHT + 6}
+                    height={effectiveBarHeight + 6}
                     fill="none"
                     stroke={GANTT_COLORS.focus}
                     strokeWidth={2}
@@ -243,7 +246,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                             x={preX}
                             y={0}
                             width={preWidth}
-                            height={BAR_HEIGHT}
+                            height={effectiveBarHeight}
                             fill={GANTT_COLORS.blue}
                             rx={radius}
                             ry={radius}
@@ -254,7 +257,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     {showLabel && indirectWorkNamePre && (
                         <text
                             x={preX + preWidth / 2}
-                            y={BAR_HEIGHT + 11}
+                            y={effectiveBarHeight + 11}
                             textAnchor="middle"
                             className="pointer-events-none select-none text-[9px] font-medium"
                             fill={GANTT_COLORS.blue}
@@ -272,7 +275,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                         x={netX}
                         y={0}
                         width={netWidth}
-                        height={BAR_HEIGHT}
+                        height={effectiveBarHeight}
                         fill={GANTT_COLORS.red}
                         rx={radius}
                         ry={radius}
@@ -285,7 +288,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                             x={netX + holiday.offset * pixelsPerDay}
                             y={0}
                             width={pixelsPerDay}
-                            height={BAR_HEIGHT}
+                            height={effectiveBarHeight}
                             fill="url(#holidayHatchPattern)"
                             className="pointer-events-none"
                         />
@@ -301,7 +304,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                             x={postX}
                             y={0}
                             width={postWidth}
-                            height={BAR_HEIGHT}
+                            height={effectiveBarHeight}
                             fill={GANTT_COLORS.blue}
                             rx={radius}
                             ry={radius}
@@ -312,7 +315,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     {showLabel && indirectWorkNamePost && (
                         <text
                             x={postX + postWidth / 2}
-                            y={BAR_HEIGHT + 11}
+                            y={-3}
                             textAnchor="middle"
                             className="pointer-events-none select-none text-[9px] font-medium"
                             fill={GANTT_COLORS.blue}
@@ -329,7 +332,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     x={netX + boundaryHandleWidth}
                     y={0}
                     width={Math.max(0, netWidth - boundaryHandleWidth * 2)}
-                    height={BAR_HEIGHT}
+                    height={effectiveBarHeight}
                     fill="transparent"
                     className="cursor-grab active:cursor-grabbing"
                     onMouseDown={(e) => {
@@ -352,7 +355,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     x={-handleWidth / 2}
                     y={0}
                     width={handleWidth}
-                    height={BAR_HEIGHT}
+                    height={effectiveBarHeight}
                     fill="transparent"
                     className="cursor-ew-resize"
                     onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-pre', taskData)}
@@ -366,7 +369,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     x={preWidth - boundaryHandleWidth / 2}
                     y={0}
                     width={boundaryHandleWidth}
-                    height={BAR_HEIGHT}
+                    height={effectiveBarHeight}
                     fill="transparent"
                     className="cursor-col-resize"
                     onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-pre-net', taskData)}
@@ -380,7 +383,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     x={postX - boundaryHandleWidth / 2}
                     y={0}
                     width={boundaryHandleWidth}
-                    height={BAR_HEIGHT}
+                    height={effectiveBarHeight}
                     fill="transparent"
                     className="cursor-col-resize"
                     onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-net-post', taskData)}
@@ -394,7 +397,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     x={barWidth - handleWidth / 2}
                     y={0}
                     width={handleWidth}
-                    height={BAR_HEIGHT}
+                    height={effectiveBarHeight}
                     fill="transparent"
                     className="cursor-ew-resize"
                     onMouseDown={(e) => onDragStart?.(e, task.id, 'resize-post', taskData)}
@@ -408,7 +411,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                 <>
                     <rect
                         x={1}
-                        y={BAR_HEIGHT / 2 - 6}
+                        y={effectiveBarHeight / 2 - 6}
                         width={3}
                         height={12}
                         rx={1}
@@ -417,7 +420,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     />
                     <rect
                         x={barWidth - 4}
-                        y={BAR_HEIGHT / 2 - 6}
+                        y={effectiveBarHeight / 2 - 6}
                         width={3}
                         height={12}
                         rx={1}
@@ -427,7 +430,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     {effectivePreDays > 0 && effectiveNetDays > 0 && (
                         <rect
                             x={preWidth - 1.5}
-                            y={BAR_HEIGHT / 2 - 4}
+                            y={effectiveBarHeight / 2 - 4}
                             width={3}
                             height={8}
                             rx={1}
@@ -438,7 +441,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     {effectivePostDays > 0 && effectiveNetDays > 0 && (
                         <rect
                             x={postX - 1.5}
-                            y={BAR_HEIGHT / 2 - 4}
+                            y={effectiveBarHeight / 2 - 4}
                             width={3}
                             height={8}
                             rx={1}
@@ -453,7 +456,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
             {showLabel && (
                 <text
                     x={-8}
-                    y={BAR_HEIGHT / 2 + 4}
+                    y={effectiveBarHeight / 2 + 4}
                     textAnchor="end"
                     className="pointer-events-none select-none text-[11px] font-medium"
                     fill={GANTT_COLORS.textSecondary}
@@ -476,7 +479,7 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
                     </text>
                     <text
                         x={barWidth / 2}
-                        y={BAR_HEIGHT + 12}
+                        y={effectiveBarHeight + 12}
                         textAnchor="middle"
                         className="pointer-events-none select-none text-[9px]"
                         fill={GANTT_COLORS.textMuted}

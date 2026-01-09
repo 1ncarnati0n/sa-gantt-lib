@@ -77,6 +77,9 @@ interface GanttTimelineProps {
     focusedTaskId?: string | null;
     /** 렌더링 모드: 'header' = Header+MS만, 'content' = Task 영역만, 'all' = 전체 */
     renderMode?: 'header' | 'content' | 'all';
+    // Compact Mode Layout
+    rowHeight?: number;
+    barHeight?: number;
 }
 
 export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
@@ -106,10 +109,25 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         onAnchorDependencyDrag,
         focusedTaskId,
         renderMode = 'all',
+        rowHeight,
+        barHeight,
     }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
         const isVirtualized = virtualRows && virtualRows.length > 0;
+
+        // Compact Mode Layout Values
+        const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
+        const effectiveBarHeight = barHeight ?? BAR_HEIGHT;
+        const isCompact = effectiveBarHeight < BAR_HEIGHT;
+
+        // 동적 행 높이 계산 함수: GROUP은 항상 30px, TASK는 effectiveRowHeight
+        const getRowHeight = useCallback((task: ConstructionTask) => {
+            if (task.type === 'GROUP') {
+                return ROW_HEIGHT;
+            }
+            return effectiveRowHeight;
+        }, [effectiveRowHeight]);
 
         // 태스크 선택 훅
         const { selectTask, clearSelection: clearTaskSelection } = useGanttSelection();
@@ -146,7 +164,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         const chartWidth = totalDays * pixelsPerDay;
         const chartHeight = isVirtualized
             ? Math.max((virtualTotalHeight || 0) + MILESTONE_LANE_HEIGHT + 100, 500)
-            : Math.max(tasks.length * ROW_HEIGHT + MILESTONE_LANE_HEIGHT + 100, 500);
+            : Math.max(tasks.length * effectiveRowHeight + MILESTONE_LANE_HEIGHT + 100, 500);
 
         // ====================================
         // Drag Hooks
@@ -284,10 +302,38 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             }
         }, [clearSelection, clearTaskSelection]);
 
-        // Row data (virtualized or full)
-        const rowData = isVirtualized
-            ? virtualRows!
-            : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }));
+        // Row data (비가상화 시 동적 높이 누적 계산)
+        const rowData = useMemo(() => {
+            if (isVirtualized) {
+                return virtualRows!;
+            }
+            // 비가상화: 각 행의 높이를 누적 계산
+            let cumulativeStart = 0;
+            return tasks.map((task, i) => {
+                const size = getRowHeight(task);
+                const row = { index: i, start: cumulativeStart, size, key: i };
+                cumulativeStart += size;
+                return row;
+            });
+        }, [isVirtualized, virtualRows, tasks, getRowHeight]);
+
+        // 종속선 계산용 전체 rowData (가상화 여부 무관)
+        const fullRowData = useMemo(() => {
+            let cumulativeStart = 0;
+            return tasks.map((task, i) => {
+                const size = getRowHeight(task);
+                const row = { index: i, start: cumulativeStart, size, key: i };
+                cumulativeStart += size;
+                return row;
+            });
+        }, [tasks, getRowHeight]);
+
+        // 동적 높이 기반 총 높이 계산
+        const dynamicTotalHeight = useMemo(() => {
+            if (fullRowData.length === 0) return GANTT_LAYOUT.BOTTOM_PADDING;
+            const lastRow = fullRowData[fullRowData.length - 1];
+            return lastRow.start + lastRow.size + GANTT_LAYOUT.BOTTOM_PADDING;
+        }, [fullRowData]);
 
         // ====================================
         // Header Only 모드 (TimelineHeader + Milestone Lane)
@@ -295,8 +341,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         if (renderMode === 'header') {
             // Header 모드에서 마일스톤 수직선이 Content 영역까지 내려가도록 높이 계산
             const taskAreaHeight = isVirtualized
-                ? (virtualTotalHeight || tasks.length * ROW_HEIGHT + 100)
-                : tasks.length * ROW_HEIGHT + 100;
+                ? (virtualTotalHeight || dynamicTotalHeight)
+                : dynamicTotalHeight;
 
             return (
                 <div className="flex flex-col shrink-0" style={{ backgroundColor: 'var(--gantt-bg-primary)' }}>
@@ -421,10 +467,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         // ====================================
         if (renderMode === 'content') {
             // content 모드: GanttSidebar content 모드와 동일한 높이 사용
-            // Sidebar에서는: isVirtualized ? totalHeight : tasks.length * ROW_HEIGHT + 100
+            // Sidebar에서는: isVirtualized ? totalHeight : dynamicTotalHeight
             const taskAreaHeight = isVirtualized
-                ? (virtualTotalHeight || tasks.length * ROW_HEIGHT + 100)
-                : tasks.length * ROW_HEIGHT + 100;
+                ? (virtualTotalHeight || dynamicTotalHeight)
+                : dynamicTotalHeight;
 
             return (
                 <div ref={ref} className="relative flex-1" style={{ backgroundColor: 'var(--gantt-bg-primary)' }}>
@@ -459,7 +505,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     x={0}
                                     y={row.start}
                                     width={chartWidth}
-                                    height={ROW_HEIGHT}
+                                    height={row.size}
                                     fill={GANTT_COLORS.bgSecondary}
                                     fillOpacity={0.6}
                                     className="pointer-events-none"
@@ -533,9 +579,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             <line
                                 key={`line-${row.key}`}
                                 x1={0}
-                                y1={row.start + ROW_HEIGHT}
+                                y1={row.start + row.size}
                                 x2={chartWidth}
-                                y2={row.start + ROW_HEIGHT}
+                                y2={row.start + row.size}
                                 stroke={GANTT_COLORS.borderLight}
                                 strokeWidth={1}
                             />
@@ -546,9 +592,13 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const task = tasks[row.index];
                             if (!task) return null;
 
-                            const y = row.start + (ROW_HEIGHT - BAR_HEIGHT) / 2;
+                            // GROUP 행은 항상 기본 높이 사용 (Compact 모드에서도 변경 없음)
+                            const isGroup = task.type === 'GROUP';
+                            const rowHeightForBar = isGroup ? ROW_HEIGHT : row.size;
+                            const barHeightForTask = isGroup ? BAR_HEIGHT : effectiveBarHeight;
+                            const y = row.start + (rowHeightForBar - barHeightForTask) / 2;
 
-                            if (!isMasterView && task.type === 'GROUP') {
+                            if (!isMasterView && isGroup) {
                                 return (
                                     <GroupSummaryBar
                                         key={`group-${row.key}`}
@@ -569,6 +619,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                             });
                                         }}
                                         isFocused={focusedTaskId === task.id}
+                                        parentBarHeight={BAR_HEIGHT}
                                     />
                                 );
                             }
@@ -600,6 +651,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         : undefined}
                                     onMouseEnter={() => setHoveredTaskId(task.id)}
                                     onMouseLeave={() => setHoveredTaskId(null)}
+                                    barHeight={effectiveBarHeight}
                                 />
                             );
                         })}
@@ -619,6 +671,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 calendarSettings={calendarSettings}
                                 getTaskDeltaDays={getCombinedTaskDeltaDays}
                                 offsetY={0}
+                                rowData={fullRowData}
+                                effectiveBarHeight={effectiveBarHeight}
+                                isCompact={isCompact}
                             />
                         )}
 
@@ -633,6 +688,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 calendarSettings={calendarSettings}
                                 getTaskDeltaDays={getCombinedTaskDeltaDays}
                                 offsetY={0}
+                                rowData={fullRowData}
+                                effectiveBarHeight={effectiveBarHeight}
+                                isCompact={isCompact}
                             />
                         )}
 
@@ -656,6 +714,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     calendarSettings={calendarSettings}
                                     dependencyDragDeltaDays={getCombinedTaskDeltaDays(task.id)}
                                     offsetY={0}
+                                    rowStart={row.start}
+                                    rowHeight={row.size}
+                                    effectiveBarHeight={effectiveBarHeight}
+                                    isCompact={isCompact}
                                 />
                             );
                         })}
@@ -666,7 +728,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             if (!task) return null;
                             if (!isMasterView && task.type === 'GROUP') return null;
 
-                            const y = row.start + (ROW_HEIGHT - BAR_HEIGHT) / 2;
+                            const y = row.start + (effectiveRowHeight - effectiveBarHeight) / 2;
 
                             return (
                                 <TaskBar
@@ -686,6 +748,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
                                     dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     isFocused={focusedTaskId === task.id}
+                                    barHeight={effectiveBarHeight}
                                 />
                             );
                         })}
@@ -727,6 +790,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     sourceY={sourcePos.y}
                                     targetX={targetPos.x}
                                     targetY={targetPos.y}
+                                    isCompact={isCompact}
                                 />
                             );
                         })()}
@@ -841,7 +905,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     x={0}
                                     y={rowY}
                                     width={chartWidth}
-                                    height={ROW_HEIGHT}
+                                    height={row.size}
                                     fill={GANTT_COLORS.bgSecondary}
                                     fillOpacity={0.6}
                                     className="pointer-events-none"
@@ -919,9 +983,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             <line
                                 key={`line-${row.key}`}
                                 x1={0}
-                                y1={row.start + ROW_HEIGHT + MILESTONE_LANE_HEIGHT}
+                                y1={row.start + row.size + MILESTONE_LANE_HEIGHT}
                                 x2={chartWidth}
-                                y2={row.start + ROW_HEIGHT + MILESTONE_LANE_HEIGHT}
+                                y2={row.start + row.size + MILESTONE_LANE_HEIGHT}
                                 stroke={GANTT_COLORS.borderLight}
                                 strokeWidth={1}
                             />
@@ -958,10 +1022,14 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const task = tasks[row.index];
                             if (!task) return null;
 
-                            const y = row.start + (ROW_HEIGHT - BAR_HEIGHT) / 2 + MILESTONE_LANE_HEIGHT;
+                            // GROUP 행은 항상 기본 높이 사용 (Compact 모드에서도 변경 없음)
+                            const isGroup = task.type === 'GROUP';
+                            const rowHeightForBar = isGroup ? ROW_HEIGHT : row.size;
+                            const barHeightForTask = isGroup ? BAR_HEIGHT : effectiveBarHeight;
+                            const y = row.start + (rowHeightForBar - barHeightForTask) / 2 + MILESTONE_LANE_HEIGHT;
 
                             // Detail View에서 GROUP 타입이면 GroupSummaryBar 렌더링
-                            if (!isMasterView && task.type === 'GROUP') {
+                            if (!isMasterView && isGroup) {
                                 return (
                                     <GroupSummaryBar
                                         key={`group-${row.key}`}
@@ -982,6 +1050,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                             });
                                         }}
                                         isFocused={focusedTaskId === task.id}
+                                        parentBarHeight={BAR_HEIGHT}
                                     />
                                 );
                             }
@@ -1013,6 +1082,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         : undefined}
                                     onMouseEnter={() => setHoveredTaskId(task.id)}
                                     onMouseLeave={() => setHoveredTaskId(null)}
+                                    barHeight={effectiveBarHeight}
                                 />
                             );
                         })}
@@ -1032,6 +1102,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 calendarSettings={calendarSettings}
                                 getTaskDeltaDays={getCombinedTaskDeltaDays}
                                 offsetY={0}
+                                rowData={fullRowData}
+                                effectiveBarHeight={effectiveBarHeight}
+                                isCompact={isCompact}
                             />
                         )}
 
@@ -1046,6 +1119,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 calendarSettings={calendarSettings}
                                 getTaskDeltaDays={getCombinedTaskDeltaDays}
                                 offsetY={0}
+                                rowData={fullRowData}
+                                effectiveBarHeight={effectiveBarHeight}
+                                isCompact={isCompact}
                             />
                         )}
 
@@ -1069,6 +1145,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     calendarSettings={calendarSettings}
                                     dependencyDragDeltaDays={getCombinedTaskDeltaDays(task.id)}
                                     offsetY={0}
+                                    rowStart={row.start}
+                                    rowHeight={row.size}
+                                    effectiveBarHeight={effectiveBarHeight}
+                                    isCompact={isCompact}
                                 />
                             );
                         })}
@@ -1080,7 +1160,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             // GROUP은 별도 처리 (GroupSummaryBar에서 라벨 포함)
                             if (!isMasterView && task.type === 'GROUP') return null;
 
-                            const y = row.start + (ROW_HEIGHT - BAR_HEIGHT) / 2 + MILESTONE_LANE_HEIGHT;
+                            const y = row.start + (effectiveRowHeight - effectiveBarHeight) / 2 + MILESTONE_LANE_HEIGHT;
 
                             return (
                                 <TaskBar
@@ -1100,6 +1180,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
                                     dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     isFocused={focusedTaskId === task.id}
+                                    barHeight={effectiveBarHeight}
                                 />
                             );
                         })}
@@ -1141,6 +1222,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     sourceY={sourcePos.y}
                                     targetX={targetPos.x}
                                     targetY={targetPos.y}
+                                    isCompact={isCompact}
                                 />
                             );
                         })()}

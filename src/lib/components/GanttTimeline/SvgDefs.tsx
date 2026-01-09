@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { GANTT_COLORS } from '../../types';
+import { GANTT_COLORS, GANTT_MARKER_COMPACT } from '../../types';
 
 /**
  * SVG 정의 (마커, 패턴 등)
@@ -103,6 +103,84 @@ export const SvgDefs: React.FC = () => (
                 fill="none"
                 stroke={GANTT_COLORS.textPrimary}
                 strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </marker>
+
+        {/* ===== Compact 모드 마커 (작은 크기) ===== */}
+
+        {/* Compact 종속성 화살표 마커 - 기본 */}
+        <marker
+            id="dependency-arrow-compact"
+            markerWidth={GANTT_MARKER_COMPACT.WIDTH}
+            markerHeight={GANTT_MARKER_COMPACT.HEIGHT}
+            refX={GANTT_MARKER_COMPACT.REF_X}
+            refY={GANTT_MARKER_COMPACT.REF_Y}
+            orient="auto"
+        >
+            <path
+                d="M0.25,0.25 L2.5,1.5 L0.25,2.75"
+                fill="none"
+                stroke={GANTT_COLORS.textPrimary}
+                strokeWidth={GANTT_MARKER_COMPACT.STROKE_WIDTH}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </marker>
+
+        {/* Compact 종속성 화살표 마커 - 선택됨 */}
+        <marker
+            id="dependency-arrow-selected-compact"
+            markerWidth={GANTT_MARKER_COMPACT.WIDTH}
+            markerHeight={GANTT_MARKER_COMPACT.HEIGHT}
+            refX={GANTT_MARKER_COMPACT.REF_X}
+            refY={GANTT_MARKER_COMPACT.REF_Y}
+            orient="auto"
+        >
+            <path
+                d="M0.25,0.25 L2.5,1.5 L0.25,2.75"
+                fill="none"
+                stroke={GANTT_COLORS.focus}
+                strokeWidth={GANTT_MARKER_COMPACT.STROKE_WIDTH * 1.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </marker>
+
+        {/* Compact 종속성 화살표 마커 - 연결 중 (프리뷰) */}
+        <marker
+            id="dependency-arrow-connecting-compact"
+            markerWidth={GANTT_MARKER_COMPACT.WIDTH}
+            markerHeight={GANTT_MARKER_COMPACT.HEIGHT}
+            refX={GANTT_MARKER_COMPACT.REF_X}
+            refY={GANTT_MARKER_COMPACT.REF_Y}
+            orient="auto"
+        >
+            <path
+                d="M0.25,0.25 L2.5,1.5 L0.25,2.75"
+                fill="none"
+                stroke={GANTT_COLORS.success}
+                strokeWidth={GANTT_MARKER_COMPACT.STROKE_WIDTH * 1.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </marker>
+
+        {/* Compact 종속성 화살표 마커 - 호버 */}
+        <marker
+            id="dependency-arrow-hover-compact"
+            markerWidth={GANTT_MARKER_COMPACT.WIDTH}
+            markerHeight={GANTT_MARKER_COMPACT.HEIGHT}
+            refX={GANTT_MARKER_COMPACT.REF_X}
+            refY={GANTT_MARKER_COMPACT.REF_Y}
+            orient="auto"
+        >
+            <path
+                d="M0.25,0.25 L2.5,1.5 L0.25,2.75"
+                fill="none"
+                stroke={GANTT_COLORS.textPrimary}
+                strokeWidth={GANTT_MARKER_COMPACT.STROKE_WIDTH * 1.2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
             />

@@ -47,7 +47,9 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
     editingDays,
     setEditingDays,
     onDurationChange,
+    rowHeight,
 }) => {
+    const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
     // 행 스타일 계산
     const getRowStyle = () => {
         let backgroundColor = 'var(--gantt-bg-primary)';
@@ -73,7 +75,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
         }
 
         return {
-            height: ROW_HEIGHT,
+            height: effectiveRowHeight,
             backgroundColor,
             borderBottom: `1px solid ${borderColor}`,
             borderTop: isDragOver && dragOverPosition === 'before' ? '2px solid var(--gantt-focus)' : 'none',
@@ -153,7 +155,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                         onKeyDown={onEditKeyDown}
                         onBlur={onSaveEdit}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full rounded px-1 py-0.5 text-sm font-normal focus:outline-none focus:ring-1"
+                        className="w-full rounded px-1 py-0.5 text-xs font-normal focus:outline-none focus:ring-1"
                         style={{
                             backgroundColor: 'var(--gantt-bg-primary)',
                             color: 'var(--gantt-text-secondary)',
@@ -162,7 +164,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                     />
                 ) : (
                     <span
-                        className="truncate text-sm"
+                        className="truncate text-xs"
                         style={{
                             fontWeight: 500,
                             color: 'var(--gantt-text-primary)',
@@ -189,6 +191,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                 setEditingDays={setEditingDays}
                 onDurationChange={onDurationChange}
                 width={columns[1].width}
+                rowHeight={rowHeight}
             />
 
             {/* Net Work Days */}
@@ -199,6 +202,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                 setEditingDays={setEditingDays}
                 onDurationChange={onDurationChange}
                 width={columns[2].width}
+                rowHeight={rowHeight}
             />
 
             {/* Post Indirect Work Days */}
@@ -209,6 +213,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                 setEditingDays={setEditingDays}
                 onDurationChange={onDurationChange}
                 width={columns[3].width}
+                rowHeight={rowHeight}
             />
 
             {/* Start Date */}

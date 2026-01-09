@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { differenceInDays, addDays } from 'date-fns';
-import { GANTT_LAYOUT, GANTT_COLORS, GANTT_ANCHOR } from '../../types';
+import { GANTT_LAYOUT, GANTT_COLORS, GANTT_ANCHOR, GANTT_ANCHOR_COMPACT } from '../../types';
 import type { ConstructionTask, AnchorDependency, CalendarSettings } from '../../types';
 import { getTaskCalendarSettings, getHolidayOffsetsInDateRange } from '../../utils/dateUtils';
 
@@ -102,6 +102,14 @@ interface AnchorPointsProps {
     dependencyDragDeltaDays?: number;
     /** Y축 오프셋 (기본값: MILESTONE_LANE_HEIGHT) */
     offsetY?: number;
+    /** 행 시작 Y 위치 (동적 높이 계산용) */
+    rowStart?: number;
+    /** 실제 행 높이 (동적 높이 계산용) */
+    rowHeight?: number;
+    /** Compact 모드 바 높이 */
+    effectiveBarHeight?: number;
+    /** Compact 모드 여부 */
+    isCompact?: boolean;
 }
 
 /**
@@ -122,17 +130,23 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
     calendarSettings,
     dependencyDragDeltaDays = 0,
     offsetY = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT,
+    rowStart,
+    rowHeight,
+    effectiveBarHeight,
+    isCompact = false,
 }) => {
+    // Compact 모드에 따른 앵커 상수 선택
+    const ANCHOR = isCompact ? GANTT_ANCHOR_COMPACT : GANTT_ANCHOR;
     // 앵커 위치 계산 (작업일 기준, 휴일 위치 건너뛰기)
     const anchors = useMemo((): AnchorPosition[] => {
         const startOffset = differenceInDays(task.startDate, minDate);
 
-        // Y 좌표: 바 하단에 위치
-        const y =
-            offsetY +
-            rowIndex * GANTT_LAYOUT.ROW_HEIGHT +
-            (GANTT_LAYOUT.ROW_HEIGHT - GANTT_LAYOUT.BAR_HEIGHT) / 2 +
-            GANTT_LAYOUT.BAR_HEIGHT;
+        // Y 좌표: 바 하단에 위치 (동적 높이 지원)
+        const { ROW_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
+        const actualRowStart = rowStart ?? (rowIndex * ROW_HEIGHT);
+        const actualRowHeight = rowHeight ?? ROW_HEIGHT;
+        const actualBarHeight = effectiveBarHeight ?? BAR_HEIGHT;
+        const y = offsetY + actualRowStart + (actualRowHeight - actualBarHeight) / 2 + actualBarHeight;
 
         const result: AnchorPosition[] = [];
 
@@ -210,7 +224,7 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
         }
 
         return result;
-    }, [task, rowIndex, minDate, pixelsPerDay, holidays, calendarSettings, dependencyDragDeltaDays, offsetY]);
+    }, [task, rowIndex, minDate, pixelsPerDay, holidays, calendarSettings, dependencyDragDeltaDays, offsetY, rowStart, rowHeight, effectiveBarHeight]);
 
     // 이 태스크의 특정 dayIndex에 종속성이 연결되어 있는지 확인
     const isAnchorConnected = (dayIndex: number): boolean => {
@@ -303,10 +317,10 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                             cx={anchorPos.x}
                             cy={anchorPos.y}
                             r={isConnectingStart
-                                ? GANTT_ANCHOR.RADIUS_ACTIVE
+                                ? ANCHOR.RADIUS_ACTIVE
                                 : isConnected
-                                    ? GANTT_ANCHOR.RADIUS_CONNECTED
-                                    : GANTT_ANCHOR.RADIUS
+                                    ? ANCHOR.RADIUS_CONNECTED
+                                    : ANCHOR.RADIUS
                             }
                             fill={
                                 isConnectingStart
@@ -324,7 +338,7 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                                         ? 'none' // 비활성화: 아웃라인 없음
                                         : GANTT_COLORS.anchorStroke
                             }
-                            strokeWidth={isDisabled ? 0 : GANTT_ANCHOR.STROKE_WIDTH}
+                            strokeWidth={isDisabled ? 0 : ANCHOR.STROKE_WIDTH}
                             opacity={isVisible ? 1 : 0}
                             style={{
                                 cursor: isDisabled ? 'default' : 'pointer',
@@ -355,17 +369,21 @@ export const getAnchorPosition = (
     pixelsPerDay: number,
     holidays: Date[] = [],
     calendarSettings?: CalendarSettings,
-    offsetY: number = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT
+    offsetY: number = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT,
+    rowStart?: number,
+    rowHeight?: number,
+    effectiveBarHeight?: number
 ): AnchorPosition => {
     const startOffset = differenceInDays(task.startDate, minDate);
     const calendarOffset = workingDayToCalendarOffset(task, workingDayIndex, holidays, calendarSettings);
     const x = (startOffset + calendarOffset) * pixelsPerDay;
 
-    const y =
-        offsetY +
-        rowIndex * GANTT_LAYOUT.ROW_HEIGHT +
-        (GANTT_LAYOUT.ROW_HEIGHT - GANTT_LAYOUT.BAR_HEIGHT) / 2 +
-        GANTT_LAYOUT.BAR_HEIGHT;
+    // Y 좌표: 동적 높이 지원
+    const { ROW_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
+    const actualRowStart = rowStart ?? (rowIndex * ROW_HEIGHT);
+    const actualRowHeight = rowHeight ?? ROW_HEIGHT;
+    const actualBarHeight = effectiveBarHeight ?? BAR_HEIGHT;
+    const y = offsetY + actualRowStart + (actualRowHeight - actualBarHeight) / 2 + actualBarHeight;
 
     return {
         taskId: task.id,

@@ -15,6 +15,7 @@ interface GroupSummaryBarProps {
     y: number;
     minDate: Date;
     pixelsPerDay: number;
+    parentBarHeight?: number;
     isDraggable?: boolean;
     currentDeltaDays?: number;
     onDragStart?: (
@@ -37,6 +38,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     y,
     minDate,
     pixelsPerDay,
+    parentBarHeight,
     isDraggable = false,
     currentDeltaDays = 0,
     onDragStart,
@@ -44,6 +46,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     onClick,
     isFocused = false,
 }) => {
+    const effectiveParentBarHeight = parentBarHeight ?? BAR_HEIGHT;
     // 그룹의 날짜 범위 계산
     const dateRange = useMemo(
         () => calculateGroupDateRange(group.id, allTasks),
@@ -72,7 +75,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
 
     // Summary 바 Y 위치 (행 중앙 아래에 배치)
     // VERTICAL_OFFSET: TaskBar보다 살짝 아래에 위치시켜 그룹 구분을 명확하게 함
-    const barY = (BAR_HEIGHT - SUMMARY_BAR_HEIGHT) / 2 + VERTICAL_OFFSET;
+    const barY = (effectiveParentBarHeight - SUMMARY_BAR_HEIGHT) / 2 + VERTICAL_OFFSET;
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!isDraggable || !onDragStart) return;
@@ -166,7 +169,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                 x={0}
                 y={0}
                 width={totalWidth}
-                height={BAR_HEIGHT}
+                height={effectiveParentBarHeight}
                 fill="transparent"
                 className={isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                 onClick={(e) => {
