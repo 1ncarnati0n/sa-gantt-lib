@@ -67,7 +67,11 @@ export interface GanttChartProps {
 
     // 내보내기/가져오기 (mock.json 동기화용)
     onExport?: () => void;
+    onExportExcel?: () => void;
     onImport?: (file: File) => void | Promise<void>;
+
+    // 로딩된 파일명 표시
+    loadedFileName?: string | null;
 
     // 에러 핸들링
     /** 에러 발생 시 호출되는 콜백 (사용자 알림용) */
