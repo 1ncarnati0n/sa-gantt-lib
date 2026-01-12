@@ -1,6 +1,6 @@
 import { useVirtualizer, Virtualizer } from '@tanstack/react-virtual';
-import { RefObject, useMemo } from 'react';
-import { GANTT_LAYOUT } from '../types';
+import { RefObject, useMemo, useCallback, useEffect } from 'react';
+import { GANTT_LAYOUT, ConstructionTask } from '../types';
 
 const { ROW_HEIGHT } = GANTT_LAYOUT;
 
@@ -15,6 +15,8 @@ export interface UseGanttVirtualizationOptions {
     overscan?: number;
     /** 마지막 행 아래 여백 (기본값: 50px) */
     paddingEnd?: number;
+    /** 태스크 배열 (동적 행 높이 계산용) */
+    tasks?: ConstructionTask[];
 }
 
 export interface VirtualRow {
@@ -64,14 +66,34 @@ export function useGanttVirtualization({
     rowHeight = ROW_HEIGHT,
     overscan = 5,
     paddingEnd = 50,
+    tasks,
 }: UseGanttVirtualizationOptions) {
+    // 동적 행 높이 계산 함수
+    // GROUP 행은 항상 ROW_HEIGHT(30px), TASK 행은 rowHeight(compact: 12px, normal: 30px)
+    const getItemSize = useCallback((index: number) => {
+        if (!tasks || !tasks[index]) {
+            return rowHeight;
+        }
+        const task = tasks[index];
+        // GROUP 타입은 항상 기본 높이 유지
+        if (task.type === 'GROUP') {
+            return ROW_HEIGHT;
+        }
+        return rowHeight;
+    }, [tasks, rowHeight]);
+
     const rowVirtualizer = useVirtualizer({
         count,
         getScrollElement: () => containerRef.current,
-        estimateSize: () => rowHeight,
+        estimateSize: getItemSize,
         overscan,
         paddingEnd,
     });
+
+    // rowHeight 변경 시 virtualizer 캐시 무효화 (Compact 모드 전환 대응)
+    useEffect(() => {
+        rowVirtualizer.measure();
+    }, [rowHeight, rowVirtualizer]);
 
     const virtualItems = rowVirtualizer.getVirtualItems();
     

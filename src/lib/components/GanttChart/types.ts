@@ -10,9 +10,12 @@ export interface GanttHeaderProps {
     isAddingCP: boolean;
     hasUnsavedChanges?: boolean;
     saveStatus?: SaveStatus;
+    // Compact Mode (Detail View only)
+    isCompactMode?: boolean;
     // Handlers
     onViewChange: (mode: 'MASTER' | 'DETAIL', cpId?: string) => void;
     onZoomChange: (level: ZoomLevel) => void;
+    onToggleCompact?: () => void;
     onStartAddTask?: () => void;
     onStartAddCP?: () => void;
     onStartAddMilestone?: () => void;

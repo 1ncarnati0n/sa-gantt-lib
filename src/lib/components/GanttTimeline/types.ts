@@ -164,6 +164,8 @@ export interface TaskBarProps {
     onMouseLeave?: () => void;
     /** 키보드 포커스 상태 (하이라이팅 효과) */
     isFocused?: boolean;
+    /** Compact 모드용 바 높이 (Detail View에서만 사용) */
+    barHeight?: number;
 }
 
 /** MilestoneMarker Props */

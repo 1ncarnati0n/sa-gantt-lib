@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { differenceInDays, addDays } from 'date-fns';
-import { GANTT_LAYOUT, GANTT_COLORS, GANTT_ANCHOR } from '../../types';
+import { GANTT_LAYOUT, GANTT_COLORS, GANTT_ANCHOR, GANTT_ANCHOR_COMPACT } from '../../types';
 import type { ConstructionTask, AnchorDependency, CalendarSettings } from '../../types';
 import { getTaskCalendarSettings, getHolidayOffsetsInDateRange } from '../../utils/dateUtils';
 
@@ -44,31 +44,63 @@ const getHolidayDayOffsets = (
 };
 
 /**
- * 작업일 기준 dayIndex → 달력일 오프셋 변환
- * (0.5일 소수점 포함 가능)
+ * 순작업 기준 dayIndex → 달력일 오프셋 변환
+ *
+ * dayIndex 규칙 (순작업 시작일 = 0 기준):
+ * - 앞 간접작업 영역: -indirectWorkDaysPre ~ -1
+ * - 순작업 영역: 0 ~ netWorkDays - 1
+ * - 뒤 간접작업 영역: netWorkDays ~ ...
+ *
+ * 반환값은 task.startDate 기준 달력일 오프셋
  */
 export const workingDayToCalendarOffset = (
     task: ConstructionTask,
-    workingDayIndex: number,
+    netBasedDayIndex: number,
     holidays: Date[] = [],
     calendarSettings?: CalendarSettings
 ): number => {
     // 0.5일 처리: 정수 부분과 소수 부분 분리
-    const intPart = Math.floor(workingDayIndex);
-    const fractionalPart = workingDayIndex - intPart;
+    const intPart = Math.floor(netBasedDayIndex);
+    const fractionalPart = netBasedDayIndex - intPart;
 
     if (!task.task || !calendarSettings) {
-        return workingDayIndex;
+        // task.task가 없으면 순작업만 있는 것으로 처리
+        // dayIndex가 그대로 달력 오프셋
+        return netBasedDayIndex;
     }
 
+    const { indirectWorkDaysPre } = task.task;
     const holidayDayOffsets = getHolidayDayOffsets(task, holidays, calendarSettings);
 
-    if (holidayDayOffsets.size === 0) {
-        return workingDayIndex;
+    // 앞 간접작업 영역 (음수 dayIndex)
+    if (intPart < 0) {
+        // 음수 인덱스는 앞 간접작업 영역
+        // dayIndex = -3이면, 앞 간접작업의 (indirectWorkDaysPre - 3)번째 날
+        // 달력 오프셋: indirectWorkDaysPre + dayIndex = indirectWorkDaysPre + (-3)
+        const calendarOffset = indirectWorkDaysPre + intPart;
+
+        // 음수 calendarOffset은 유효하지 않음 (태스크 시작일 이전)
+        // 데이터 오류 감지를 위한 경고 로그
+        if (calendarOffset < 0) {
+            console.warn(
+                `[workingDayToCalendarOffset] Invalid dayIndex ${netBasedDayIndex} ` +
+                `for task ${task.id} with indirectWorkDaysPre=${indirectWorkDaysPre}. ` +
+                `Clamping to 0.`
+            );
+        }
+        return Math.max(0, calendarOffset) + fractionalPart;
     }
 
-    // 작업일 → 달력일 변환 (휴일 건너뛰기)
-    let calendarOffset = 0;
+    // 순작업 영역 이상 (dayIndex >= 0)
+    // 달력 오프셋: indirectWorkDaysPre + 휴일 보정된 순작업 오프셋
+
+    if (holidayDayOffsets.size === 0) {
+        // 휴일 없으면 단순 계산
+        return indirectWorkDaysPre + netBasedDayIndex;
+    }
+
+    // 휴일이 있으면 순작업 영역 내에서 휴일 건너뛰기
+    let calendarOffset = indirectWorkDaysPre;
     let workingDaysCount = 0;
 
     while (workingDaysCount < intPart) {
@@ -83,7 +115,6 @@ export const workingDayToCalendarOffset = (
         calendarOffset++;
     }
 
-    // 소수 부분 더하기 (0.5일 등)
     return calendarOffset + fractionalPart;
 };
 
@@ -102,6 +133,16 @@ interface AnchorPointsProps {
     dependencyDragDeltaDays?: number;
     /** Y축 오프셋 (기본값: MILESTONE_LANE_HEIGHT) */
     offsetY?: number;
+    /** 행 시작 Y 위치 (동적 높이 계산용) */
+    rowStart?: number;
+    /** 실제 행 높이 (동적 높이 계산용) */
+    rowHeight?: number;
+    /** Compact 모드 바 높이 */
+    effectiveBarHeight?: number;
+    /** Compact 모드 여부 */
+    isCompact?: boolean;
+    /** 호버 활성화 상태 (바 하단 호버 시 앵커 표시 강화) */
+    isHoverActive?: boolean;
 }
 
 /**
@@ -122,17 +163,24 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
     calendarSettings,
     dependencyDragDeltaDays = 0,
     offsetY = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT,
+    rowStart,
+    rowHeight,
+    effectiveBarHeight,
+    isCompact = false,
+    isHoverActive = false,
 }) => {
+    // Compact 모드에 따른 앵커 상수 선택
+    const ANCHOR = isCompact ? GANTT_ANCHOR_COMPACT : GANTT_ANCHOR;
     // 앵커 위치 계산 (작업일 기준, 휴일 위치 건너뛰기)
     const anchors = useMemo((): AnchorPosition[] => {
         const startOffset = differenceInDays(task.startDate, minDate);
 
-        // Y 좌표: 바 하단에 위치
-        const y =
-            offsetY +
-            rowIndex * GANTT_LAYOUT.ROW_HEIGHT +
-            (GANTT_LAYOUT.ROW_HEIGHT - GANTT_LAYOUT.BAR_HEIGHT) / 2 +
-            GANTT_LAYOUT.BAR_HEIGHT;
+        // Y 좌표: 바 하단에 위치 (동적 높이 지원)
+        const { ROW_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
+        const actualRowStart = rowStart ?? (rowIndex * ROW_HEIGHT);
+        const actualRowHeight = rowHeight ?? ROW_HEIGHT;
+        const actualBarHeight = effectiveBarHeight ?? BAR_HEIGHT;
+        const y = offsetY + actualRowStart + (actualRowHeight - actualBarHeight) / 2 + actualBarHeight;
 
         const result: AnchorPosition[] = [];
 
@@ -147,31 +195,72 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
             const totalCalendarDays = indirectWorkDaysPre + netWorkDays + holidayCount + indirectWorkDaysPost;
             const totalCalendarDaysInt = Math.floor(totalCalendarDays);
 
-            // 작업일 기준 dayIndex로 앵커 생성 (휴일 위치 건너뛰기)
-            let workingDayIndex = 0;
+            // ============================================
+            // 순작업 기준 dayIndex로 앵커 생성
+            // - 앞 간접작업: -indirectWorkDaysPre ~ -1
+            // - 순작업: 0 ~ netWorkDays (휴일 제외)
+            // - 뒤 간접작업: netWorkDays + holidayCount ~ ...
+            // ============================================
 
-            for (let calendarOffset = 0; calendarOffset <= totalCalendarDaysInt; calendarOffset++) {
-                // 휴일이면 건너뛰기 (앵커 생성 안 함)
+            // 1. 앞 간접작업 영역 앵커 (음수 dayIndex)
+            // 첫날(태스크 시작점)은 제외하고, 나머지가 한 칸씩 앞으로 이동
+            // i=1부터 시작 → dayIndex는 -2, -1, ... (첫 번째 dayIndex 제외)
+            for (let i = 1; i < indirectWorkDaysPre; i++) {
+                const calendarOffset = i - 1;  // 한 칸 앞으로 이동
+                const netBasedDayIndex = i - indirectWorkDaysPre;
+                result.push({
+                    taskId: task.id,
+                    dayIndex: netBasedDayIndex,
+                    x: (startOffset + calendarOffset) * pixelsPerDay,
+                    y,
+                });
+            }
+
+            // 2. 순작업 영역 앵커 (0 ~ netWorkDays, 휴일 건너뛰기)
+            // 순작업 앵커는 바의 실제 위치에 맞춰야 함
+            let netWorkingDayIndex = 0;
+            for (let calendarOffset = indirectWorkDaysPre; calendarOffset <= indirectWorkDaysPre + netWorkDays + holidayCount; calendarOffset++) {
+                // 휴일이면 건너뛰기
                 if (holidayDayOffsets.has(calendarOffset)) {
                     continue;
                 }
 
-                // 앵커 생성 (workingDayIndex = 작업일 기준)
+                // 순작업 영역의 끝을 초과하면 종료
+                if (netWorkingDayIndex > netWorkDays) {
+                    break;
+                }
+
                 result.push({
                     taskId: task.id,
-                    dayIndex: workingDayIndex,
+                    dayIndex: netWorkingDayIndex,
                     x: (startOffset + calendarOffset) * pixelsPerDay,
                     y,
                 });
-                workingDayIndex++;
+                netWorkingDayIndex++;
+            }
+
+            // 3. 뒤 간접작업 영역 앵커
+            // 첫 앵커(순작업 마지막과 겹침)는 제거, 나머지 유지 (태스크 끝점 포함)
+            const postStartCalendar = indirectWorkDaysPre + netWorkDays + holidayCount;
+            for (let i = 1; i <= indirectWorkDaysPost; i++) {
+                const calendarOffset = postStartCalendar + i;
+                // 순작업 기준 dayIndex: netWorkDays + i
+                const netBasedDayIndex = netWorkDays + i;
+                result.push({
+                    taskId: task.id,
+                    dayIndex: netBasedDayIndex,
+                    x: (startOffset + calendarOffset) * pixelsPerDay,
+                    y,
+                });
             }
 
             // 0.5일로 끝나는 경우 마지막 앵커 추가
             const fractionalPart = totalCalendarDays - totalCalendarDaysInt;
             if (fractionalPart >= 0.5) {
+                const lastDayIndex = netWorkDays + indirectWorkDaysPost + 1;
                 result.push({
                     taskId: task.id,
-                    dayIndex: workingDayIndex,
+                    dayIndex: lastDayIndex,
                     x: (startOffset + totalCalendarDays) * pixelsPerDay,
                     y,
                 });
@@ -210,7 +299,7 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
         }
 
         return result;
-    }, [task, rowIndex, minDate, pixelsPerDay, holidays, calendarSettings, dependencyDragDeltaDays, offsetY]);
+    }, [task, rowIndex, minDate, pixelsPerDay, holidays, calendarSettings, dependencyDragDeltaDays, offsetY, rowStart, rowHeight, effectiveBarHeight]);
 
     // 이 태스크의 특정 dayIndex에 종속성이 연결되어 있는지 확인
     const isAnchorConnected = (dayIndex: number): boolean => {
@@ -283,14 +372,21 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                 const isDisabled = isConnected || isPathBlocked;
                 // 연결된 앵커 또는 연결 시작점(초록 점)만 표시
                 const isVisible = isConnected || isConnectingStart;
+                // 호버 활성화 시 숨겨진 앵커도 희미하게 표시
+                const getAnchorOpacity = () => {
+                    if (isVisible) return 1;
+                    if (isHoverActive && !isPathBlocked) return 0.4;
+                    return 0;
+                };
 
                 return (
                     <g key={`anchor-${task.id}-${anchorPos.dayIndex}`}>
-                        {/* 클릭 영역 (비활성화된 앵커는 상호작용 비활성화) */}
-                        <circle
-                            cx={anchorPos.x}
-                            cy={anchorPos.y}
-                            r={GANTT_ANCHOR.HIT_AREA}
+                        {/* 클릭 영역 - 바 밑변 아래로만 확장 (위로 침범 방지) */}
+                        <rect
+                            x={anchorPos.x - GANTT_ANCHOR.HIT_AREA}
+                            y={anchorPos.y}
+                            width={GANTT_ANCHOR.HIT_AREA * 2}
+                            height={GANTT_ANCHOR.HIT_AREA}
                             fill="transparent"
                             style={{ cursor: isDisabled ? 'default' : 'pointer' }}
                             onClick={isDisabled ? undefined : () => onAnchorClick?.(task.id, anchorPos.dayIndex)}
@@ -303,10 +399,10 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                             cx={anchorPos.x}
                             cy={anchorPos.y}
                             r={isConnectingStart
-                                ? GANTT_ANCHOR.RADIUS_ACTIVE
+                                ? ANCHOR.RADIUS_ACTIVE
                                 : isConnected
-                                    ? GANTT_ANCHOR.RADIUS_CONNECTED
-                                    : GANTT_ANCHOR.RADIUS
+                                    ? ANCHOR.RADIUS_CONNECTED
+                                    : ANCHOR.RADIUS
                             }
                             fill={
                                 isConnectingStart
@@ -324,8 +420,8 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                                         ? 'none' // 비활성화: 아웃라인 없음
                                         : GANTT_COLORS.anchorStroke
                             }
-                            strokeWidth={isDisabled ? 0 : GANTT_ANCHOR.STROKE_WIDTH}
-                            opacity={isVisible ? 1 : 0}
+                            strokeWidth={isDisabled ? 0 : ANCHOR.STROKE_WIDTH}
+                            opacity={getAnchorOpacity()}
                             style={{
                                 cursor: isDisabled ? 'default' : 'pointer',
                                 transition: 'all 0.15s ease',
@@ -355,17 +451,21 @@ export const getAnchorPosition = (
     pixelsPerDay: number,
     holidays: Date[] = [],
     calendarSettings?: CalendarSettings,
-    offsetY: number = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT
+    offsetY: number = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT,
+    rowStart?: number,
+    rowHeight?: number,
+    effectiveBarHeight?: number
 ): AnchorPosition => {
     const startOffset = differenceInDays(task.startDate, minDate);
     const calendarOffset = workingDayToCalendarOffset(task, workingDayIndex, holidays, calendarSettings);
     const x = (startOffset + calendarOffset) * pixelsPerDay;
 
-    const y =
-        offsetY +
-        rowIndex * GANTT_LAYOUT.ROW_HEIGHT +
-        (GANTT_LAYOUT.ROW_HEIGHT - GANTT_LAYOUT.BAR_HEIGHT) / 2 +
-        GANTT_LAYOUT.BAR_HEIGHT;
+    // Y 좌표: 동적 높이 지원
+    const { ROW_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
+    const actualRowStart = rowStart ?? (rowIndex * ROW_HEIGHT);
+    const actualRowHeight = rowHeight ?? ROW_HEIGHT;
+    const actualBarHeight = effectiveBarHeight ?? BAR_HEIGHT;
+    const y = offsetY + actualRowStart + (actualRowHeight - actualBarHeight) / 2 + actualBarHeight;
 
     return {
         taskId: task.id,

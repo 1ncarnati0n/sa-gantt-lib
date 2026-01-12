@@ -428,7 +428,7 @@
   .gantt-cell {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     color: var(--gantt-text-primary);
     overflow: hidden;
     text-overflow: ellipsis;

@@ -11,8 +11,10 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
     isAddingCP,
     hasUnsavedChanges,
     saveStatus,
+    isCompactMode,
     onViewChange,
     onZoomChange,
+    onToggleCompact,
     onStartAddTask,
     onStartAddCP,
     onStartAddMilestone,
@@ -172,6 +174,31 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 >
                     Focusing
                 </button>
+
+                {/* Compact 토글 버튼 (Detail View 전용) */}
+                {viewMode === 'DETAIL' && onToggleCompact && (
+                    <button
+                        onClick={onToggleCompact}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                        style={{
+                            backgroundColor: isCompactMode ? 'var(--gantt-focus)' : 'var(--gantt-bg-tertiary)',
+                            color: isCompactMode ? 'var(--gantt-text-inverse)' : 'var(--gantt-text-secondary)',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!isCompactMode) {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isCompactMode) {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                            }
+                        }}
+                        title={isCompactMode ? 'Normal 뷰로 전환' : 'Compact 뷰로 전환'}
+                    >
+                        {isCompactMode ? '↕ Normal' : '↔ Compact'}
+                    </button>
+                )}
 
                 <div
                     className="flex rounded p-1"

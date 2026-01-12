@@ -41,6 +41,7 @@ export const TaskBar: React.FC<TaskBarProps> = React.memo((props) => {
             y={restProps.y}
             minDate={restProps.minDate}
             pixelsPerDay={restProps.pixelsPerDay}
+            barHeight={restProps.barHeight}
             renderMode={restProps.renderMode}
             holidays={restProps.holidays}
             calendarSettings={restProps.calendarSettings}
