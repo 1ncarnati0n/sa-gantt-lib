@@ -58,6 +58,7 @@ export function GanttChart({
     onAnchorDependencyCreate,
     onAnchorDependencyDelete,
     onAnchorDependencyDrag,
+    onCycleDetected,
     onMilestoneCreate,
     onMilestoneUpdate,
     onMilestoneDelete,
@@ -609,6 +610,7 @@ export function GanttChart({
                             }
                             anchorDependencies={anchorDependencies}
                             onAnchorDependencyCreate={onAnchorDependencyCreate}
+                            onCycleDetected={onCycleDetected}
                             rowHeight={layoutValues.rowHeight}
                             barHeight={layoutValues.barHeight}
                             onAnchorDependencyDelete={onAnchorDependencyDelete}
@@ -708,6 +710,7 @@ export function GanttChart({
                             onAnchorDependencyCreate={onAnchorDependencyCreate}
                             onAnchorDependencyDelete={onAnchorDependencyDelete}
                             onAnchorDependencyDrag={onAnchorDependencyDrag}
+                            onCycleDetected={onCycleDetected}
                             focusedTaskId={focusedTaskId}
                             renderMode="content"
                             rowHeight={layoutValues.rowHeight}

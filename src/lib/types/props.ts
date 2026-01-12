@@ -53,6 +53,8 @@ export interface GanttChartProps {
     onAnchorDependencyCreate?: (dependency: AnchorDependency) => void | Promise<void>;
     onAnchorDependencyDelete?: (depId: string) => void | Promise<void>;
     onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void | Promise<void>;
+    /** 순환 종속성 감지 시 호출되는 콜백 */
+    onCycleDetected?: (info: { sourceTaskId: string; targetTaskId: string }) => void;
 
     // 마일스톤 이벤트 핸들러
     onMilestoneCreate?: (milestone: Partial<Milestone>) => void | Promise<void>;

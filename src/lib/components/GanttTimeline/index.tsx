@@ -73,6 +73,8 @@ interface GanttTimelineProps {
     onAnchorDependencyCreate?: (dependency: AnchorDependency) => void;
     onAnchorDependencyDelete?: (depId: string) => void;
     onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void;
+    /** 순환 종속성 감지 시 호출되는 콜백 */
+    onCycleDetected?: (info: { sourceTaskId: string; targetTaskId: string }) => void;
     // 선택/포커스 관련
     focusedTaskId?: string | null;
     /** 렌더링 모드: 'header' = Header+MS만, 'content' = Task 영역만, 'all' = 전체 */
@@ -107,6 +109,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         onAnchorDependencyCreate,
         onAnchorDependencyDelete,
         onAnchorDependencyDrag,
+        onCycleDetected,
         focusedTaskId,
         renderMode = 'all',
         rowHeight,
@@ -219,8 +222,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             clearSelection,
         } = useAnchorConnection({
             dependencies: anchorDependencies,
+            tasks: allTasks || tasks,
             onDependencyCreate: onAnchorDependencyCreate,
             onDependencyDelete: onAnchorDependencyDelete,
+            onCycleDetected,
         });
 
         const {
@@ -718,6 +723,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     rowHeight={row.size}
                                     effectiveBarHeight={effectiveBarHeight}
                                     isCompact={isCompact}
+                                    isHoverActive={false}
                                 />
                             );
                         })}
@@ -1149,6 +1155,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     rowHeight={row.size}
                                     effectiveBarHeight={effectiveBarHeight}
                                     isCompact={isCompact}
+                                    isHoverActive={false}
                                 />
                             );
                         })}
