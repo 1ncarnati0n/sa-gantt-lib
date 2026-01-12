@@ -65,6 +65,12 @@ export {
     GANTT_DRAG,
     GANTT_SUMMARY,
     GANTT_STROKE,
+    // Compact 모드 전용 상수
+    GANTT_ANCHOR_COMPACT,
+    GANTT_STROKE_COMPACT,
+    GANTT_MARKER_COMPACT,
+    // Compact mode helper
+    getLayoutValues,
 } from './constants';
 
 // Column config type

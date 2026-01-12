@@ -64,6 +64,45 @@ export const isValidMilestoneData = (data: unknown): data is Record<string, unkn
 };
 
 /**
+ * CPData 유효성 검증
+ */
+export const isValidCPData = (data: unknown): data is { workDaysTotal: number; nonWorkDaysTotal: number } => {
+    if (!data || typeof data !== 'object') return false;
+    const obj = data as Record<string, unknown>;
+    return (
+        typeof obj.workDaysTotal === 'number' &&
+        typeof obj.nonWorkDaysTotal === 'number'
+    );
+};
+
+/**
+ * TaskData 유효성 검증
+ */
+export const isValidTaskDataFields = (data: unknown): data is {
+    netWorkDays: number;
+    indirectWorkDaysPre: number;
+    indirectWorkDaysPost: number;
+} => {
+    if (!data || typeof data !== 'object') return false;
+    const obj = data as Record<string, unknown>;
+    return (
+        typeof obj.netWorkDays === 'number' &&
+        typeof obj.indirectWorkDaysPre === 'number' &&
+        typeof obj.indirectWorkDaysPost === 'number'
+    );
+};
+
+/**
+ * GroupData 유효성 검증
+ */
+export const isValidGroupData = (data: unknown): data is { progress?: number } => {
+    if (!data || typeof data !== 'object') return false;
+    const obj = data as Record<string, unknown>;
+    // progress는 선택적이며, 있으면 숫자여야 함
+    return obj.progress === undefined || typeof obj.progress === 'number';
+};
+
+/**
  * AnchorDependency 데이터 유효성 검증
  */
 export const isValidAnchorDependencyData = (data: unknown): data is AnchorDependency => {
@@ -114,20 +153,33 @@ export const deserializeTasks = (json: string): ConstructionTask[] | null => {
             );
         }
 
-        return validTasks.map((t): ConstructionTask => ({
-            id: t.id,
-            parentId: t.parentId,
-            wbsLevel: t.wbsLevel,
-            type: t.type,
-            name: t.name,
-            startDate: parseISO(t.startDate),
-            endDate: parseISO(t.endDate),
-            // 선택적 필드 (타입 가드 통과 후 안전하게 접근)
-            cp: t.cp as ConstructionTask['cp'],
-            task: t.task as ConstructionTask['task'],
-            group: t.group as ConstructionTask['group'],
-            dependencies: (t.dependencies ?? []) as ConstructionTask['dependencies'],
-        }));
+        return validTasks.map((t): ConstructionTask => {
+            // 선택적 필드 검증 및 안전한 변환
+            const cp = t.cp !== undefined && isValidCPData(t.cp) ? t.cp : undefined;
+            const task = t.task !== undefined && isValidTaskDataFields(t.task)
+                ? { ...t.task as object } as ConstructionTask['task']
+                : undefined;
+            const group = t.group !== undefined && isValidGroupData(t.group) ? t.group : undefined;
+
+            // dependencies 배열 검증
+            const dependencies = Array.isArray(t.dependencies)
+                ? (t.dependencies as ConstructionTask['dependencies'])
+                : [];
+
+            return {
+                id: t.id,
+                parentId: t.parentId,
+                wbsLevel: t.wbsLevel,
+                type: t.type,
+                name: t.name,
+                startDate: parseISO(t.startDate),
+                endDate: parseISO(t.endDate),
+                cp,
+                task,
+                group,
+                dependencies,
+            };
+        });
     } catch (error) {
         console.error('Failed to deserialize tasks:', error);
         return null;

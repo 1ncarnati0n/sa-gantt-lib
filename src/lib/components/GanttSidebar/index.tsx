@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, useMemo, useState, useCallback, useEffect, memo } from 'react';
+import { addDays } from 'date-fns';
 import {
     ConstructionTask,
     GANTT_LAYOUT,
@@ -58,8 +59,18 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         onCancelAddCP,
         onTaskDoubleClick,
         renderMode = 'all',
+        rowHeight,
     }, ref) => {
+        const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
         const isVirtualized = virtualRows && virtualRows.length > 0;
+
+        // 동적 행 높이 계산 함수: GROUP은 항상 30px, TASK는 effectiveRowHeight
+        const getRowHeight = useCallback((task: ConstructionTask) => {
+            if (task.type === 'GROUP') {
+                return ROW_HEIGHT;
+            }
+            return effectiveRowHeight;
+        }, [effectiveRowHeight]);
 
         // CP별 Critical Path 요약 계산 (Master View용)
         const cpSummaryMap = useMemo(() => {
@@ -180,24 +191,64 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             return () => document.removeEventListener('keydown', handleKeyDown);
         }, [clearSelection]);
 
-        // 일수 변경 핸들러
+        // 일수 변경 핸들러 (순작업 날짜 고정, 간접작업은 앞뒤로 확장)
         const handleDurationChange = useCallback((
             task: ConstructionTask,
             field: 'indirectWorkDaysPre' | 'netWorkDays' | 'indirectWorkDaysPost',
             value: number
         ) => {
             if (!task.task || !onTaskUpdate) return;
+
+            const oldPreDays = task.task.indirectWorkDaysPre;
+            const oldPostDays = task.task.indirectWorkDaysPost;
+
+            // 순작업 시작일 계산 (현재 startDate + 기존 선간접)
+            const netWorkStartDate = addDays(task.startDate, oldPreDays);
+            // 순작업 종료일 계산 (현재 endDate - 기존 후간접)
+            const netWorkEndDate = addDays(task.endDate, -oldPostDays);
+
+            let newStartDate = task.startDate;
+            let newEndDate = task.endDate;
+
+            if (field === 'indirectWorkDaysPre') {
+                // 선간접 변경: 순작업 시작일 고정, startDate 조정
+                newStartDate = addDays(netWorkStartDate, -value);
+            } else if (field === 'indirectWorkDaysPost') {
+                // 후간접 변경: 순작업 종료일 고정, endDate 조정
+                newEndDate = addDays(netWorkEndDate, value);
+            }
+            // netWorkDays 변경 시: startDate 고정, endDate는 타임라인에서 재계산
+
             const updatedTask: ConstructionTask = {
                 ...task,
+                startDate: newStartDate,
+                endDate: newEndDate,
                 task: { ...task.task, [field]: value },
             };
             onTaskUpdate(updatedTask);
         }, [onTaskUpdate]);
 
-        // Row data
-        const rowData = isVirtualized
-            ? virtualRows!
-            : tasks.map((_, i) => ({ index: i, start: i * ROW_HEIGHT, size: ROW_HEIGHT, key: i }));
+        // Row data (비가상화 시 동적 높이 누적 계산)
+        const rowData = useMemo(() => {
+            if (isVirtualized) {
+                return virtualRows!;
+            }
+            // 비가상화: 각 행의 높이를 누적 계산
+            let cumulativeStart = 0;
+            return tasks.map((task, i) => {
+                const size = getRowHeight(task);
+                const row = { index: i, start: cumulativeStart, size, key: i };
+                cumulativeStart += size;
+                return row;
+            });
+        }, [isVirtualized, virtualRows, tasks, getRowHeight]);
+
+        // 동적 높이 기반 총 높이 계산
+        const dynamicTotalHeight = useMemo(() => {
+            if (rowData.length === 0) return 100;
+            const lastRow = rowData[rowData.length - 1];
+            return lastRow.start + lastRow.size + 100;
+        }, [rowData]);
 
         // Active CP와 상위 그룹 정보 계산
         const { activeGroupName, activeCPName } = useMemo(() => {
@@ -288,7 +339,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                 <div
                     style={{
                         minWidth: totalWidth,
-                        height: isVirtualized ? totalHeight : tasks.length * ROW_HEIGHT + 100,
+                        height: isVirtualized ? totalHeight : dynamicTotalHeight,
                         position: 'relative',
                     }}
                     onClick={clearSelection}
@@ -375,7 +426,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     <div
                         style={{
                             minWidth: totalWidth,
-                            height: isVirtualized ? totalHeight : tasks.length * ROW_HEIGHT + 100,
+                            height: isVirtualized ? totalHeight : dynamicTotalHeight,
                             position: 'relative',
                         }}
                         onClick={clearSelection}
@@ -533,6 +584,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                             editingDays={editingDays}
                             setEditingDays={setEditingDays}
                             onDurationChange={handleDurationChange}
+                            rowHeight={row.size}
                         />
                     );
                 })}

@@ -1,6 +1,9 @@
 'use client';
 
+import { GANTT_LAYOUT } from '../../types';
 import type { DaysInputCellProps } from './types';
+
+const { ROW_HEIGHT } = GANTT_LAYOUT;
 
 const fieldConfig = {
     indirectWorkDaysPre: {
@@ -30,7 +33,10 @@ export const DaysInputCell: React.FC<DaysInputCellProps> = ({
     setEditingDays,
     onDurationChange,
     width,
+    rowHeight,
 }) => {
+    const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
+    const isCompact = effectiveRowHeight < ROW_HEIGHT;
     if (!task.task) {
         return (
             <div
@@ -55,11 +61,17 @@ export const DaysInputCell: React.FC<DaysInputCellProps> = ({
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*\.?[0-9]?"
-                className="w-full max-w-[45px] rounded px-1 py-1 text-center text-xs focus:outline-none focus:ring-1"
+                className={`w-full rounded text-center focus:outline-none focus:ring-1 ${
+                    isCompact
+                        ? 'max-w-[32px] px-0.5 py-0 text-[9px]'
+                        : 'max-w-[45px] px-1 py-1 text-xs'
+                }`}
                 style={{
                     backgroundColor: `color-mix(in srgb, ${config.bgColor} 15%, var(--gantt-bg-primary))`,
                     color: 'var(--gantt-text-primary)',
                     border: `1px solid var(--gantt-border)`,
+                    height: isCompact ? effectiveRowHeight - 2 : 'auto',
+                    lineHeight: isCompact ? `${effectiveRowHeight - 4}px` : 'normal',
                 }}
                 value={isEditing ? editingDays.value : value}
                 onFocus={() => setEditingDays({ taskId: task.id, field: config.localKey, value: String(value) })}

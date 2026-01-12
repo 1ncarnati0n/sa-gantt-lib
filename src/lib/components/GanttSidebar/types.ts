@@ -37,6 +37,8 @@ export interface GanttSidebarProps {
     renderMode?: 'header' | 'content' | 'all';
     /** 스크롤 동기화용 scrollLeft 값 */
     scrollLeft?: number;
+    /** Compact 모드용 행 높이 */
+    rowHeight?: number;
 }
 
 export interface SidebarHeaderProps {
@@ -104,6 +106,8 @@ export interface SidebarRowDetailProps extends SidebarRowProps {
     editingDays: { taskId: string; field: string; value: string } | null;
     setEditingDays: (state: { taskId: string; field: string; value: string } | null) => void;
     onDurationChange: (task: ConstructionTask, field: 'indirectWorkDaysPre' | 'netWorkDays' | 'indirectWorkDaysPost', value: number) => void;
+    /** Compact 모드용 행 높이 */
+    rowHeight?: number;
 }
 
 export interface DaysInputCellProps {
@@ -113,4 +117,6 @@ export interface DaysInputCellProps {
     setEditingDays: (state: { taskId: string; field: string; value: string } | null) => void;
     onDurationChange: (task: ConstructionTask, field: 'indirectWorkDaysPre' | 'netWorkDays' | 'indirectWorkDaysPost', value: number) => void;
     width: number;
+    /** Compact 모드용 행 높이 */
+    rowHeight?: number;
 }

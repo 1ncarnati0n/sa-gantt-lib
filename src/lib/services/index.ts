@@ -54,3 +54,9 @@ export {
     parseMockTasks,
     parseMockMilestones,
 } from './serializers';
+
+// ============================================
+// Excel Export
+// ============================================
+export { exportToExcel } from './excelExportService';
+export type { ExcelExportData } from './excelExportService';

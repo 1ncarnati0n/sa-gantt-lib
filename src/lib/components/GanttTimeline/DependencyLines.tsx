@@ -2,9 +2,17 @@
 
 import React, { useMemo } from 'react';
 import { differenceInDays } from 'date-fns';
-import { GANTT_LAYOUT, GANTT_COLORS, GANTT_ANCHOR, GANTT_DRAG, GANTT_STROKE } from '../../types';
+import { GANTT_LAYOUT, GANTT_COLORS, GANTT_ANCHOR, GANTT_DRAG, GANTT_STROKE, GANTT_STROKE_COMPACT, GANTT_ANCHOR_COMPACT } from '../../types';
 import type { ConstructionTask, AnchorDependency, CalendarSettings } from '../../types';
 import { workingDayToCalendarOffset } from './AnchorPoints';
+
+/** 행 데이터 타입 (동적 높이 계산용) */
+interface RowData {
+    index: number;
+    start: number;
+    size: number;
+    key: string | number;
+}
 
 interface DependencyLinesProps {
     tasks: ConstructionTask[];
@@ -21,6 +29,12 @@ interface DependencyLinesProps {
     getTaskDeltaDays?: (taskId: string) => number;
     /** Y축 오프셋 (기본값: MILESTONE_LANE_HEIGHT) */
     offsetY?: number;
+    /** 행 데이터 (동적 높이 계산용) */
+    rowData?: RowData[];
+    /** Compact 모드 바 높이 */
+    effectiveBarHeight?: number;
+    /** Compact 모드 여부 */
+    isCompact?: boolean;
 }
 
 interface DependencyPathInfo {
@@ -32,10 +46,14 @@ interface DependencyPathInfo {
     targetY: number;
 }
 
+const { ROW_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
+
 /**
  * 앵커 좌표 계산 (작업일 기준 dayIndex → 달력일 변환)
  * @param deltaDays 드래그 중인 경우 적용할 델타 일수 (기본값 0)
  * @param offsetY Y축 시작 오프셋
+ * @param rowData 동적 행 높이 데이터 (Compact 모드 지원)
+ * @param effectiveBarHeight Compact 모드 바 높이
  */
 const getAnchorCoords = (
     task: ConstructionTask,
@@ -46,17 +64,24 @@ const getAnchorCoords = (
     holidays: Date[] = [],
     calendarSettings?: CalendarSettings,
     deltaDays: number = 0,
-    offsetY: number = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT
+    offsetY: number = GANTT_LAYOUT.MILESTONE_LANE_HEIGHT,
+    rowData?: RowData[],
+    effectiveBarHeight: number = BAR_HEIGHT
 ): { x: number; y: number } => {
     const startOffset = differenceInDays(task.startDate, minDate) + deltaDays;
     const calendarOffset = workingDayToCalendarOffset(task, workingDayIndex, holidays, calendarSettings);
     const x = (startOffset + calendarOffset) * pixelsPerDay;
 
-    const y =
-        offsetY +
-        rowIndex * GANTT_LAYOUT.ROW_HEIGHT +
-        (GANTT_LAYOUT.ROW_HEIGHT - GANTT_LAYOUT.BAR_HEIGHT) / 2 +
-        GANTT_LAYOUT.BAR_HEIGHT;
+    // 동적 높이 계산 (Compact 모드 지원)
+    // GROUP 행은 항상 기본 높이 사용
+    // 안전한 조회: 배열 인덱스 대신 index 필드로 검색
+    const isGroup = task.type === 'GROUP';
+    const rowInfo = rowData?.find(r => r.index === rowIndex);
+    const rowStart = rowInfo?.start ?? (rowIndex * ROW_HEIGHT);
+    const rowHeight = isGroup ? ROW_HEIGHT : (rowInfo?.size ?? ROW_HEIGHT);
+    const barHeight = isGroup ? BAR_HEIGHT : effectiveBarHeight;
+
+    const y = offsetY + rowStart + (rowHeight - barHeight) / 2 + barHeight;
 
     return { x, y };
 };
@@ -106,7 +131,12 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
     calendarSettings,
     getTaskDeltaDays,
     offsetY,
+    rowData,
+    effectiveBarHeight = BAR_HEIGHT,
+    isCompact = false,
 }) => {
+    // Compact 모드에 따른 스트로크 상수 선택
+    const STROKE = isCompact ? GANTT_STROKE_COMPACT : GANTT_STROKE;
     // 태스크 ID → 인덱스 맵
     const taskIndexMap = useMemo(() => {
         const map = new Map<string, number>();
@@ -157,7 +187,9 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                     holidays,
                     calendarSettings,
                     sourceDelta,
-                    offsetY
+                    offsetY,
+                    rowData,
+                    effectiveBarHeight
                 );
                 const targetCoords = getAnchorCoords(
                     targetTask,
@@ -168,7 +200,9 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                     holidays,
                     calendarSettings,
                     targetDelta,
-                    offsetY
+                    offsetY,
+                    rowData,
+                    effectiveBarHeight
                 );
 
                 const path = createDependencyPath(
@@ -188,7 +222,7 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                 };
             })
             .filter((p): p is DependencyPathInfo => p !== null);
-    }, [dependencies, taskMap, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings, getTaskDeltaDays]);
+    }, [dependencies, taskMap, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings, getTaskDeltaDays, offsetY, rowData, effectiveBarHeight]);
 
     // 드래그 중인 종속성인지 확인하는 헬퍼 함수
     const isDependencyDragging = (depId: string): boolean => {
@@ -206,24 +240,27 @@ export const DependencyLines: React.FC<DependencyLinesProps> = ({
                 const isHovered = hoveredDepId === pathInfo.id;
                 const isDragging = isDependencyDragging(pathInfo.id);
 
+                // Compact 모드에 따른 마커 접미사
+                const markerSuffix = isCompact ? '-compact' : '';
+
                 let strokeColor: string = GANTT_COLORS.textPrimary; // 기본 색상
-                let markerEnd = 'url(#dependency-arrow)';
-                let strokeWidth: number = GANTT_STROKE.DEFAULT;
+                let markerEnd = `url(#dependency-arrow${markerSuffix})`;
+                let strokeWidth: number = STROKE.DEFAULT;
                 let strokeDasharray: string | undefined = undefined;
 
                 if (isDragging) {
                     // 드래그 중: 초록색 강조 + 두꺼운 선
                     strokeColor = GANTT_COLORS.success;
-                    markerEnd = 'url(#dependency-arrow-connecting)';
-                    strokeWidth = GANTT_STROKE.SELECTED;
+                    markerEnd = `url(#dependency-arrow-connecting${markerSuffix})`;
+                    strokeWidth = STROKE.SELECTED;
                 } else if (isSelected) {
                     strokeColor = GANTT_COLORS.focus; // 선택됨: 포커스 색상
-                    markerEnd = 'url(#dependency-arrow-selected)';
-                    strokeWidth = GANTT_STROKE.SELECTED;
+                    markerEnd = `url(#dependency-arrow-selected${markerSuffix})`;
+                    strokeWidth = STROKE.SELECTED;
                 } else if (isHovered) {
                     strokeColor = GANTT_COLORS.textPrimary; // 호버: 진한 색상
-                    markerEnd = 'url(#dependency-arrow-hover)';
-                    strokeWidth = GANTT_STROKE.HOVER;
+                    markerEnd = `url(#dependency-arrow-hover${markerSuffix})`;
+                    strokeWidth = STROKE.HOVER;
                 }
 
                 return (
@@ -270,6 +307,8 @@ interface ConnectionPreviewLineProps {
     sourceY: number;
     targetX: number;
     targetY: number;
+    /** Compact 모드 여부 */
+    isCompact?: boolean;
 }
 
 export const ConnectionPreviewLine: React.FC<ConnectionPreviewLineProps> = ({
@@ -277,17 +316,22 @@ export const ConnectionPreviewLine: React.FC<ConnectionPreviewLineProps> = ({
     sourceY,
     targetX,
     targetY,
+    isCompact = false,
 }) => {
+    const STROKE = isCompact ? GANTT_STROKE_COMPACT : GANTT_STROKE;
+    const ANCHOR = isCompact ? GANTT_ANCHOR_COMPACT : GANTT_ANCHOR;
+    const markerSuffix = isCompact ? '-compact' : '';
+
     return (
         <line
             x1={sourceX}
-            y1={sourceY + GANTT_ANCHOR.RADIUS}
+            y1={sourceY + ANCHOR.RADIUS}
             x2={targetX}
-            y2={targetY + GANTT_ANCHOR.RADIUS}
+            y2={targetY + ANCHOR.RADIUS}
             stroke={GANTT_COLORS.success}
-            strokeWidth={GANTT_STROKE.HOVER}
-            strokeDasharray="5,3"
-            markerEnd="url(#dependency-arrow-connecting)"
+            strokeWidth={STROKE.HOVER}
+            strokeDasharray={isCompact ? '3,2' : '5,3'}
+            markerEnd={`url(#dependency-arrow-connecting${markerSuffix})`}
             style={{ pointerEvents: 'none' }}
         />
     );
@@ -309,6 +353,12 @@ interface InBarConnectionLinesProps {
     getTaskDeltaDays?: (taskId: string) => number;
     /** Y축 오프셋 (기본값: MILESTONE_LANE_HEIGHT) */
     offsetY?: number;
+    /** 행 데이터 (동적 높이 계산용) */
+    rowData?: RowData[];
+    /** Compact 모드 바 높이 */
+    effectiveBarHeight?: number;
+    /** Compact 모드 여부 */
+    isCompact?: boolean;
 }
 
 export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
@@ -320,7 +370,12 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
     calendarSettings,
     getTaskDeltaDays,
     offsetY,
+    rowData,
+    effectiveBarHeight = BAR_HEIGHT,
+    isCompact = false,
 }) => {
+    // Compact 모드에 따른 스트로크 상수 선택
+    const STROKE = isCompact ? GANTT_STROKE_COMPACT : GANTT_STROKE;
     // 태스크 ID → 인덱스 맵
     const taskIndexMap = useMemo(() => {
         const map = new Map<string, number>();
@@ -369,7 +424,9 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
                             holidays,
                             calendarSettings,
                             deltaDays,
-                            offsetY
+                            offsetY,
+                            rowData,
+                            effectiveBarHeight
                         );
                         const toCoords = getAnchorCoords(
                             task,
@@ -380,7 +437,9 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
                             holidays,
                             calendarSettings,
                             deltaDays,
-                            offsetY
+                            offsetY,
+                            rowData,
+                            effectiveBarHeight
                         );
 
                         connections.push({
@@ -395,7 +454,7 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
         });
 
         return connections;
-    }, [tasks, dependencies, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings, getTaskDeltaDays, offsetY]);
+    }, [tasks, dependencies, taskIndexMap, minDate, pixelsPerDay, holidays, calendarSettings, getTaskDeltaDays, offsetY, rowData, effectiveBarHeight]);
 
     if (inBarConnections.length === 0) return null;
 
@@ -409,7 +468,7 @@ export const InBarConnectionLines: React.FC<InBarConnectionLinesProps> = ({
                     x2={conn.toX}
                     y2={conn.y}
                     stroke={GANTT_COLORS.textPrimary}
-                    strokeWidth={GANTT_STROKE.DEFAULT}
+                    strokeWidth={STROKE.DEFAULT}
                     style={{ pointerEvents: 'none' }}
                 />
             ))}

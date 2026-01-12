@@ -10,9 +10,12 @@ export interface GanttHeaderProps {
     isAddingCP: boolean;
     hasUnsavedChanges?: boolean;
     saveStatus?: SaveStatus;
+    // Compact Mode (Detail View only)
+    isCompactMode?: boolean;
     // Handlers
     onViewChange: (mode: 'MASTER' | 'DETAIL', cpId?: string) => void;
     onZoomChange: (level: ZoomLevel) => void;
+    onToggleCompact?: () => void;
     onStartAddTask?: () => void;
     onStartAddCP?: () => void;
     onStartAddMilestone?: () => void;
@@ -22,7 +25,10 @@ export interface GanttHeaderProps {
     onSave?: () => void | Promise<void>;
     onReset?: () => void;
     onExport?: () => void;
+    onExportExcel?: () => void;
     onImport?: (file: File) => void;
+    // 로딩된 파일명
+    loadedFileName?: string | null;
     // Enabled flags
     canCreateTask?: boolean;
     canCreateMilestone?: boolean;

@@ -11,8 +11,10 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
     isAddingCP,
     hasUnsavedChanges,
     saveStatus,
+    isCompactMode,
     onViewChange,
     onZoomChange,
+    onToggleCompact,
     onStartAddTask,
     onStartAddCP,
     onStartAddMilestone,
@@ -22,7 +24,9 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
     onSave,
     onReset,
     onExport,
+    onExportExcel,
     onImport,
+    loadedFileName,
     canCreateTask,
     canCreateMilestone,
 }) => {
@@ -171,6 +175,31 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     Focusing
                 </button>
 
+                {/* Compact 토글 버튼 (Detail View 전용) */}
+                {viewMode === 'DETAIL' && onToggleCompact && (
+                    <button
+                        onClick={onToggleCompact}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                        style={{
+                            backgroundColor: isCompactMode ? 'var(--gantt-focus)' : 'var(--gantt-bg-tertiary)',
+                            color: isCompactMode ? 'var(--gantt-text-inverse)' : 'var(--gantt-text-secondary)',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!isCompactMode) {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isCompactMode) {
+                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                            }
+                        }}
+                        title={isCompactMode ? 'Normal 뷰로 전환' : 'Compact 뷰로 전환'}
+                    >
+                        {isCompactMode ? '↕ Normal' : '↔ Compact'}
+                    </button>
+                )}
+
                 <div
                     className="flex rounded p-1"
                     style={{ backgroundColor: 'var(--gantt-bg-tertiary)' }}
@@ -197,6 +226,32 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 <div className="text-sm" style={{ color: 'var(--gantt-text-muted)' }}>
                     기준일: {format(new Date(), 'yyyy-MM-dd')}
                 </div>
+
+                {/* 로딩된 파일명 표시 */}
+                {loadedFileName && (
+                    <div
+                        className="flex items-center gap-1.5 rounded-md px-2 py-1"
+                        style={{ backgroundColor: 'var(--gantt-bg-tertiary)' }}
+                        title={`로딩된 파일: ${loadedFileName}`}
+                    >
+                        <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            style={{ color: 'var(--gantt-text-muted)' }}
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span
+                            className="max-w-[150px] truncate text-xs font-medium"
+                            style={{ color: 'var(--gantt-text-secondary)' }}
+                        >
+                            {loadedFileName}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* 오른쪽: 저장/초기화 버튼 */}
@@ -253,28 +308,11 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     </button>
                 )}
 
-                {(onExport || onImport) && (
+                {(onExport || onImport || onExportExcel) && (
                     <div
                         className="h-6 w-px"
                         style={{ backgroundColor: 'var(--gantt-border)' }}
                     />
-                )}
-
-                {onExport && (
-                    <button
-                        onClick={onExport}
-                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                        style={{
-                            backgroundColor: 'var(--gantt-success)',
-                            color: 'var(--gantt-text-inverse)',
-                        }}
-                        title="현재 데이터를 JSON 파일로 내보내기"
-                    >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        내보내기
-                    </button>
                 )}
 
                 {onImport && (
@@ -283,6 +321,12 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         style={{
                             backgroundColor: 'var(--gantt-milestone-detail)',
                             color: 'var(--gantt-text-inverse)',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.filter = 'brightness(1.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.filter = 'brightness(1)';
                         }}
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -302,6 +346,52 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                             }}
                         />
                     </label>
+                )}
+
+                {onExport && (
+                    <button
+                        onClick={onExport}
+                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        style={{
+                            backgroundColor: 'var(--gantt-success)',
+                            color: 'var(--gantt-text-inverse)',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.filter = 'brightness(1.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.filter = 'brightness(1)';
+                        }}
+                        title="현재 데이터를 JSON 파일로 내보내기"
+                    >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        JSON
+                    </button>
+                )}
+
+                {onExportExcel && (
+                    <button
+                        onClick={onExportExcel}
+                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        style={{
+                            backgroundColor: '#217346',
+                            color: 'var(--gantt-text-inverse)',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#2d8a5e';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#217346';
+                        }}
+                        title="현재 데이터를 Excel 파일로 내보내기 (간트 차트 형태)"
+                    >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                        </svg>
+                        Excel
+                    </button>
                 )}
             </div>
         </header>

@@ -16,7 +16,7 @@ import { dateToX } from '../utils/dateUtils';
 // Constants
 // ============================================
 
-const BAR_HEIGHT = 12;  // Critical Path 바 높이 (절반 크기)
+const BAR_HEIGHT = 9;  // Critical Path 바 높이
 const CRITICAL_PATH_ROW_HEIGHT = 20;  // Critical Path 행 높이 (50% 축소)
 const BAR_GAP = 1;                    // 바 사이 간격
 

@@ -53,6 +53,8 @@ export interface GanttChartProps {
     onAnchorDependencyCreate?: (dependency: AnchorDependency) => void | Promise<void>;
     onAnchorDependencyDelete?: (depId: string) => void | Promise<void>;
     onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void | Promise<void>;
+    /** 순환 종속성 감지 시 호출되는 콜백 */
+    onCycleDetected?: (info: { sourceTaskId: string; targetTaskId: string }) => void;
 
     // 마일스톤 이벤트 핸들러
     onMilestoneCreate?: (milestone: Partial<Milestone>) => void | Promise<void>;
@@ -67,7 +69,11 @@ export interface GanttChartProps {
 
     // 내보내기/가져오기 (mock.json 동기화용)
     onExport?: () => void;
+    onExportExcel?: () => void;
     onImport?: (file: File) => void | Promise<void>;
+
+    // 로딩된 파일명 표시
+    loadedFileName?: string | null;
 
     // 에러 핸들링
     /** 에러 발생 시 호출되는 콜백 (사용자 알림용) */

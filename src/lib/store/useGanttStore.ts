@@ -46,6 +46,9 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
     dragType: null,
     dragTaskId: null,
 
+    // Compact Mode (Detail View 전용)
+    isCompactMode: false,
+
     // ====================================
     // View Actions
     // ====================================
@@ -234,6 +237,18 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
             dragTaskId: null,
         });
     },
+
+    // ====================================
+    // Compact Mode Actions
+    // ====================================
+
+    toggleCompactMode: () => {
+        set((state) => ({ isCompactMode: !state.isCompactMode }));
+    },
+
+    setCompactMode: (isCompact: boolean) => {
+        set({ isCompactMode: isCompact });
+    },
 }));
 
 // ====================================
@@ -313,5 +328,15 @@ export const useGanttDrag = () =>
             dragTaskId: state.dragTaskId,
             startDrag: state.startDrag,
             endDrag: state.endDrag,
+        }))
+    );
+
+/** Compact 모드 상태만 구독 */
+export const useGanttCompactMode = () =>
+    useGanttStore(
+        useShallow((state) => ({
+            isCompactMode: state.isCompactMode,
+            toggleCompactMode: state.toggleCompactMode,
+            setCompactMode: state.setCompactMode,
         }))
     );

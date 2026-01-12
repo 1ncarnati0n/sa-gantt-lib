@@ -127,9 +127,11 @@ export const GANTT_COLORS_STATIC = {
 
 export const GANTT_LAYOUT = {
     ROW_HEIGHT: 30,
+    ROW_HEIGHT_COMPACT: 12,
     HEADER_HEIGHT: 80,
     MILESTONE_LANE_HEIGHT: 40,
-    BAR_HEIGHT: 14,
+    BAR_HEIGHT: 9,
+    BAR_HEIGHT_COMPACT: 4,
     SIDEBAR_WIDTH: 500,
     SIDEBAR_MIN_WIDTH: 300,
     SIDEBAR_MAX_WIDTH: 800,
@@ -137,7 +139,20 @@ export const GANTT_LAYOUT = {
     SIDEBAR_DETAIL_WIDTH: 600,
     /** 뷰 전환 후 스크롤 대기 시간 (ms) */
     SCROLL_DELAY_MS: 100,
+    /** SVG 하단 여백 (스크롤 시 종속선 계산용) */
+    BOTTOM_PADDING: 100,
 } as const;
+
+/**
+ * Compact 모드에 따른 레이아웃 값 반환
+ * @param isCompact - Compact 모드 여부
+ */
+export function getLayoutValues(isCompact: boolean): { rowHeight: number; barHeight: number } {
+    return {
+        rowHeight: isCompact ? GANTT_LAYOUT.ROW_HEIGHT_COMPACT : GANTT_LAYOUT.ROW_HEIGHT,
+        barHeight: isCompact ? GANTT_LAYOUT.BAR_HEIGHT_COMPACT : GANTT_LAYOUT.BAR_HEIGHT,
+    };
+}
 
 // ============================================
 // 사이드바 컬럼 설정
@@ -249,4 +264,53 @@ export const GANTT_STROKE = {
     HOVER: 2,
     /** 선택 상태 스트로크 너비 */
     SELECTED: 2.5,
+} as const;
+
+// ============================================
+// Compact 모드 전용 상수
+// ============================================
+
+/**
+ * Compact 모드 앵커 포인트 상수
+ * 일반 모드 대비 약 50% 축소
+ */
+export const GANTT_ANCHOR_COMPACT = {
+    /** 기본 앵커 반지름 */
+    RADIUS: 1,
+    /** 활성화된 앵커 반지름 (연결 시작점) */
+    RADIUS_ACTIVE: 1.5,
+    /** 연결된 앵커 반지름 */
+    RADIUS_CONNECTED: 1.25,
+    /** 앵커 스트로크 너비 */
+    STROKE_WIDTH: 0.75,
+} as const;
+
+/**
+ * Compact 모드 스트로크 너비 상수
+ * 일반 모드 대비 약 50% 축소
+ */
+export const GANTT_STROKE_COMPACT = {
+    /** 기본 스트로크 너비 */
+    DEFAULT: 0.75,
+    /** 호버 상태 스트로크 너비 */
+    HOVER: 1,
+    /** 선택 상태 스트로크 너비 */
+    SELECTED: 1.25,
+} as const;
+
+/**
+ * Compact 모드 마커(화살표) 상수
+ * 일반 모드(5x5) 대비 축소
+ */
+export const GANTT_MARKER_COMPACT = {
+    /** 마커 너비 */
+    WIDTH: 3,
+    /** 마커 높이 */
+    HEIGHT: 3,
+    /** 참조점 X (화살표 끝점) */
+    REF_X: 2.5,
+    /** 참조점 Y (중앙) */
+    REF_Y: 1.5,
+    /** 화살표 스트로크 너비 */
+    STROKE_WIDTH: 0.75,
 } as const;

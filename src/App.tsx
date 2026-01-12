@@ -27,6 +27,8 @@ import {
   isValidAnchorDependencyData,
   serializeGanttDataForExport,
   parseImportedData,
+  // Excel Export
+  exportToExcel,
   // Korean Holidays
   KOREAN_HOLIDAYS_ALL,
 } from './lib';
@@ -145,6 +147,9 @@ function App() {
   const { tasks, milestones, anchorDependencies } = appState;
 
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // 로딩된 파일명 (가져오기 시 저장)
+  const [loadedFileName, setLoadedFileName] = useState<string | null>(null);
 
   // 변경사항 감지
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -343,6 +348,22 @@ function App() {
   }, [tasks, milestones, anchorDependencies]);
 
   // ====================================
+  // Excel 내보내기 핸들러 (간트 차트 형태)
+  // ====================================
+  const handleExportExcel = useCallback(async () => {
+    try {
+      await exportToExcel({
+        tasks,
+        milestones,
+        fileName: loadedFileName || undefined,
+      });
+    } catch (error) {
+      console.error('Failed to export Excel:', error);
+      alert('Excel 내보내기 중 오류가 발생했습니다.');
+    }
+  }, [tasks, milestones, loadedFileName]);
+
+  // ====================================
   // 가져오기 핸들러 (JSON 파일 업로드, DataService 파싱 사용)
   // ====================================
   const handleImport = useCallback(async (file: File) => {
@@ -367,6 +388,9 @@ function App() {
         milestones: importedMilestones,
         anchorDependencies: importedDependencies,
       });
+
+      // 파일명 저장
+      setLoadedFileName(file.name);
 
       // DataService로 저장
       await dataService.saveAll({
@@ -994,7 +1018,9 @@ function App() {
             hasUnsavedChanges={hasUnsavedChanges}
             saveStatus={saveStatus}
             onExport={handleExport}
+            onExportExcel={handleExportExcel}
             onImport={handleImport}
+            loadedFileName={loadedFileName}
           />
         </div>
       </div>

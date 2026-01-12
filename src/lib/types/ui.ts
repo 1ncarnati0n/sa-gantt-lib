@@ -43,6 +43,9 @@ export interface GanttUIState {
     isDragging: boolean;
     dragType: 'MOVE' | 'RESIZE_PRE' | 'RESIZE_POST' | 'RESIZE_NET' | 'LINK' | null;
     dragTaskId: string | null;
+
+    // Compact Mode (Detail View 전용)
+    isCompactMode: boolean;
 }
 
 export interface GanttUIActions {
@@ -69,6 +72,10 @@ export interface GanttUIActions {
     // Drag Actions
     startDrag: (type: GanttUIState['dragType'], taskId: string) => void;
     endDrag: () => void;
+
+    // Compact Mode Actions
+    toggleCompactMode: () => void;
+    setCompactMode: (isCompact: boolean) => void;
 }
 
 export type GanttStore = GanttUIState & GanttUIActions;
