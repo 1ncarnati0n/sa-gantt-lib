@@ -203,11 +203,10 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
             // ============================================
 
             // 1. 앞 간접작업 영역 앵커 (음수 dayIndex)
-            for (let i = 0; i < indirectWorkDaysPre; i++) {
-                const calendarOffset = i;
-                // 순작업 기준 dayIndex: -(indirectWorkDaysPre - i)
-                // i=0 → dayIndex = -indirectWorkDaysPre
-                // i=indirectWorkDaysPre-1 → dayIndex = -1
+            // 첫날(태스크 시작점)은 제외하고, 나머지가 한 칸씩 앞으로 이동
+            // i=1부터 시작 → dayIndex는 -2, -1, ... (첫 번째 dayIndex 제외)
+            for (let i = 1; i < indirectWorkDaysPre; i++) {
+                const calendarOffset = i - 1;  // 한 칸 앞으로 이동
                 const netBasedDayIndex = i - indirectWorkDaysPre;
                 result.push({
                     taskId: task.id,
@@ -218,6 +217,7 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
             }
 
             // 2. 순작업 영역 앵커 (0 ~ netWorkDays, 휴일 건너뛰기)
+            // 순작업 앵커는 바의 실제 위치에 맞춰야 함
             let netWorkingDayIndex = 0;
             for (let calendarOffset = indirectWorkDaysPre; calendarOffset <= indirectWorkDaysPre + netWorkDays + holidayCount; calendarOffset++) {
                 // 휴일이면 건너뛰기
@@ -239,12 +239,13 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
                 netWorkingDayIndex++;
             }
 
-            // 3. 뒤 간접작업 영역 앵커 (netWorkDays + 1 ~ ...)
+            // 3. 뒤 간접작업 영역 앵커
+            // 첫 앵커(순작업 마지막과 겹침)는 제거, 나머지 유지 (태스크 끝점 포함)
             const postStartCalendar = indirectWorkDaysPre + netWorkDays + holidayCount;
-            for (let i = 0; i < indirectWorkDaysPost; i++) {
+            for (let i = 1; i <= indirectWorkDaysPost; i++) {
                 const calendarOffset = postStartCalendar + i;
-                // 순작업 기준 dayIndex: netWorkDays + 1 + i
-                const netBasedDayIndex = netWorkDays + 1 + i;
+                // 순작업 기준 dayIndex: netWorkDays + i
+                const netBasedDayIndex = netWorkDays + i;
                 result.push({
                     taskId: task.id,
                     dayIndex: netBasedDayIndex,

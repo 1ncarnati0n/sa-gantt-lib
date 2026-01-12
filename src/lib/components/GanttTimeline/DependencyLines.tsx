@@ -74,8 +74,9 @@ const getAnchorCoords = (
 
     // 동적 높이 계산 (Compact 모드 지원)
     // GROUP 행은 항상 기본 높이 사용
+    // 안전한 조회: 배열 인덱스 대신 index 필드로 검색
     const isGroup = task.type === 'GROUP';
-    const rowInfo = rowData?.[rowIndex];
+    const rowInfo = rowData?.find(r => r.index === rowIndex);
     const rowStart = rowInfo?.start ?? (rowIndex * ROW_HEIGHT);
     const rowHeight = isGroup ? ROW_HEIGHT : (rowInfo?.size ?? ROW_HEIGHT);
     const barHeight = isGroup ? BAR_HEIGHT : effectiveBarHeight;

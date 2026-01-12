@@ -787,8 +787,20 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
                             if (!sourceTask || !targetTask || sourceIndex < 0 || targetIndex < 0) return null;
 
-                            const sourcePos = getAnchorPosition(sourceTask, connectingFrom.dayIndex, sourceIndex, minDate, pixelsPerDay, holidays, calendarSettings, 0);
-                            const targetPos = getAnchorPosition(targetTask, hoveredAnchor.dayIndex, targetIndex, minDate, pixelsPerDay, holidays, calendarSettings, 0);
+                            // 동적 높이 정보 조회
+                            const sourceRow = fullRowData.find(r => r.index === sourceIndex);
+                            const targetRow = fullRowData.find(r => r.index === targetIndex);
+
+                            const sourcePos = getAnchorPosition(
+                                sourceTask, connectingFrom.dayIndex, sourceIndex,
+                                minDate, pixelsPerDay, holidays, calendarSettings, 0,
+                                sourceRow?.start, sourceRow?.size, effectiveBarHeight
+                            );
+                            const targetPos = getAnchorPosition(
+                                targetTask, hoveredAnchor.dayIndex, targetIndex,
+                                minDate, pixelsPerDay, holidays, calendarSettings, 0,
+                                targetRow?.start, targetRow?.size, effectiveBarHeight
+                            );
 
                             return (
                                 <ConnectionPreviewLine
@@ -1220,8 +1232,20 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
                             if (!sourceTask || !targetTask || sourceIndex < 0 || targetIndex < 0) return null;
 
-                            const sourcePos = getAnchorPosition(sourceTask, connectingFrom.dayIndex, sourceIndex, minDate, pixelsPerDay, holidays, calendarSettings, 0);
-                            const targetPos = getAnchorPosition(targetTask, hoveredAnchor.dayIndex, targetIndex, minDate, pixelsPerDay, holidays, calendarSettings, 0);
+                            // 동적 높이 정보 조회
+                            const sourceRow = fullRowData.find(r => r.index === sourceIndex);
+                            const targetRow = fullRowData.find(r => r.index === targetIndex);
+
+                            const sourcePos = getAnchorPosition(
+                                sourceTask, connectingFrom.dayIndex, sourceIndex,
+                                minDate, pixelsPerDay, holidays, calendarSettings, 0,
+                                sourceRow?.start, sourceRow?.size, effectiveBarHeight
+                            );
+                            const targetPos = getAnchorPosition(
+                                targetTask, hoveredAnchor.dayIndex, targetIndex,
+                                minDate, pixelsPerDay, holidays, calendarSettings, 0,
+                                targetRow?.start, targetRow?.size, effectiveBarHeight
+                            );
 
                             return (
                                 <ConnectionPreviewLine
