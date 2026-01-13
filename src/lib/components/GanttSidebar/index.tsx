@@ -17,6 +17,7 @@ import { GanttSidebarNewCPForm } from '../GanttSidebarNewCPForm';
 import { SidebarHeader } from './SidebarHeader';
 import { SidebarRowMaster } from './SidebarRowMaster';
 import { SidebarRowDetail } from './SidebarRowDetail';
+import { SidebarRowUnified } from './SidebarRowUnified';
 
 // Hooks
 import {
@@ -64,9 +65,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
         const isVirtualized = virtualRows && virtualRows.length > 0;
 
-        // 동적 행 높이 계산 함수: GROUP은 항상 30px, TASK는 effectiveRowHeight
+        // 동적 행 높이 계산 함수: GROUP/CP는 항상 30px, TASK는 effectiveRowHeight
         const getRowHeight = useCallback((task: ConstructionTask) => {
-            if (task.type === 'GROUP') {
+            if (task.type === 'GROUP' || task.type === 'CP') {
                 return ROW_HEIGHT;
             }
             return effectiveRowHeight;
@@ -103,6 +104,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             handleColumnResizeDoubleClick,
             getGroupDepth,
             getMasterGroupDepth,
+            getUnifiedDepth,
         } = useSidebarColumns({
             viewMode,
             tasks,
@@ -530,6 +532,69 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                             dragHandleWidth={dragHandleWidth}
                         />
                     )}
+                </>
+            );
+        }
+
+        // Unified View
+        if (viewMode === 'UNIFIED') {
+            return renderByMode(
+                <>
+                    {rowData.map((row) => {
+                        const task = tasks[row.index];
+                        if (!task) return null;
+
+                        const isCP = task.type === 'CP';
+                        const isGroup = task.type === 'GROUP';
+                        // 블록: GROUP이면서 부모가 CP가 아닌 경우 (마스터뷰의 그룹)
+                        const parentTask = task.parentId ? allTasks.find(t => t.id === task.parentId) : null;
+                        const isBlock = isGroup && (!parentTask || parentTask.type !== 'CP');
+                        const canExpand = (isCP || isGroup) && allTasks.some(t => t.parentId === task.id);
+
+                        return (
+                            <SidebarRowUnified
+                                key={row.key}
+                                task={task}
+                                rowIndex={row.index}
+                                isVirtualized={isVirtualized!}
+                                rowStart={row.start}
+                                isDragging={draggedTaskId === task.id}
+                                isDragOver={dragOverTaskId === task.id}
+                                dragOverPosition={dragOverPosition}
+                                isSelected={selectedTaskIds.has(task.id)}
+                                isFocused={focusedTaskId === task.id}
+                                isExpanded={expandedIds.has(task.id)}
+                                canExpand={canExpand}
+                                indent={getUnifiedDepth(task) * 16}
+                                isGroup={isGroup && !isBlock}
+                                isCP={isCP}
+                                isBlock={isBlock}
+                                onDragStart={handleDragStart}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                                onDragEnd={handleDragEnd}
+                                onRowClick={handleRowClick}
+                                onContextMenu={handleContextMenu}
+                                onToggle={onToggle}
+                                editingTaskId={editingTaskId}
+                                editingName={editingName}
+                                setEditingName={setEditingName}
+                                editInputRef={editInputRef}
+                                onStartEdit={handleStartEdit}
+                                onSaveEdit={handleSaveEdit}
+                                onEditKeyDown={handleEditKeyDown}
+                                columns={columns}
+                                dragHandleWidth={dragHandleWidth}
+                                onTaskReorder={onTaskReorder}
+                                onTaskMove={onTaskMove}
+                                onTaskUpdate={onTaskUpdate}
+                                onTaskClick={onTaskClick}
+                                rowHeight={row.size}
+                                onTaskDoubleClick={onTaskDoubleClick}
+                            />
+                        );
+                    })}
                 </>
             );
         }

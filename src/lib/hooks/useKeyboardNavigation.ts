@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from 'react';
 import type { ConstructionTask, ViewMode } from '../types';
-import { useGanttSelection } from '../store/useGanttStore';
+import { useGanttSelection, useGanttExpansion } from '../store/useGanttStore';
 
 interface UseKeyboardNavigationOptions {
     /** 현재 보이는 Task 목록 */
@@ -27,9 +27,13 @@ interface UseKeyboardNavigationOptions {
  * 키 바인딩:
  * - ArrowUp: 이전 Task로 이동
  * - ArrowDown: 다음 Task로 이동
+ * - ArrowLeft: CP/GROUP 접기 (펼쳐져 있을 때)
+ * - ArrowRight: CP/GROUP 펼치기 (접혀 있을 때)
  * - Enter: 선택된 Task 편집 모달 열기
  * - Escape: 선택 해제
  * - Backspace: Detail View에서 Master View로 복귀
+ * - Home: 첫 번째 Task로 이동
+ * - End: 마지막 Task로 이동
  */
 export function useKeyboardNavigation({
     visibleTasks,
@@ -46,6 +50,11 @@ export function useKeyboardNavigation({
         clearSelection,
         selectTask,
     } = useGanttSelection();
+
+    const {
+        expandedTaskIds,
+        toggleTask,
+    } = useGanttExpansion();
 
     // 포커스 변경 시 해당 Task로 스크롤
     useEffect(() => {
@@ -76,6 +85,36 @@ export function useKeyboardNavigation({
             case 'ArrowDown':
                 e.preventDefault();
                 moveFocus('down', visibleTasks);
+                break;
+
+            case 'ArrowLeft':
+                // 포커스된 Task가 펼칠 수 있는 항목(CP, GROUP, Block)이고 펼쳐져 있으면 접기
+                if (focusedTaskId) {
+                    const task = visibleTasks.find(t => t.id === focusedTaskId);
+                    if (task && (task.type === 'CP' || task.type === 'GROUP')) {
+                        // 하위 항목이 있는지 확인 (펼칠 수 있는지)
+                        const hasChildren = visibleTasks.some(t => t.parentId === task.id) ||
+                            expandedTaskIds.has(task.id);
+                        if (hasChildren && expandedTaskIds.has(task.id)) {
+                            e.preventDefault();
+                            toggleTask(task.id);
+                        }
+                    }
+                }
+                break;
+
+            case 'ArrowRight':
+                // 포커스된 Task가 펼칠 수 있는 항목(CP, GROUP, Block)이고 접혀 있으면 펼치기
+                if (focusedTaskId) {
+                    const task = visibleTasks.find(t => t.id === focusedTaskId);
+                    if (task && (task.type === 'CP' || task.type === 'GROUP')) {
+                        // 펼쳐져 있지 않으면 펼치기
+                        if (!expandedTaskIds.has(task.id)) {
+                            e.preventDefault();
+                            toggleTask(task.id);
+                        }
+                    }
+                }
                 break;
 
             case 'Enter':
@@ -124,7 +163,7 @@ export function useKeyboardNavigation({
                 }
                 break;
         }
-    }, [enabled, visibleTasks, viewMode, focusedTaskId, moveFocus, clearSelection, onViewChange, onTaskEdit, selectTask]);
+    }, [enabled, visibleTasks, viewMode, focusedTaskId, moveFocus, clearSelection, onViewChange, onTaskEdit, selectTask, expandedTaskIds, toggleTask]);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);

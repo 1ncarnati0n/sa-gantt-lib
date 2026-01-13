@@ -69,14 +69,14 @@ export function useGanttVirtualization({
     tasks,
 }: UseGanttVirtualizationOptions) {
     // 동적 행 높이 계산 함수
-    // GROUP 행은 항상 ROW_HEIGHT(30px), TASK 행은 rowHeight(compact: 12px, normal: 30px)
+    // GROUP/CP 행은 항상 ROW_HEIGHT(30px), TASK 행만 rowHeight(compact: 12px, normal: 30px)
     const getItemSize = useCallback((index: number) => {
         if (!tasks || !tasks[index]) {
             return rowHeight;
         }
         const task = tasks[index];
-        // GROUP 타입은 항상 기본 높이 유지
-        if (task.type === 'GROUP') {
+        // GROUP, CP 타입은 항상 기본 높이 유지 (Block, CP, Group 행 고정)
+        if (task.type === 'GROUP' || task.type === 'CP') {
             return ROW_HEIGHT;
         }
         return rowHeight;

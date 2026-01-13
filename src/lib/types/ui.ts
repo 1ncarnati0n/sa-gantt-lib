@@ -65,6 +65,7 @@ export interface GanttUIActions {
     toggleTask: (taskId: string) => void;
     expandAll: (taskIds: string[]) => void;
     collapseAll: () => void;
+    setExpandedTaskIds: (ids: Set<string>) => void;
 
     // Sidebar Actions
     setSidebarWidth: (width: number) => void;
