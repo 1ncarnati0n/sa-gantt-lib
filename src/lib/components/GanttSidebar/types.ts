@@ -110,6 +110,19 @@ export interface SidebarRowDetailProps extends SidebarRowProps {
     rowHeight?: number;
 }
 
+export interface SidebarRowUnifiedProps extends SidebarRowProps {
+    /** CP 타입 여부 (Level 1) */
+    isCP: boolean;
+    /** 블록 타입 여부 (마스터뷰의 GROUP, 최상위 계층) */
+    isBlock: boolean;
+    /** Task 클릭 핸들러 (선택 시) */
+    onTaskClick?: (task: ConstructionTask) => void;
+    /** Compact 모드용 행 높이 */
+    rowHeight?: number;
+    /** Task 더블클릭 핸들러 (Detail View 전환) */
+    onTaskDoubleClick?: (task: ConstructionTask) => void;
+}
+
 export interface DaysInputCellProps {
     task: ConstructionTask;
     field: 'indirectWorkDaysPre' | 'netWorkDays' | 'indirectWorkDaysPost';

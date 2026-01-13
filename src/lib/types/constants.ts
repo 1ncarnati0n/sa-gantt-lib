@@ -137,6 +137,7 @@ export const GANTT_LAYOUT = {
     SIDEBAR_MAX_WIDTH: 800,
     SIDEBAR_MASTER_WIDTH: 500,
     SIDEBAR_DETAIL_WIDTH: 600,
+    SIDEBAR_UNIFIED_WIDTH: 450,
     /** 뷰 전환 후 스크롤 대기 시간 (ms) */
     SCROLL_DELAY_MS: 100,
     /** SVG 하단 여백 (스크롤 시 종속선 계산용) */
@@ -182,6 +183,14 @@ export const DEFAULT_DETAIL_COLUMNS: ColumnConfig[] = [
     { id: 'indirectPost', label: '후간접', width: 65, minWidth: 45 },
     { id: 'startDate', label: '시작일', width: 95, minWidth: 75 },
     { id: 'endDate', label: '종료일', width: 95, minWidth: 75 },
+];
+
+/** Unified View 기본 컬럼 (총 450px) - CP/Task 공통 */
+export const DEFAULT_UNIFIED_COLUMNS: ColumnConfig[] = [
+    { id: 'name', label: '작업명', width: 220, minWidth: 120 },
+    { id: 'duration', label: '기간', width: 70, minWidth: 50 },
+    { id: 'startDate', label: '시작일', width: 80, minWidth: 70 },
+    { id: 'endDate', label: '종료일', width: 80, minWidth: 70 },
 ];
 
 // ============================================
@@ -244,7 +253,7 @@ export const GANTT_DRAG = {
  */
 export const GANTT_SUMMARY = {
     /** 요약 바 높이 */
-    BAR_HEIGHT: 9,
+    BAR_HEIGHT: 8,
     /** 수직 오프셋 (바를 아래로 배치) */
     VERTICAL_OFFSET: 4,
 } as const;

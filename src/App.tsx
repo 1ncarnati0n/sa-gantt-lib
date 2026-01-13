@@ -14,6 +14,7 @@ import {
   ConstructionTask,
   Milestone,
   CalendarSettings,
+  ViewMode,
   calculateDualCalendarDates,
   DropPosition,
   AnchorDependency,
@@ -777,7 +778,7 @@ function App() {
   }, [setAppState, recalculateCPData]);
 
   // 뷰 전환 핸들러
-  const handleViewChange = useCallback((view: 'MASTER' | 'DETAIL', activeCPId?: string) => {
+  const handleViewChange = useCallback((view: ViewMode, activeCPId?: string) => {
     console.log('View changed:', view, activeCPId);
   }, []);
 

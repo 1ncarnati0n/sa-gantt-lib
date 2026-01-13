@@ -4177,140 +4177,6 @@
                 "indirectWorkNamePost": "양생"
             },
             "dependencies": []
-        },
-        {
-            "id": "group-1765683972316",
-            "parentId": null,
-            "wbsLevel": 1,
-            "type": "GROUP",
-            "name": "테스트 공구",
-            "startDate": "2025-12-14",
-            "endDate": "2026-01-22",
-            "dependencies": []
-        },
-        {
-            "id": "cp-1765683949170",
-            "parentId": "group-1765683972316",
-            "wbsLevel": 1,
-            "type": "CP",
-            "name": "테스트 CP",
-            "startDate": "2026-01-22",
-            "endDate": "2026-02-06",
-            "cp": {
-                "workDaysTotal": 14,
-                "nonWorkDaysTotal": 0
-            },
-            "dependencies": []
-        },
-        {
-            "id": "group-1765770735396",
-            "parentId": "cp-1765683949170",
-            "wbsLevel": 2,
-            "type": "GROUP",
-            "name": "새 그룹",
-            "startDate": "2026-02-19",
-            "endDate": "2026-02-28",
-            "dependencies": []
-        },
-        {
-            "id": "task-1765764976545",
-            "parentId": "group-1765770735396",
-            "wbsLevel": 2,
-            "type": "TASK",
-            "name": "새 공정 1",
-            "startDate": "2026-01-22",
-            "endDate": "2026-01-26",
-            "task": {
-                "netWorkDays": 4,
-                "indirectWorkDaysPre": 0,
-                "indirectWorkDaysPost": 0
-            },
-            "dependencies": []
-        },
-        {
-            "id": "task-1765772669927",
-            "parentId": "group-1765770735396",
-            "wbsLevel": 2,
-            "type": "TASK",
-            "name": "새 공정 2",
-            "startDate": "2026-01-27",
-            "endDate": "2026-01-28",
-            "task": {
-                "netWorkDays": 2,
-                "indirectWorkDaysPre": 0,
-                "indirectWorkDaysPost": 0
-            },
-            "dependencies": []
-        },
-        {
-            "id": "task-1765773889918",
-            "parentId": "group-1765770735396",
-            "wbsLevel": 2,
-            "type": "TASK",
-            "name": "새 공정 3",
-            "startDate": "2026-01-29",
-            "endDate": "2026-01-29",
-            "task": {
-                "netWorkDays": 1,
-                "indirectWorkDaysPre": 0,
-                "indirectWorkDaysPost": 0
-            },
-            "dependencies": []
-        },
-        {
-            "id": "group-1765801744680",
-            "parentId": "cp-1765683949170",
-            "wbsLevel": 2,
-            "type": "GROUP",
-            "name": "새 그룹",
-            "startDate": "2026-03-11",
-            "endDate": "2026-03-18",
-            "dependencies": []
-        },
-        {
-            "id": "task-1765788696330",
-            "parentId": "group-1765801744680",
-            "wbsLevel": 2,
-            "type": "TASK",
-            "name": "새 공정 1",
-            "startDate": "2026-01-30",
-            "endDate": "2026-02-03",
-            "task": {
-                "netWorkDays": 4,
-                "indirectWorkDaysPre": 0,
-                "indirectWorkDaysPost": 0
-            },
-            "dependencies": []
-        },
-        {
-            "id": "task-1765788696331",
-            "parentId": "group-1765801744680",
-            "wbsLevel": 2,
-            "type": "TASK",
-            "name": "새 공정 2",
-            "startDate": "2026-02-04",
-            "endDate": "2026-02-05",
-            "task": {
-                "netWorkDays": 2,
-                "indirectWorkDaysPre": 0,
-                "indirectWorkDaysPost": 0
-            },
-            "dependencies": []
-        },
-        {
-            "id": "task-1765788696332",
-            "parentId": "group-1765801744680",
-            "wbsLevel": 2,
-            "type": "TASK",
-            "name": "새 공정 3",
-            "startDate": "2026-02-06",
-            "endDate": "2026-02-06",
-            "task": {
-                "netWorkDays": 1,
-                "indirectWorkDaysPre": 0,
-                "indirectWorkDaysPost": 0
-            },
-            "dependencies": []
         }
     ],
     "anchorDependencies": [
@@ -4333,20 +4199,6 @@
             "sourceTaskId": "task-1764833957364",
             "targetTaskId": "task-1764833962962",
             "sourceDayIndex": 1,
-            "targetDayIndex": 0
-        },
-        {
-            "id": "dep-1765781209306-9fmyq1xwz",
-            "sourceTaskId": "task-1765764976545",
-            "targetTaskId": "task-1765772669927",
-            "sourceDayIndex": 4,
-            "targetDayIndex": 0
-        },
-        {
-            "id": "dep-1765781211024-9dt52i7ad",
-            "sourceTaskId": "task-1765772669927",
-            "targetTaskId": "task-1765773889918",
-            "sourceDayIndex": 2,
             "targetDayIndex": 0
         },
         {
@@ -4609,27 +4461,6 @@
             "targetDayIndex": 0
         },
         {
-            "id": "dep-1765788706485-e2dsrbi59",
-            "sourceTaskId": "task-1765788696330",
-            "targetTaskId": "task-1765788696331",
-            "sourceDayIndex": 4,
-            "targetDayIndex": 0
-        },
-        {
-            "id": "dep-1765788708753-wzn6cnupo",
-            "sourceTaskId": "task-1765788696331",
-            "targetTaskId": "task-1765788696332",
-            "sourceDayIndex": 2,
-            "targetDayIndex": 0
-        },
-        {
-            "id": "dep-1765807079716-5t13dj2it",
-            "sourceTaskId": "task-1765773889918",
-            "targetTaskId": "task-1765788696330",
-            "sourceDayIndex": 1,
-            "targetDayIndex": 0
-        },
-        {
             "id": "dep-1767687606847-h2xgd36ms",
             "sourceTaskId": "task-1765412729401",
             "targetTaskId": "task-1765412729402",
@@ -4662,20 +4493,6 @@
             "sourceTaskId": "task-1765412729405",
             "targetTaskId": "task-1765412729406",
             "sourceDayIndex": 1,
-            "targetDayIndex": 0
-        },
-        {
-            "id": "dep-1767687632994-but532xzz",
-            "sourceTaskId": "task-1765412729399",
-            "targetTaskId": "task-1765412729401",
-            "sourceDayIndex": 2,
-            "targetDayIndex": 0
-        },
-        {
-            "id": "dep-1767687637927-canzc4n5y",
-            "sourceTaskId": "task-1765412729406",
-            "targetTaskId": "task-1765412729408",
-            "sourceDayIndex": 2,
             "targetDayIndex": 0
         },
         {

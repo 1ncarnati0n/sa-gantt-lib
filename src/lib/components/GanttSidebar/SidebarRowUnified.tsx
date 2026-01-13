@@ -1,15 +1,23 @@
 'use client';
 
-import React from 'react';
-import { format } from 'date-fns';
+import React, { useCallback, useMemo } from 'react';
+import { format, differenceInDays } from 'date-fns';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
-import { DaysInputCell } from './DaysInputCell';
-import type { SidebarRowDetailProps } from './types';
+import type { SidebarRowUnifiedProps } from './types';
 
 const { ROW_HEIGHT } = GANTT_LAYOUT;
 
-export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
+/**
+ * Unified View 전용 사이드바 행 컴포넌트
+ *
+ * CP(Level 1)와 Task(Level 2)를 계층형 트리 구조로 표시합니다.
+ * - 작업명 (계층적 들여쓰기 + CP/T 배지)
+ * - 기간 (일수)
+ * - 시작일
+ * - 종료일
+ */
+export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
     task,
     rowIndex,
     isVirtualized,
@@ -23,6 +31,8 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
     canExpand,
     indent,
     isGroup,
+    isCP,
+    isBlock,
     onDragStart,
     onDragOver,
     onDragLeave,
@@ -43,15 +53,19 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
     onTaskReorder,
     onTaskMove,
     onTaskUpdate,
-    onTaskDoubleClick,
-    editingDays,
-    setEditingDays,
-    onDurationChange,
+    onTaskClick,
     rowHeight,
+    onTaskDoubleClick,
 }) => {
-    const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
-    // 행 스타일 계산
-    const getRowStyle = () => {
+    // Block, CP, Group은 고정 높이, Task만 rowHeight 적용 (Compact 모드 대응)
+    const effectiveRowHeight = (isBlock || isCP || isGroup) ? ROW_HEIGHT : (rowHeight ?? ROW_HEIGHT);
+    // 기간 계산
+    const duration = useMemo(() => {
+        return differenceInDays(task.endDate, task.startDate) + 1;
+    }, [task.startDate, task.endDate]);
+
+    // 행 스타일 계산 (메모이제이션)
+    const rowStyle = useMemo(() => {
         let backgroundColor = 'var(--gantt-bg-primary)';
         let borderColor = 'var(--gantt-border-light)';
         let boxShadow = 'none';
@@ -70,6 +84,12 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
         } else if (isSelected) {
             backgroundColor = 'var(--gantt-bg-selected)';
             boxShadow = 'inset 0 0 0 2px rgba(59, 130, 246, 0.3)';
+        } else if (isBlock) {
+            // 블록 행 강조 (최상위 계층)
+            backgroundColor = 'var(--gantt-bg-tertiary)';
+        } else if (isCP) {
+            // CP 행 강조
+            backgroundColor = 'var(--gantt-bg-secondary)';
         } else if (isGroup) {
             backgroundColor = 'var(--gantt-bg-secondary)';
         }
@@ -89,28 +109,70 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                 transform: `translateY(${rowStart}px)`,
             } : {}),
         };
-    };
+    }, [isDragging, isDragOver, dragOverPosition, isFocused, isSelected, isBlock, isCP, isGroup, isVirtualized, rowStart, effectiveRowHeight]);
+
+    // 토글 핸들러 메모이제이션
+    const handleToggle = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onToggle(task.id);
+    }, [onToggle, task.id]);
+
+    // 편집 시작 핸들러 메모이제이션
+    const handleStartEdit = useCallback((e: React.MouseEvent) => {
+        if (onTaskUpdate) {
+            e.stopPropagation();
+            onStartEdit(task);
+        }
+    }, [onTaskUpdate, onStartEdit, task]);
+
+    // 타입 배지 색상
+    const badgeStyle = useMemo(() => {
+        if (isBlock) {
+            return {
+                backgroundColor: '#e5e7eb', // light gray
+                color: '#1f2937', // dark gray (거의 검은색)
+                border: '1.5px solid #374151', // 검은 외곽선
+            };
+        } else if (isCP) {
+            return {
+                backgroundColor: GANTT_COLORS.vermilion,
+                color: 'white',
+            };
+        } else if (isGroup) {
+            return {
+                backgroundColor: '#b0b3b8', // 밝은 회색
+                color: 'white',
+            };
+        } else {
+            return {
+                backgroundColor: GANTT_COLORS.red,
+                color: 'white',
+            };
+        }
+    }, [isBlock, isCP, isGroup]);
 
     return (
         <div
             draggable={!!(onTaskReorder || onTaskMove)}
             onDragStart={(e) => onDragStart(e, task.id)}
-            onDragOver={(e) => onDragOver(e, task.id, isGroup)}
+            onDragOver={(e) => onDragOver(e, task.id, isGroup || isCP)}
             onDragLeave={onDragLeave}
             onDrop={(e) => onDrop(e, task.id)}
             onDragEnd={onDragEnd}
             onClick={(e) => onRowClick(e, task, rowIndex)}
+            onContextMenu={(e) => onContextMenu(e, task)}
+            className="box-border flex items-center transition-all duration-150"
+            style={rowStyle}
             onDoubleClick={() => {
-                if (isGroup && canExpand) {
+                if (canExpand) {
                     onToggle(task.id);
-                } else if (!isGroup && task.type === 'TASK' && onTaskDoubleClick) {
+                } else if (onTaskDoubleClick) {
                     onTaskDoubleClick(task);
+                } else if (onTaskClick) {
+                    onTaskClick(task);
                 }
             }}
-            onContextMenu={(e) => onContextMenu(e, task)}
-            className="box-border flex items-center transition-colors"
-            style={getRowStyle()}
-            title={isGroup && canExpand ? '더블클릭하여 접기/펼치기' : !isGroup && task.type === 'TASK' ? '더블클릭하여 공정 설정' : undefined}
+            title={canExpand ? '더블클릭하여 접기/펼치기' : undefined}
         >
             {/* Drag Handle */}
             {onTaskReorder && (
@@ -122,7 +184,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                 </div>
             )}
 
-            {/* Task Name */}
+            {/* 작업명 (계층적 들여쓰기) */}
             <div
                 className="flex shrink-0 items-center overflow-hidden px-2"
                 style={{
@@ -131,12 +193,10 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                     borderRight: '1px solid var(--gantt-border-light)',
                 }}
             >
+                {/* 접기/펼치기 아이콘 */}
                 {canExpand ? (
                     <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onToggle(task.id);
-                        }}
+                        onClick={handleToggle}
                         className="mr-1 shrink-0 rounded p-1"
                         style={{ color: 'var(--gantt-text-muted)' }}
                     >
@@ -146,18 +206,16 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                     <div className="w-6 shrink-0" />
                 )}
 
-                {/* Group/Task 뱃지 */}
-                {isGroup ? (
+                {/* Block/CP/GROUP/Task 구분 배지 */}
+                {(isBlock || isCP || isGroup) ? (
                     <span
                         className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
-                        style={{
-                            backgroundColor: '#b0b3b8',
-                            color: 'white',
-                        }}
+                        style={badgeStyle}
                     >
-                        G
+                        {isBlock ? 'B' : isCP ? 'CP' : 'G'}
                     </span>
                 ) : (
+                    /* Task는 작은 점으로 표시 */
                     <span
                         className="mr-1.5 shrink-0 rounded-full"
                         style={{
@@ -168,6 +226,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                     />
                 )}
 
+                {/* 이름 */}
                 {editingTaskId === task.id ? (
                     <input
                         ref={editInputRef}
@@ -190,14 +249,8 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                         style={{
                             fontWeight: 500,
                             color: 'var(--gantt-text-primary)',
-                            cursor: isGroup ? 'text' : 'default',
                         }}
-                        onDoubleClick={(e) => {
-                            if (onTaskUpdate) {
-                                e.stopPropagation();
-                                onStartEdit(task);
-                            }
-                        }}
+                        onDoubleClick={handleStartEdit}
                         title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
                     >
                         {task.name}
@@ -205,65 +258,39 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                 )}
             </div>
 
-            {/* Pre Indirect Work Days */}
-            <DaysInputCell
-                task={task}
-                field="indirectWorkDaysPre"
-                editingDays={editingDays}
-                setEditingDays={setEditingDays}
-                onDurationChange={onDurationChange}
-                width={columns[1].width}
-                rowHeight={rowHeight}
-            />
-
-            {/* Net Work Days */}
-            <DaysInputCell
-                task={task}
-                field="netWorkDays"
-                editingDays={editingDays}
-                setEditingDays={setEditingDays}
-                onDurationChange={onDurationChange}
-                width={columns[2].width}
-                rowHeight={rowHeight}
-            />
-
-            {/* Post Indirect Work Days */}
-            <DaysInputCell
-                task={task}
-                field="indirectWorkDaysPost"
-                editingDays={editingDays}
-                setEditingDays={setEditingDays}
-                onDurationChange={onDurationChange}
-                width={columns[3].width}
-                rowHeight={rowHeight}
-            />
-
-            {/* Start Date */}
-            <div
-                className="flex shrink-0 items-center justify-center text-xs cursor-pointer"
-                style={{
-                    width: columns[4].width,
-                    color: isGroup ? 'var(--gantt-text-muted)' : 'var(--gantt-text-secondary)',
-                    borderRight: '1px solid var(--gantt-border-light)',
-                }}
-                onDoubleClick={(e) => {
-                    if (!isGroup && onTaskDoubleClick) {
-                        e.stopPropagation();
-                        onTaskDoubleClick(task);
-                    }
-                }}
-                title={isGroup ? undefined : '더블클릭하여 시작일 편집'}
-            >
-                {isGroup ? '-' : format(task.startDate, 'yyyy-MM-dd')}
-            </div>
-
-            {/* End Date */}
+            {/* 기간 */}
             <div
                 className="flex shrink-0 items-center justify-center text-xs"
-                style={{ width: columns[5].width, color: 'var(--gantt-text-muted)' }}
+                style={{
+                    width: columns[1].width,
+                    color: 'var(--gantt-text-muted)',
+                    borderRight: '1px solid var(--gantt-border-light)',
+                }}
             >
-                {isGroup ? '-' : format(task.endDate, 'yyyy-MM-dd')}
+                {(isGroup || isBlock) ? '-' : `${duration}일`}
+            </div>
+
+            {/* 시작일 */}
+            <div
+                className="flex shrink-0 items-center justify-center text-xs"
+                style={{
+                    width: columns[2].width,
+                    color: 'var(--gantt-text-secondary)',
+                    borderRight: '1px solid var(--gantt-border-light)',
+                }}
+            >
+                {(isGroup || isBlock) ? '-' : format(task.startDate, 'yyyy-MM-dd')}
+            </div>
+
+            {/* 종료일 */}
+            <div
+                className="flex shrink-0 items-center justify-center text-xs"
+                style={{ width: columns[3].width, color: 'var(--gantt-text-muted)' }}
+            >
+                {(isGroup || isBlock) ? '-' : format(task.endDate, 'yyyy-MM-dd')}
             </div>
         </div>
     );
 });
+
+SidebarRowUnified.displayName = 'SidebarRowUnified';
