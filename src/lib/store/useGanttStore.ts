@@ -54,17 +54,29 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
     // ====================================
 
     setViewMode: (mode: ViewMode, cpId?: string | null) => {
-        // 뷰 모드에 따른 사이드바 너비 자동 조정
-        const newWidth = mode === 'MASTER'
-            ? GANTT_LAYOUT.SIDEBAR_MASTER_WIDTH
-            : GANTT_LAYOUT.SIDEBAR_DETAIL_WIDTH;
+        // 뷰 모드에 따른 사이드바 너비 및 줌 레벨 자동 조정
+        let newWidth: number;
+        let newZoomLevel: ZoomLevel;
+
+        switch (mode) {
+            case 'MASTER':
+                newWidth = GANTT_LAYOUT.SIDEBAR_MASTER_WIDTH;
+                newZoomLevel = 'MONTH';
+                break;
+            case 'DETAIL':
+                newWidth = GANTT_LAYOUT.SIDEBAR_DETAIL_WIDTH;
+                newZoomLevel = 'DAY';
+                break;
+            case 'UNIFIED':
+                newWidth = GANTT_LAYOUT.SIDEBAR_UNIFIED_WIDTH;
+                newZoomLevel = 'WEEK';  // 통합 뷰는 중간 줌 레벨
+                break;
+        }
 
         set({
             viewMode: mode,
             activeCPId: cpId ?? null,
-            // 뷰 모드에 따른 기본 줌 레벨 설정
-            // Master (Level 1): 월 / Detail (Level 2): 일
-            zoomLevel: mode === 'DETAIL' ? 'DAY' : 'MONTH',
+            zoomLevel: newZoomLevel,
             sidebarWidth: newWidth,
         });
     },
@@ -206,6 +218,10 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
         set({ expandedTaskIds: new Set() });
     },
 
+    setExpandedTaskIds: (ids: Set<string>) => {
+        set({ expandedTaskIds: ids });
+    },
+
     // ====================================
     // Sidebar Actions
     // ====================================
@@ -307,6 +323,7 @@ export const useGanttExpansion = () =>
             toggleTask: state.toggleTask,
             expandAll: state.expandAll,
             collapseAll: state.collapseAll,
+            setExpandedTaskIds: state.setExpandedTaskIds,
         }))
     );
 

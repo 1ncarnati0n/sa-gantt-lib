@@ -154,6 +154,30 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                     <div className="w-6 shrink-0" />
                 )}
 
+                {/* Block/CP 뱃지 */}
+                {isGroup ? (
+                    <span
+                        className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
+                        style={{
+                            backgroundColor: '#e5e7eb',
+                            color: '#1f2937',
+                            border: '1.5px solid #374151',
+                        }}
+                    >
+                        B
+                    </span>
+                ) : (
+                    <span
+                        className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
+                        style={{
+                            backgroundColor: GANTT_COLORS.vermilion,
+                            color: 'white',
+                        }}
+                    >
+                        CP
+                    </span>
+                )}
+
                 {editingTaskId === task.id ? (
                     <input
                         ref={editInputRef}
@@ -163,7 +187,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                         onKeyDown={onEditKeyDown}
                         onBlur={onSaveEdit}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full rounded px-1 py-0.5 text-sm font-normal focus:outline-none focus:ring-1"
+                        className="w-full rounded px-1 py-0.5 text-xs font-normal focus:outline-none focus:ring-1"
                         style={{
                             backgroundColor: 'var(--gantt-bg-primary)',
                             color: 'var(--gantt-text-secondary)',
@@ -172,9 +196,9 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                     />
                 ) : (
                     <span
-                        className="truncate text-sm"
+                        className="truncate text-xs"
                         style={{
-                            fontWeight: isGroup ? 'normal' : 500,
+                            fontWeight: 500,
                             color: 'var(--gantt-text-primary)',
                             cursor: isGroup ? 'text' : 'default',
                         }}

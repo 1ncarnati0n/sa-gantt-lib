@@ -20,6 +20,7 @@ import {
     GroupDragResult,
     ZOOM_CONFIG,
     getLayoutValues,
+    ViewMode,
 } from '../../types';
 
 // Sub-components
@@ -78,13 +79,13 @@ export function GanttChart({
     const { viewMode, activeCPId, zoomLevel } = useGanttViewState();
     const { setViewMode, setZoomLevel } = useGanttViewActions();
     const { sidebarWidth, setSidebarWidth } = useGanttSidebar();
-    const { expandedTaskIds, toggleTask, expandAll, collapseAll } = useGanttExpansion();
+    const { expandedTaskIds, toggleTask, expandAll, collapseAll, setExpandedTaskIds } = useGanttExpansion();
     const { focusedTaskId } = useGanttSelection();
     const { isCompactMode, toggleCompactMode } = useGanttCompactMode();
 
-    // Compact Mode Layout Values (Detail View only)
+    // Compact Mode Layout Values (Detail/Unified View)
     const layoutValues = useMemo(() =>
-        getLayoutValues(viewMode === 'DETAIL' && isCompactMode),
+        getLayoutValues((viewMode === 'DETAIL' || viewMode === 'UNIFIED') && isCompactMode),
         [viewMode, isCompactMode]
     );
 
@@ -153,7 +154,7 @@ export function GanttChart({
             };
             collectVisible(null);
             return visible;
-        } else {
+        } else if (viewMode === 'DETAIL') {
             const visible: ConstructionTask[] = [];
             const collectVisible = (parentId: string | null) => {
                 const children = childrenMap.get(parentId) || [];
@@ -168,6 +169,34 @@ export function GanttChart({
                 });
             };
             collectVisible(activeCPId!);
+            return visible;
+        } else {
+            // UNIFIED: CP(Level 1)와 Task(Level 2)를 계층 구조로 표시
+            const visible: ConstructionTask[] = [];
+            const collectUnified = (parentId: string | null) => {
+                const children = childrenMap.get(parentId) || [];
+                children.forEach(task => {
+                    // Level 1 (CP) 또는 Level 2 (Task/GROUP)
+                    if (task.wbsLevel === 1) {
+                        // CP는 항상 표시 (루트 또는 확장된 부모)
+                        if (parentId === null || expandedTaskIds.has(parentId)) {
+                            visible.push(task);
+                            // CP가 확장되어 있으면 하위 Level 2 수집
+                            if (expandedTaskIds.has(task.id)) {
+                                collectUnified(task.id);
+                            }
+                        }
+                    } else if (task.wbsLevel === 2) {
+                        // Level 2는 부모(CP 또는 GROUP)가 확장되어 있을 때만
+                        visible.push(task);
+                        // GROUP이면 재귀적으로 하위 수집
+                        if (task.type === 'GROUP' && expandedTaskIds.has(task.id)) {
+                            collectUnified(task.id);
+                        }
+                    }
+                });
+            };
+            collectUnified(null);
             return visible;
         }
     }, [childrenMap, viewMode, activeCPId, expandedTaskIds]);
@@ -219,10 +248,125 @@ export function GanttChart({
     });
 
     // Handlers
-    const handleViewChange = useCallback((mode: 'MASTER' | 'DETAIL', cpId?: string) => {
+    const handleViewChange = useCallback((mode: ViewMode, cpId?: string) => {
         setViewMode(mode, cpId);
         onViewChange?.(mode, cpId);
     }, [setViewMode, onViewChange]);
+
+    // ====================================
+    // 단계별 접기/펼치기
+    // ====================================
+
+    // depth 계산 함수 (viewMode별)
+    const getDepthForTask = useCallback((task: ConstructionTask): number => {
+        if (viewMode === 'UNIFIED') {
+            // UNIFIED: Block=0, CP=1, DetailGroup=2+
+            if (task.type === 'GROUP') {
+                const parent = task.parentId ? tasks.find(t => t.id === task.parentId) : null;
+                if (!parent || parent.type !== 'CP') return 0; // Block
+                return 2; // Detail Group
+            }
+            if (task.type === 'CP') return 1;
+            return 2; // Task
+        }
+
+        // MASTER / DETAIL: GROUP 중첩 깊이
+        let depth = 0;
+        let currentId: string | null | undefined = task.parentId;
+        while (currentId) {
+            const parent = tasks.find(t => t.id === currentId);
+            if (!parent) break;
+            if (parent.type === 'GROUP') depth++;
+            currentId = parent.parentId;
+        }
+        return depth;
+    }, [viewMode, tasks]);
+
+    // 확장 가능한 항목들 (GROUP, CP)
+    const expandableItems = useMemo(() => {
+        const filterByView = (task: ConstructionTask) => {
+            if (viewMode === 'MASTER') {
+                return task.wbsLevel === 1 && (task.type === 'GROUP' || task.type === 'CP');
+            } else if (viewMode === 'DETAIL') {
+                return task.wbsLevel === 2 && task.type === 'GROUP';
+            } else {
+                // UNIFIED: Block (부모 없는 GROUP), CP, Detail Group 모두
+                return task.type === 'GROUP' || task.type === 'CP';
+            }
+        };
+
+        return tasks
+            .filter(filterByView)
+            .map(t => ({
+                id: t.id,
+                depth: getDepthForTask(t),
+                parentId: t.parentId,
+            }));
+    }, [tasks, viewMode, getDepthForTask]);
+
+    // 부모가 확장되어 있는지 확인
+    const isParentExpanded = useCallback((taskId: string): boolean => {
+        const item = expandableItems.find(i => i.id === taskId);
+        if (!item) return false;
+
+        // 부모가 없으면 항상 확장 가능
+        if (!item.parentId) return true;
+
+        // 뷰모드에 따라 체크
+        if (viewMode === 'DETAIL') {
+            // Detail 뷰에서 부모가 activeCPId면 항상 가능
+            if (item.parentId === activeCPId) return true;
+        }
+
+        // 부모가 확장되어 있어야 함
+        return expandedTaskIds.has(item.parentId);
+    }, [expandableItems, viewMode, activeCPId, expandedTaskIds]);
+
+    // 단계별 펼치기
+    const handleExpandNextLevel = useCallback(() => {
+        // 1. 현재 확장된 항목들의 depth 확인
+        const expandedDepths = expandableItems
+            .filter(item => expandedTaskIds.has(item.id))
+            .map(item => item.depth);
+
+        // 2. 다음 레벨 결정
+        const currentMaxDepth = expandedDepths.length > 0
+            ? Math.max(...expandedDepths)
+            : -1;
+        const nextDepth = currentMaxDepth + 1;
+
+        // 3. 해당 depth의 항목들 중 부모가 확장된 것만 추가
+        const itemsToExpand = expandableItems
+            .filter(item => item.depth === nextDepth)
+            .filter(item => isParentExpanded(item.id))
+            .map(item => item.id);
+
+        if (itemsToExpand.length > 0) {
+            const newExpanded = new Set([...expandedTaskIds, ...itemsToExpand]);
+            setExpandedTaskIds(newExpanded);
+        }
+    }, [expandableItems, expandedTaskIds, isParentExpanded, setExpandedTaskIds]);
+
+    // 단계별 접기
+    const handleCollapseLastLevel = useCallback(() => {
+        // 1. 현재 확장된 항목들의 depth 계산
+        const expandedItems = expandableItems.filter(item => expandedTaskIds.has(item.id));
+
+        if (expandedItems.length === 0) return;
+
+        // 2. 가장 깊은 depth 찾기
+        const maxDepth = Math.max(...expandedItems.map(item => item.depth));
+
+        // 3. 가장 깊은 depth의 항목들을 확장에서 제거
+        const newExpanded = new Set(
+            [...expandedTaskIds].filter(id => {
+                const item = expandedItems.find(i => i.id === id);
+                return item ? item.depth < maxDepth : true;
+            })
+        );
+
+        setExpandedTaskIds(newExpanded);
+    }, [expandableItems, expandedTaskIds, setExpandedTaskIds]);
 
     const handleTaskClick = useCallback((task: ConstructionTask) => {
         if (viewMode === 'MASTER' && task.type === 'CP') {
@@ -472,21 +616,16 @@ export function GanttChart({
                 isAddingCP={isAddingCP}
                 hasUnsavedChanges={hasUnsavedChanges}
                 saveStatus={saveStatus}
-                isCompactMode={viewMode === 'DETAIL' ? isCompactMode : false}
+                isCompactMode={(viewMode === 'DETAIL' || viewMode === 'UNIFIED') ? isCompactMode : false}
                 onViewChange={handleViewChange}
                 onZoomChange={setZoomLevel}
-                onToggleCompact={viewMode === 'DETAIL' ? toggleCompactMode : undefined}
+                onToggleCompact={(viewMode === 'DETAIL' || viewMode === 'UNIFIED') ? toggleCompactMode : undefined}
                 onStartAddTask={() => setIsAddingTask(true)}
                 onStartAddCP={() => setIsAddingCP(true)}
                 onStartAddMilestone={handleStartAddMilestone}
                 onScrollToFirst={scrollToFirstTask}
-                onCollapseAll={collapseAll}
-                onExpandAll={() => {
-                    const groupIds = tasks
-                        .filter(t => t.type === 'GROUP')
-                        .map(t => t.id);
-                    expandAll(groupIds);
-                }}
+                onCollapseAll={handleCollapseLastLevel}
+                onExpandAll={handleExpandNextLevel}
                 onSave={onSave}
                 onReset={onReset}
                 onExport={onExport}

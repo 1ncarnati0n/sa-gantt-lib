@@ -117,6 +117,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
     }, ref) => {
         const pixelsPerDay = ZOOM_CONFIG[zoomLevel].pixelsPerDay;
         const isMasterView = viewMode === 'MASTER';
+        const isUnifiedView = viewMode === 'UNIFIED';
         const isVirtualized = virtualRows && virtualRows.length > 0;
 
         // Compact Mode Layout Values
@@ -124,9 +125,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         const effectiveBarHeight = barHeight ?? BAR_HEIGHT;
         const isCompact = effectiveBarHeight < BAR_HEIGHT;
 
-        // 동적 행 높이 계산 함수: GROUP은 항상 30px, TASK는 effectiveRowHeight
+        // 동적 행 높이 계산 함수: GROUP/CP는 항상 30px, TASK는 effectiveRowHeight
         const getRowHeight = useCallback((task: ConstructionTask) => {
-            if (task.type === 'GROUP') {
+            if (task.type === 'GROUP' || task.type === 'CP') {
                 return ROW_HEIGHT;
             }
             return effectiveRowHeight;
@@ -154,7 +155,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                 // Master View: MASTER 또는 타입 미지정 마일스톤만
                 return milestones.filter(m => !m.milestoneType || m.milestoneType === 'MASTER');
             } else {
-                // Detail View: 모든 마일스톤 표시 (MASTER + DETAIL)
+                // Detail/Unified View: 모든 마일스톤 표시 (MASTER + DETAIL)
                 return milestones;
             }
         }, [milestones, isMasterView]);
@@ -599,10 +600,12 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
                             // GROUP 행은 항상 기본 높이 사용 (Compact 모드에서도 변경 없음)
                             const isGroup = task.type === 'GROUP';
+                            const isCP = task.type === 'CP';
                             const rowHeightForBar = isGroup ? ROW_HEIGHT : row.size;
                             const barHeightForTask = isGroup ? BAR_HEIGHT : effectiveBarHeight;
                             const y = row.start + (rowHeightForBar - barHeightForTask) / 2;
 
+                            // Detail/Unified View에서 GROUP은 GroupSummaryBar로 렌더링
                             if (!isMasterView && isGroup) {
                                 return (
                                     <GroupSummaryBar
@@ -612,7 +615,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         y={y}
                                         minDate={minDate}
                                         pixelsPerDay={pixelsPerDay}
-                                        isDraggable={!!onGroupDrag}
+                                        isDraggable={!isUnifiedView && !!onGroupDrag}
                                         currentDeltaDays={getGroupDragDeltaDays(task.id)}
                                         onDragStart={handleGroupBarMouseDown}
                                         onToggle={onGroupToggle}
@@ -629,6 +632,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 );
                             }
 
+                            // UNIFIED: CP는 MasterTaskBar 스타일, Task는 DetailTaskBar 스타일
+                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
+
                             return (
                                 <TaskBar
                                     key={row.key}
@@ -636,12 +642,12 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     y={y}
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
-                                    isMasterView={isMasterView}
+                                    isMasterView={useMasterStyle}
                                     renderMode="bar"
                                     allTasks={allTasks || tasks}
                                     holidays={holidays}
                                     calendarSettings={calendarSettings}
-                                    isDraggable={!isMasterView && !!onBarDrag}
+                                    isDraggable={!isMasterView && !useMasterStyle && !!onBarDrag}
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     groupDragInfo={getTaskDragInfo(task.id)}
@@ -735,6 +741,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             if (!isMasterView && task.type === 'GROUP') return null;
 
                             const y = row.start + (effectiveRowHeight - effectiveBarHeight) / 2;
+                            const isCP = task.type === 'CP';
+                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
 
                             return (
                                 <TaskBar
@@ -743,7 +751,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     y={y}
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
-                                    isMasterView={isMasterView}
+                                    isMasterView={useMasterStyle}
                                     renderMode="label"
                                     allTasks={allTasks || tasks}
                                     holidays={holidays}
@@ -1042,11 +1050,12 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
                             // GROUP 행은 항상 기본 높이 사용 (Compact 모드에서도 변경 없음)
                             const isGroup = task.type === 'GROUP';
+                            const isCP = task.type === 'CP';
                             const rowHeightForBar = isGroup ? ROW_HEIGHT : row.size;
                             const barHeightForTask = isGroup ? BAR_HEIGHT : effectiveBarHeight;
                             const y = row.start + (rowHeightForBar - barHeightForTask) / 2 + MILESTONE_LANE_HEIGHT;
 
-                            // Detail View에서 GROUP 타입이면 GroupSummaryBar 렌더링
+                            // Detail/Unified View에서 GROUP 타입이면 GroupSummaryBar 렌더링
                             if (!isMasterView && isGroup) {
                                 return (
                                     <GroupSummaryBar
@@ -1056,7 +1065,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         y={y}
                                         minDate={minDate}
                                         pixelsPerDay={pixelsPerDay}
-                                        isDraggable={!!onGroupDrag}
+                                        isDraggable={!isUnifiedView && !!onGroupDrag}
                                         currentDeltaDays={getGroupDragDeltaDays(task.id)}
                                         onDragStart={handleGroupBarMouseDown}
                                         onToggle={onGroupToggle}
@@ -1073,6 +1082,9 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 );
                             }
 
+                            // UNIFIED: CP는 MasterTaskBar 스타일, Task는 DetailTaskBar 스타일
+                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
+
                             return (
                                 <TaskBar
                                     key={row.key}
@@ -1080,12 +1092,12 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     y={y}
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
-                                    isMasterView={isMasterView}
+                                    isMasterView={useMasterStyle}
                                     renderMode="bar"
                                     allTasks={allTasks || tasks}
                                     holidays={holidays}
                                     calendarSettings={calendarSettings}
-                                    isDraggable={!isMasterView && !!onBarDrag}
+                                    isDraggable={!isMasterView && !useMasterStyle && !!onBarDrag}
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     groupDragInfo={getTaskDragInfo(task.id)}
@@ -1181,6 +1193,10 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
                             const y = row.start + (effectiveRowHeight - effectiveBarHeight) / 2 + MILESTONE_LANE_HEIGHT;
 
+                            // UNIFIED: CP는 MasterTaskBar 스타일, Task는 DetailTaskBar 스타일
+                            const isCP = task.type === 'CP';
+                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
+
                             return (
                                 <TaskBar
                                     key={`label-${row.key}`}
@@ -1188,7 +1204,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     y={y}
                                     minDate={minDate}
                                     pixelsPerDay={pixelsPerDay}
-                                    isMasterView={isMasterView}
+                                    isMasterView={useMasterStyle}
                                     renderMode="label"
                                     allTasks={allTasks || tasks}
                                     holidays={holidays}

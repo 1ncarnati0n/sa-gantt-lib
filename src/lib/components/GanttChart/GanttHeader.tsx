@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ZOOM_CONFIG } from '../../types';
 import type { GanttHeaderProps } from './types';
@@ -30,6 +31,74 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
     canCreateTask,
     canCreateMilestone,
 }) => {
+    const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+    const addDropdownRef = useRef<HTMLDivElement>(null);
+
+    // 외부 클릭 시 드롭다운 닫기
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (addDropdownRef.current && !addDropdownRef.current.contains(event.target as Node)) {
+                setIsAddDropdownOpen(false);
+            }
+        };
+
+        if (isAddDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isAddDropdownOpen]);
+
+    // 추가 메뉴 항목 생성
+    const getAddMenuItems = () => {
+        const items: { label: string; onClick: () => void; color: string }[] = [];
+
+        if (viewMode === 'MASTER' || viewMode === 'UNIFIED') {
+            if (canCreateTask && onStartAddCP && !isAddingCP) {
+                items.push({
+                    label: 'CP 추가',
+                    onClick: () => {
+                        onStartAddCP();
+                        setIsAddDropdownOpen(false);
+                    },
+                    color: 'var(--gantt-focus)',
+                });
+            }
+        }
+
+        if (viewMode === 'DETAIL' || viewMode === 'UNIFIED') {
+            if (canCreateTask && onStartAddTask && !isAddingTask) {
+                items.push({
+                    label: 'Task 추가',
+                    onClick: () => {
+                        onStartAddTask();
+                        setIsAddDropdownOpen(false);
+                    },
+                    color: 'var(--gantt-focus)',
+                });
+            }
+        }
+
+        if (viewMode === 'MASTER' || viewMode === 'UNIFIED') {
+            if (canCreateMilestone && onStartAddMilestone) {
+                items.push({
+                    label: '마일스톤 추가',
+                    onClick: () => {
+                        onStartAddMilestone();
+                        setIsAddDropdownOpen(false);
+                    },
+                    color: 'var(--gantt-milestone-detail)',
+                });
+            }
+        }
+
+        return items;
+    };
+
+    const addMenuItems = getAddMenuItems();
+
     return (
         <header
             className="flex h-[60px] shrink-0 items-center justify-between px-4 shadow-sm"
@@ -38,79 +107,138 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 borderBottom: '1px solid var(--gantt-border)',
             }}
         >
-            {/* 왼쪽: 상위 공정표로 버튼 + 추가 버튼 */}
+            {/* 왼쪽: 네비게이션 + 추가 드롭다운 */}
             <div className="flex items-center gap-3 shrink-0">
-                {viewMode === 'DETAIL' ? (
-                    <>
+                {/* DETAIL View: 상위 공정표로 버튼 */}
+                {viewMode === 'DETAIL' && (
+                    <button
+                        onClick={() => onViewChange('MASTER')}
+                        className="rounded px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{
+                            backgroundColor: 'var(--gantt-bg-tertiary)',
+                            color: 'var(--gantt-text-secondary)',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                        }}
+                    >
+                        ← 상위 공정표로
+                    </button>
+                )}
+
+                {/* 추가 드롭다운 */}
+                {addMenuItems.length > 0 && (
+                    <div className="relative" ref={addDropdownRef}>
                         <button
-                            onClick={() => onViewChange('MASTER')}
-                            className="rounded px-3 py-1.5 text-xs font-medium transition-colors"
+                            onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
+                            className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
                             style={{
-                                backgroundColor: 'var(--gantt-bg-tertiary)',
-                                color: 'var(--gantt-text-secondary)',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                                backgroundColor: 'var(--gantt-focus)',
+                                color: 'var(--gantt-text-inverse)',
                             }}
                         >
-                            ← 상위 공정표로
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                            </svg>
+                            추가
+                            <svg className={`h-3 w-3 transition-transform ${isAddDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
                         </button>
-                        {canCreateTask && onStartAddTask && !isAddingTask && (
-                            <button
-                                onClick={onStartAddTask}
-                                className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
+
+                        {/* 드롭다운 메뉴 */}
+                        {isAddDropdownOpen && (
+                            <div
+                                className="absolute left-0 top-full mt-1 min-w-[140px] rounded-md py-1 shadow-lg z-50"
                                 style={{
-                                    backgroundColor: 'var(--gantt-focus)',
-                                    color: 'var(--gantt-text-inverse)',
+                                    backgroundColor: 'var(--gantt-bg-primary)',
+                                    border: '1px solid var(--gantt-border)',
                                 }}
-                                title="새 공정 추가"
                             >
-                                + Task 추가
-                            </button>
+                                {addMenuItems.map((item, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={item.onClick}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors text-left"
+                                        style={{ color: 'var(--gantt-text-secondary)' }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                        }}
+                                    >
+                                        <span
+                                            className="h-2 w-2 rounded-full"
+                                            style={{ backgroundColor: item.color }}
+                                        />
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </div>
                         )}
-                    </>
-                ) : (
-                    <>
-                        {canCreateTask && onStartAddCP && !isAddingCP && (
-                            <button
-                                onClick={onStartAddCP}
-                                className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
-                                style={{
-                                    backgroundColor: 'var(--gantt-focus)',
-                                    color: 'var(--gantt-text-inverse)',
-                                }}
-                                title="새 CP 추가"
-                            >
-                                + CP 추가
-                            </button>
-                        )}
-                        {canCreateMilestone && onStartAddMilestone && (
-                            <button
-                                onClick={onStartAddMilestone}
-                                className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
-                                style={{
-                                    backgroundColor: 'var(--gantt-milestone-detail)',
-                                    color: 'var(--gantt-text-inverse)',
-                                }}
-                                title="새 마일스톤 추가"
-                            >
-                                + 마일스톤
-                            </button>
-                        )}
-                        {isAddingCP && (
-                            <span className="text-xs italic" style={{ color: 'var(--gantt-text-muted)' }}>
-                                CP 추가 중... (Enter 저장 / Esc 취소)
-                            </span>
-                        )}
-                    </>
+                    </div>
+                )}
+
+                {/* 추가 중 상태 표시 */}
+                {isAddingCP && (
+                    <span className="text-xs italic" style={{ color: 'var(--gantt-text-muted)' }}>
+                        CP 추가 중... (Enter 저장 / Esc 취소)
+                    </span>
                 )}
             </div>
 
-            {/* 중앙: 펼치기/접기 + Focusing 버튼 + 줌 컨트롤 + 기준일 */}
+            {/* 중앙: 통합뷰 + 펼치기/접기 + Focusing 버튼 + 줌 컨트롤 + 기준일 */}
             <div className="flex items-center gap-4">
+                {/* 뷰 전환 버튼 (Master ↔ Unified) */}
+                {viewMode === 'MASTER' && (
+                    <button
+                        onClick={() => onViewChange('UNIFIED')}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                        style={{
+                            backgroundColor: 'var(--gantt-bg-tertiary)',
+                            color: 'var(--gantt-text-secondary)',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                        }}
+                        title="CP와 Task를 계층형으로 통합하여 표시"
+                    >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                        통합 뷰
+                    </button>
+                )}
+                {viewMode === 'UNIFIED' && (
+                    <button
+                        onClick={() => onViewChange('MASTER')}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                        style={{
+                            backgroundColor: 'var(--gantt-bg-tertiary)',
+                            color: 'var(--gantt-text-secondary)',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+                        }}
+                        title="마스터 뷰로 전환"
+                    >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        마스터 뷰
+                    </button>
+                )}
+
                 {(onCollapseAll || onExpandAll) && (
                     <div
                         className="flex rounded p-0.5 gap-0.5"
@@ -170,34 +298,40 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
                     }}
-                    title={viewMode === 'MASTER' ? '진행 중인 CP로 스크롤' : '진행 중인 작업으로 스크롤'}
+                    title={viewMode === 'MASTER' ? '진행 중인 CP로 스크롤' : viewMode === 'UNIFIED' ? '진행 중인 CP/Task로 스크롤' : '진행 중인 작업으로 스크롤'}
                 >
                     Focusing
                 </button>
 
-                {/* Compact 토글 버튼 (Detail View 전용) */}
-                {viewMode === 'DETAIL' && onToggleCompact && (
-                    <button
-                        onClick={onToggleCompact}
-                        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-                        style={{
-                            backgroundColor: isCompactMode ? 'var(--gantt-focus)' : 'var(--gantt-bg-tertiary)',
-                            color: isCompactMode ? 'var(--gantt-text-inverse)' : 'var(--gantt-text-secondary)',
-                        }}
-                        onMouseEnter={(e) => {
-                            if (!isCompactMode) {
-                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (!isCompactMode) {
-                                e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
-                            }
-                        }}
-                        title={isCompactMode ? 'Normal 뷰로 전환' : 'Compact 뷰로 전환'}
+                {/* Compact 토글 버튼 (Detail/Unified View) */}
+                {(viewMode === 'DETAIL' || viewMode === 'UNIFIED') && onToggleCompact && (
+                    <div
+                        className="flex rounded p-1"
+                        style={{ backgroundColor: 'var(--gantt-bg-tertiary)' }}
                     >
-                        {isCompactMode ? '↕ Normal' : '↔ Compact'}
-                    </button>
+                        <button
+                            onClick={() => isCompactMode && onToggleCompact()}
+                            className="rounded px-3 py-1 text-xs font-medium transition-colors"
+                            style={{
+                                backgroundColor: !isCompactMode ? 'var(--gantt-bg-primary)' : 'transparent',
+                                color: !isCompactMode ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
+                                boxShadow: !isCompactMode ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                            }}
+                        >
+                            Normal
+                        </button>
+                        <button
+                            onClick={() => !isCompactMode && onToggleCompact()}
+                            className="rounded px-3 py-1 text-xs font-medium transition-colors"
+                            style={{
+                                backgroundColor: isCompactMode ? 'var(--gantt-bg-primary)' : 'transparent',
+                                color: isCompactMode ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
+                                boxShadow: isCompactMode ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                            }}
+                        >
+                            Compact
+                        </button>
+                    </div>
                 )}
 
                 <div
@@ -206,6 +340,8 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 >
                     {(viewMode === 'MASTER'
                         ? (['WEEK', 'MONTH'] as const)
+                        : viewMode === 'UNIFIED'
+                        ? (['DAY', 'WEEK', 'MONTH'] as const)
                         : (['DAY', 'WEEK'] as const)
                     ).map((level) => (
                         <button

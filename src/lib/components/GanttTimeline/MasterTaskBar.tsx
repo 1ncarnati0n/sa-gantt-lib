@@ -2,13 +2,57 @@
 
 import React, { useMemo } from 'react';
 import { addDays } from 'date-fns';
-import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
+import { GANTT_COLORS } from '../../types';
 import { dateToX } from '../../utils/dateUtils';
 import { calculateCriticalPath } from '../../utils/criticalPathUtils';
 import { collectDescendantTasks } from '../../utils/groupUtils';
-import type { ConstructionTask, CalendarSettings } from '../../types';
+import type { ConstructionTask, CalendarSettings, CriticalPathDay } from '../../types';
 
-const { BAR_HEIGHT } = GANTT_LAYOUT;
+const CP_BAR_HEIGHT = 6; // CP 바 높이
+const BAR_GAP = 0.3;
+
+/**
+ * 날짜별 블록 - 소수점 비율로 Vermilion(작업일)과 Teal(비작업일) 표시
+ */
+interface DayBlockProps {
+    day: CriticalPathDay;
+    x: number;
+    width: number;
+    barHeight: number;
+}
+
+const DayBlock: React.FC<DayBlockProps> = ({ day, x, width, barHeight }) => {
+    const effectiveWidth = Math.max(width - BAR_GAP, 1);
+    const workWidth = effectiveWidth * day.workDayValue;
+    const nonWorkWidth = effectiveWidth * day.nonWorkDayValue;
+
+    return (
+        <g>
+            {/* 작업일 부분 (Vermilion) */}
+            {workWidth > 0 && (
+                <rect
+                    x={x + BAR_GAP / 2}
+                    y={0}
+                    width={workWidth}
+                    height={barHeight}
+                    fill={GANTT_COLORS.vermilion}
+                    className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
+                />
+            )}
+            {/* 비작업일 부분 (Teal) */}
+            {nonWorkWidth > 0 && (
+                <rect
+                    x={x + BAR_GAP / 2 + workWidth}
+                    y={0}
+                    width={nonWorkWidth}
+                    height={barHeight}
+                    fill={GANTT_COLORS.teal}
+                    className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
+                />
+            )}
+        </g>
+    );
+};
 
 /**
  * MasterTaskBar Props (Level 1 전용)
@@ -102,7 +146,7 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
                     x={-3}
                     y={-3}
                     width={totalWidth + 6}
-                    height={BAR_HEIGHT + 6}
+                    height={CP_BAR_HEIGHT + 6}
                     fill="none"
                     stroke={GANTT_COLORS.focus}
                     strokeWidth={2}
@@ -113,38 +157,25 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
                 />
             )}
 
-            {/* Work Days Bar (Vermilion) */}
-            {showBar && (
-                <>
-                    <rect
-                        x={0}
-                        y={0}
-                        width={workWidth}
-                        height={BAR_HEIGHT}
-                        fill={GANTT_COLORS.vermilion}
-                        rx={radius}
-                        ry={radius}
-                        className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
+            {/* 날짜별 블록 렌더링 (CriticalPath 방식) */}
+            {showBar && cpSummary.dailyBreakdown.map((day, index) => {
+                const x = dateToX(day.date, minDate, pixelsPerDay) - startX;
+                return (
+                    <DayBlock
+                        key={index}
+                        day={day}
+                        x={x}
+                        width={pixelsPerDay}
+                        barHeight={CP_BAR_HEIGHT}
                     />
-                    {/* Non-Work Days Bar (Teal) */}
-                    <rect
-                        x={workWidth}
-                        y={0}
-                        width={nonWorkWidth}
-                        height={BAR_HEIGHT}
-                        fill={GANTT_COLORS.teal}
-                        rx={radius}
-                        ry={radius}
-                        className="drop-shadow-sm opacity-90 transition-opacity hover:opacity-100"
-                    />
-                </>
-            )}
+                );
+            })}
 
             {/* Label */}
             {showLabel && (
                 <text
                     x={-8}
-                    y={BAR_HEIGHT / 2 + 4}
+                    y={CP_BAR_HEIGHT / 2 + 4}
                     textAnchor="end"
                     className="pointer-events-none select-none text-[11px] font-bold"
                     fill={GANTT_COLORS.textSecondary}

@@ -12,8 +12,8 @@ export type WbsLevel = 1 | 2;
 /** 뷰 모드 (줌 레벨) */
 export type ZoomLevel = 'DAY' | 'WEEK' | 'MONTH';
 
-/** 현재 활성화된 뷰 (Master: L1, Detail: L2) */
-export type ViewMode = 'MASTER' | 'DETAIL';
+/** 현재 활성화된 뷰 (Master: L1, Detail: L2, Unified: 통합) */
+export type ViewMode = 'MASTER' | 'DETAIL' | 'UNIFIED';
 
 /** @deprecated 기존 배치 타입 - 하위 호환성을 위해 유지 */
 export type Placement = 'PRE' | 'POST';

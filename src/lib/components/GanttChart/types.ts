@@ -13,7 +13,7 @@ export interface GanttHeaderProps {
     // Compact Mode (Detail View only)
     isCompactMode?: boolean;
     // Handlers
-    onViewChange: (mode: 'MASTER' | 'DETAIL', cpId?: string) => void;
+    onViewChange: (mode: ViewMode, cpId?: string) => void;
     onZoomChange: (level: ZoomLevel) => void;
     onToggleCompact?: () => void;
     onStartAddTask?: () => void;
