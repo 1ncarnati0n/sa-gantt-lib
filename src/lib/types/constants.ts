@@ -71,6 +71,12 @@ export const GANTT_COLORS = {
 
     // Drag Preview
     dragPreview: 'var(--gantt-drag-preview)',
+
+    // Badge Colors (Block/Group 구분용)
+    badgeBlock: '#e5e7eb',          // Block 배지 배경 (light gray)
+    badgeBlockText: '#1f2937',      // Block 배지 텍스트 (dark gray)
+    badgeBlockBorder: '#374151',    // Block 배지 테두리
+    badgeGroup: '#b0b3b8',          // Group 배지 배경 (medium gray)
 } as const;
 
 /**

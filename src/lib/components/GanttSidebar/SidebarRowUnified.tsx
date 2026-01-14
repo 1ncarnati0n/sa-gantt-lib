@@ -125,13 +125,13 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
         }
     }, [onTaskUpdate, onStartEdit, task]);
 
-    // 타입 배지 색상
+    // 타입 배지 색상 (GANTT_COLORS 상수 사용)
     const badgeStyle = useMemo(() => {
         if (isBlock) {
             return {
-                backgroundColor: '#e5e7eb', // light gray
-                color: '#1f2937', // dark gray (거의 검은색)
-                border: '1.5px solid #374151', // 검은 외곽선
+                backgroundColor: GANTT_COLORS.badgeBlock,
+                color: GANTT_COLORS.badgeBlockText,
+                border: `1.5px solid ${GANTT_COLORS.badgeBlockBorder}`,
             };
         } else if (isCP) {
             return {
@@ -140,7 +140,7 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
             };
         } else if (isGroup) {
             return {
-                backgroundColor: '#b0b3b8', // 밝은 회색
+                backgroundColor: GANTT_COLORS.badgeGroup,
                 color: 'white',
             };
         } else {
@@ -193,12 +193,14 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
                     borderRight: '1px solid var(--gantt-border-light)',
                 }}
             >
-                {/* 접기/펼치기 아이콘 */}
+                {/* 접기/펼치기 아이콘 (A11y 개선: aria-label, aria-expanded 추가) */}
                 {canExpand ? (
                     <button
                         onClick={handleToggle}
                         className="mr-1 shrink-0 rounded p-1"
                         style={{ color: 'var(--gantt-text-muted)' }}
+                        aria-label={isExpanded ? '접기' : '펼치기'}
+                        aria-expanded={isExpanded}
                     >
                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>

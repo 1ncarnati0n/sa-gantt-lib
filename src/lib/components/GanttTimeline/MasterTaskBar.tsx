@@ -10,6 +10,8 @@ import type { ConstructionTask, CalendarSettings, CriticalPathDay } from '../../
 
 const CP_BAR_HEIGHT = 6; // CP 바 높이
 const BAR_GAP = 0.3;
+// CP 바 전용 수직 오프셋 (GroupSummaryBar의 4px보다 크게 설정하여 하단 여백 축소)
+const CP_VERTICAL_OFFSET = 10;
 
 /**
  * 날짜별 블록 - 소수점 비율로 Vermilion(작업일)과 Teal(비작업일) 표시
@@ -19,9 +21,10 @@ interface DayBlockProps {
     x: number;
     width: number;
     barHeight: number;
+    barY: number;
 }
 
-const DayBlock: React.FC<DayBlockProps> = ({ day, x, width, barHeight }) => {
+const DayBlock: React.FC<DayBlockProps> = ({ day, x, width, barHeight, barY }) => {
     const effectiveWidth = Math.max(width - BAR_GAP, 1);
     const workWidth = effectiveWidth * day.workDayValue;
     const nonWorkWidth = effectiveWidth * day.nonWorkDayValue;
@@ -32,7 +35,7 @@ const DayBlock: React.FC<DayBlockProps> = ({ day, x, width, barHeight }) => {
             {workWidth > 0 && (
                 <rect
                     x={x + BAR_GAP / 2}
-                    y={0}
+                    y={barY}
                     width={workWidth}
                     height={barHeight}
                     fill={GANTT_COLORS.vermilion}
@@ -43,7 +46,7 @@ const DayBlock: React.FC<DayBlockProps> = ({ day, x, width, barHeight }) => {
             {nonWorkWidth > 0 && (
                 <rect
                     x={x + BAR_GAP / 2 + workWidth}
-                    y={0}
+                    y={barY}
                     width={nonWorkWidth}
                     height={barHeight}
                     fill={GANTT_COLORS.teal}
@@ -102,8 +105,6 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
     // GROUP 타입은 렌더링하지 않음
     if (task.type === 'GROUP') return null;
 
-    const radius = 0;
-
     // effectiveDates 계산 (드래그 우선순위 적용)
     const { effectiveStartDate } = useMemo(() => {
         if (dragInfo) {
@@ -138,23 +139,40 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
     const nonWorkWidth = nonWorkDays * pixelsPerDay;
     const totalWidth = workWidth + nonWorkWidth;
 
+    // CP 바 Y 위치: 행 중앙에서 아래로 VERTICAL_OFFSET만큼 이동 (GroupSummaryBar 스타일)
+    const barY = CP_VERTICAL_OFFSET;
+
     return (
         <g transform={`translate(${startX}, ${y})`} className="group cursor-pointer">
             {/* Focus Highlight Effect */}
             {isFocused && showBar && (
                 <rect
                     x={-3}
-                    y={-3}
+                    y={barY - 3}
                     width={totalWidth + 6}
                     height={CP_BAR_HEIGHT + 6}
                     fill="none"
                     stroke={GANTT_COLORS.focus}
                     strokeWidth={2}
-                    rx={radius + 2}
-                    ry={radius + 2}
+                    rx={4}
+                    ry={4}
                     className="animate-pulse"
                     style={{ filter: `drop-shadow(0 0 6px ${GANTT_COLORS.focus})` }}
                 />
+            )}
+
+            {/* Label (바 위에 중앙 정렬) */}
+            {showLabel && (
+                <text
+                    x={totalWidth / 2}
+                    y={barY - 3}
+                    textAnchor="middle"
+                    className="pointer-events-none select-none font-normal"
+                    fill={GANTT_COLORS.textSecondary}
+                    style={{ fontSize: '11px' }}
+                >
+                    {task.name}
+                </text>
             )}
 
             {/* 날짜별 블록 렌더링 (CriticalPath 방식) */}
@@ -167,22 +185,10 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
                         x={x}
                         width={pixelsPerDay}
                         barHeight={CP_BAR_HEIGHT}
+                        barY={barY}
                     />
                 );
             })}
-
-            {/* Label */}
-            {showLabel && (
-                <text
-                    x={-8}
-                    y={CP_BAR_HEIGHT / 2 + 4}
-                    textAnchor="end"
-                    className="pointer-events-none select-none text-[11px] font-bold"
-                    fill={GANTT_COLORS.textSecondary}
-                >
-                    {task.name}
-                </text>
-            )}
         </g>
     );
 });

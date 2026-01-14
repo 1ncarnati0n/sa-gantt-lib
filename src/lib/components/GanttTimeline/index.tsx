@@ -39,6 +39,7 @@ import { useGanttSelection } from '../../store/useGanttStore';
 // External components
 import { CriticalPathBar } from '../CriticalPathBar';
 import { GroupSummaryBar } from '../GroupSummaryBar';
+import { BlockBar } from '../BlockBar';
 
 // Types
 import type { BarDragResult } from './types';
@@ -125,13 +126,25 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         const effectiveBarHeight = barHeight ?? BAR_HEIGHT;
         const isCompact = effectiveBarHeight < BAR_HEIGHT;
 
-        // 동적 행 높이 계산 함수: GROUP/CP는 항상 30px, TASK는 effectiveRowHeight
+        // Task ID → Task 매핑 (Block 판별용) - getRowHeight보다 먼저 선언 필요
+        const taskMap = useMemo(() =>
+            new Map((allTasks || tasks).map(t => [t.id, t])),
+            [allTasks, tasks]
+        );
+
+        // 동적 행 높이 계산 함수: CP/Block은 항상 30px, Group/TASK는 effectiveRowHeight
         const getRowHeight = useCallback((task: ConstructionTask) => {
-            if (task.type === 'GROUP' || task.type === 'CP') {
+            if (task.type === 'CP') {
                 return ROW_HEIGHT;
             }
+            // Block 판별: GROUP이면서 부모가 CP가 아닌 경우
+            if (task.type === 'GROUP') {
+                const parent = task.parentId ? taskMap.get(task.parentId) : null;
+                const isBlock = !parent || parent.type !== 'CP';
+                if (isBlock) return ROW_HEIGHT;  // Block은 항상 30px
+            }
             return effectiveRowHeight;
-        }, [effectiveRowHeight]);
+        }, [effectiveRowHeight, taskMap]);
 
         // 태스크 선택 훅
         const { selectTask, clearSelection: clearTaskSelection } = useGanttSelection();
@@ -164,6 +177,14 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         const milestoneLayouts = useMemo(() => {
             return calculateMilestoneLabels(filteredMilestones, minDate, pixelsPerDay);
         }, [filteredMilestones, minDate, pixelsPerDay]);
+
+        // Block 판별 함수: GROUP이면서 부모가 CP가 아닌 경우
+        const isBlockTask = useCallback((task: ConstructionTask): boolean => {
+            if (task.type !== 'GROUP') return false;
+            if (!task.parentId) return true; // 부모 없으면 Block
+            const parent = taskMap.get(task.parentId);
+            return !parent || parent.type !== 'CP';
+        }, [taskMap]);
 
         const chartWidth = totalDays * pixelsPerDay;
         const chartHeight = isVirtualized
@@ -605,8 +626,35 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const barHeightForTask = isGroup ? BAR_HEIGHT : effectiveBarHeight;
                             const y = row.start + (rowHeightForBar - barHeightForTask) / 2;
 
-                            // Detail/Unified View에서 GROUP은 GroupSummaryBar로 렌더링
+                            // Detail/Unified View에서 GROUP 렌더링
                             if (!isMasterView && isGroup) {
+                                const isBlock = isBlockTask(task);
+
+                                // Block: 양 끝 포인트 + 실선 스타일
+                                if (isBlock) {
+                                    return (
+                                        <BlockBar
+                                            key={`block-${row.key}`}
+                                            block={task}
+                                            allTasks={allTasks || tasks}
+                                            y={y}
+                                            minDate={minDate}
+                                            pixelsPerDay={pixelsPerDay}
+                                            currentDeltaDays={getGroupDragDeltaDays(task.id)}
+                                            onToggle={onGroupToggle}
+                                            onClick={(e, blockId) => {
+                                                selectTask(blockId, {
+                                                    ctrlKey: e.ctrlKey || e.metaKey,
+                                                    shiftKey: e.shiftKey,
+                                                    visibleTasks: tasks,
+                                                });
+                                            }}
+                                            isFocused={focusedTaskId === task.id}
+                                        />
+                                    );
+                                }
+
+                                // Group: 기존 GroupSummaryBar 스타일
                                 return (
                                     <GroupSummaryBar
                                         key={`group-${row.key}`}
@@ -628,6 +676,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         }}
                                         isFocused={focusedTaskId === task.id}
                                         parentBarHeight={BAR_HEIGHT}
+                                        isCompact={isCompact}
                                     />
                                 );
                             }
@@ -1055,8 +1104,35 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const barHeightForTask = isGroup ? BAR_HEIGHT : effectiveBarHeight;
                             const y = row.start + (rowHeightForBar - barHeightForTask) / 2 + MILESTONE_LANE_HEIGHT;
 
-                            // Detail/Unified View에서 GROUP 타입이면 GroupSummaryBar 렌더링
+                            // Detail/Unified View에서 GROUP 렌더링
                             if (!isMasterView && isGroup) {
+                                const isBlock = isBlockTask(task);
+
+                                // Block: 양 끝 포인트 + 실선 스타일
+                                if (isBlock) {
+                                    return (
+                                        <BlockBar
+                                            key={`block-${row.key}`}
+                                            block={task}
+                                            allTasks={allTasks || tasks}
+                                            y={y}
+                                            minDate={minDate}
+                                            pixelsPerDay={pixelsPerDay}
+                                            currentDeltaDays={getGroupDragDeltaDays(task.id)}
+                                            onToggle={onGroupToggle}
+                                            onClick={(e, blockId) => {
+                                                selectTask(blockId, {
+                                                    ctrlKey: e.ctrlKey || e.metaKey,
+                                                    shiftKey: e.shiftKey,
+                                                    visibleTasks: tasks,
+                                                });
+                                            }}
+                                            isFocused={focusedTaskId === task.id}
+                                        />
+                                    );
+                                }
+
+                                // Group: 기존 GroupSummaryBar 스타일
                                 return (
                                     <GroupSummaryBar
                                         key={`group-${row.key}`}
@@ -1078,6 +1154,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         }}
                                         isFocused={focusedTaskId === task.id}
                                         parentBarHeight={BAR_HEIGHT}
+                                        isCompact={isCompact}
                                     />
                                 );
                             }

@@ -65,13 +65,41 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
         const isVirtualized = virtualRows && virtualRows.length > 0;
 
-        // 동적 행 높이 계산 함수: GROUP/CP는 항상 30px, TASK는 effectiveRowHeight
+        // ====================================
+        // Performance: O(1) 조회를 위한 Map 구조
+        // find(), some() 호출을 Map.get(), Map.has()로 대체하여 O(n²) → O(n) 최적화
+        // ====================================
+
+        // Task ID → Task 매핑 (parentTask 조회용)
+        const taskMap = useMemo(() =>
+            new Map(allTasks.map(t => [t.id, t])),
+            [allTasks]
+        );
+
+        // 동적 행 높이 계산 함수: CP/Block은 항상 30px, Group/TASK는 effectiveRowHeight
         const getRowHeight = useCallback((task: ConstructionTask) => {
-            if (task.type === 'GROUP' || task.type === 'CP') {
+            if (task.type === 'CP') {
                 return ROW_HEIGHT;
             }
+            // Block 판별: GROUP이면서 부모가 CP가 아닌 경우
+            if (task.type === 'GROUP') {
+                const parent = task.parentId ? taskMap.get(task.parentId) : null;
+                const isBlock = !parent || parent.type !== 'CP';
+                if (isBlock) return ROW_HEIGHT;  // Block은 항상 30px
+            }
             return effectiveRowHeight;
-        }, [effectiveRowHeight]);
+        }, [effectiveRowHeight, taskMap]);
+
+        // Parent ID → 자식 수 매핑 (canExpand 판단용)
+        const childrenCountMap = useMemo(() => {
+            const map = new Map<string, number>();
+            allTasks.forEach(t => {
+                if (t.parentId) {
+                    map.set(t.parentId, (map.get(t.parentId) || 0) + 1);
+                }
+            });
+            return map;
+        }, [allTasks]);
 
         // CP별 Critical Path 요약 계산 (Master View용)
         const cpSummaryMap = useMemo(() => {
@@ -477,7 +505,8 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                         if (!task) return null;
 
                         const isGroup = task.type === 'GROUP';
-                        const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
+                        // O(1) 조회: childrenCountMap 사용
+                        const canExpand = isGroup && (childrenCountMap.get(task.id) || 0) > 0;
                         const cpSummary = task.type === 'CP' ? cpSummaryMap.get(task.id) || null : null;
 
                         return (
@@ -546,10 +575,11 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
 
                         const isCP = task.type === 'CP';
                         const isGroup = task.type === 'GROUP';
+                        // O(1) 조회: taskMap, childrenCountMap 사용
                         // 블록: GROUP이면서 부모가 CP가 아닌 경우 (마스터뷰의 그룹)
-                        const parentTask = task.parentId ? allTasks.find(t => t.id === task.parentId) : null;
+                        const parentTask = task.parentId ? taskMap.get(task.parentId) : null;
                         const isBlock = isGroup && (!parentTask || parentTask.type !== 'CP');
-                        const canExpand = (isCP || isGroup) && allTasks.some(t => t.parentId === task.id);
+                        const canExpand = (isCP || isGroup) && (childrenCountMap.get(task.id) || 0) > 0;
 
                         return (
                             <SidebarRowUnified
@@ -607,7 +637,8 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     if (!task) return null;
 
                     const isGroup = task.type === 'GROUP';
-                    const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
+                    // O(1) 조회: childrenCountMap 사용
+                    const canExpand = isGroup && (childrenCountMap.get(task.id) || 0) > 0;
 
                     return (
                         <SidebarRowDetail

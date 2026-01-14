@@ -136,6 +136,12 @@ export function GanttChart({
         return map;
     }, [tasks]);
 
+    // Task ID → Task 매핑 (O(1) 조회용)
+    const taskMap = useMemo(() =>
+        new Map(tasks.map(t => [t.id, t])),
+        [tasks]
+    );
+
     // 뷰에 따른 태스크 필터링
     const visibleTasks = useMemo(() => {
         if (viewMode === 'MASTER') {
@@ -187,7 +193,7 @@ export function GanttChart({
                             }
                         }
                     } else if (task.wbsLevel === 2) {
-                        // Level 2는 부모(CP 또는 GROUP)가 확장되어 있을 때만
+                        // Level 2는 재귀 호출을 통해 확장된 부모의 자식만 도달
                         visible.push(task);
                         // GROUP이면 재귀적으로 하위 수집
                         if (task.type === 'GROUP' && expandedTaskIds.has(task.id)) {
@@ -257,12 +263,13 @@ export function GanttChart({
     // 단계별 접기/펼치기
     // ====================================
 
-    // depth 계산 함수 (viewMode별)
+    // depth 계산 함수 (viewMode별) - O(1) 조회로 최적화
     const getDepthForTask = useCallback((task: ConstructionTask): number => {
         if (viewMode === 'UNIFIED') {
             // UNIFIED: Block=0, CP=1, DetailGroup=2+
             if (task.type === 'GROUP') {
-                const parent = task.parentId ? tasks.find(t => t.id === task.parentId) : null;
+                // O(1) 조회: taskMap 사용
+                const parent = task.parentId ? taskMap.get(task.parentId) : null;
                 if (!parent || parent.type !== 'CP') return 0; // Block
                 return 2; // Detail Group
             }
@@ -270,17 +277,18 @@ export function GanttChart({
             return 2; // Task
         }
 
-        // MASTER / DETAIL: GROUP 중첩 깊이
+        // MASTER / DETAIL: GROUP 중첩 깊이 - O(depth) 복잡도
         let depth = 0;
         let currentId: string | null | undefined = task.parentId;
         while (currentId) {
-            const parent = tasks.find(t => t.id === currentId);
+            // O(1) 조회: taskMap 사용 (기존 O(n) find 대체)
+            const parent = taskMap.get(currentId);
             if (!parent) break;
             if (parent.type === 'GROUP') depth++;
             currentId = parent.parentId;
         }
         return depth;
-    }, [viewMode, tasks]);
+    }, [viewMode, taskMap]);
 
     // 확장 가능한 항목들 (GROUP, CP)
     const expandableItems = useMemo(() => {

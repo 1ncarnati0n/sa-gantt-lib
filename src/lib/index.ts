@@ -35,6 +35,7 @@ export { GanttTimeline } from './components/GanttTimeline';
 export { TaskEditModal } from './components/TaskEditModal';
 export { CriticalPathBar } from './components/CriticalPathBar';
 export { GroupSummaryBar } from './components/GroupSummaryBar';
+export { BlockBar } from './components/BlockBar';
 export { GanttErrorBoundary } from './components/GanttErrorBoundary';
 export type { BarDragResult } from './components/GanttTimeline';
 

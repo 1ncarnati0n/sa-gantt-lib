@@ -7,7 +7,11 @@ import { dateToX } from '../utils/dateUtils';
 import { calculateGroupDateRange, collectDescendantTasks } from '../utils/groupUtils';
 
 const { BAR_HEIGHT } = GANTT_LAYOUT;
-const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT, VERTICAL_OFFSET } = GANTT_SUMMARY;
+const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT } = GANTT_SUMMARY;
+// CP 바와 동일한 수직 오프셋 적용 (기본 모드)
+const GROUP_VERTICAL_OFFSET = 10;
+// 컴팩트 모드용 수직 오프셋
+const GROUP_VERTICAL_OFFSET_COMPACT = 2;
 
 interface GroupSummaryBarProps {
     group: ConstructionTask;
@@ -30,6 +34,8 @@ interface GroupSummaryBarProps {
     onToggle?: (groupId: string) => void;
     onClick?: (e: React.MouseEvent, groupId: string) => void;
     isFocused?: boolean;
+    /** 컴팩트 모드 여부 */
+    isCompact?: boolean;
 }
 
 export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
@@ -45,6 +51,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     onToggle,
     onClick,
     isFocused = false,
+    isCompact = false,
 }) => {
     const effectiveParentBarHeight = parentBarHeight ?? BAR_HEIGHT;
     // 그룹의 날짜 범위 계산
@@ -73,9 +80,8 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     const totalWidth = totalDays * pixelsPerDay;
     const progressWidth = totalWidth * (progress / 100);
 
-    // Summary 바 Y 위치 (행 중앙 아래에 배치)
-    // VERTICAL_OFFSET: TaskBar보다 살짝 아래에 위치시켜 그룹 구분을 명확하게 함
-    const barY = (effectiveParentBarHeight - SUMMARY_BAR_HEIGHT) / 2 + VERTICAL_OFFSET;
+    // Summary 바 Y 위치: 컴팩트 모드에서는 작은 오프셋 사용
+    const barY = isCompact ? GROUP_VERTICAL_OFFSET_COMPACT : GROUP_VERTICAL_OFFSET;
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!isDraggable || !onDragStart) return;
@@ -142,12 +148,12 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                 />
             )}
 
-            {/* 그룹명 (바 위에 표시 - 중앙 정렬) */}
+            {/* 그룹명 (컴팩트: 바 좌측, 기본: 바 위 중앙) */}
             <text
-                x={totalWidth / 2}
-                y={barY - 3}
-                textAnchor="middle"
-                className="font-bold"
+                x={isCompact ? -5 : totalWidth / 2}
+                y={isCompact ? barY + SUMMARY_BAR_HEIGHT / 2 + 3 : barY - 3}
+                textAnchor={isCompact ? 'end' : 'middle'}
+                className="font-normal"
                 fill={GANTT_COLORS.textSecondary}
                 style={{ fontSize: '11px' }}
             >

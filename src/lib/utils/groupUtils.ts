@@ -55,12 +55,12 @@ export const collectDescendantTasks = (
             // wbsLevel 필터링 (옵션이 지정된 경우에만)
             const matchesWbsLevel = wbsLevel === undefined || task.wbsLevel === wbsLevel;
 
-            if (task.type === 'GROUP') {
-                // GROUP 자체를 결과에 포함할지 여부
+            if (task.type === 'GROUP' || task.type === 'CP') {
+                // GROUP/CP 자체를 결과에 포함할지 여부
                 if (includeGroups && matchesWbsLevel) {
                     result.push(task);
                 }
-                // 재귀적으로 GROUP 하위 탐색
+                // 재귀적으로 GROUP/CP 하위 탐색
                 result.push(...collectDescendantTasks(task.id, allTasks, options));
             } else if (includeTypes.includes(task.type) && matchesWbsLevel) {
                 result.push(task);
