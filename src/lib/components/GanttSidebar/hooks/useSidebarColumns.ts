@@ -349,5 +349,6 @@ export const useSidebarColumns = ({
         getGroupDepth,
         getMasterGroupDepth,
         getUnifiedDepth,
+        calculateOptimalWidth,
     };
 };

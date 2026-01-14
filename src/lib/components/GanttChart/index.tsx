@@ -21,6 +21,10 @@ import {
     ZOOM_CONFIG,
     getLayoutValues,
     ViewMode,
+    DEFAULT_MASTER_COLUMNS,
+    DEFAULT_DETAIL_COLUMNS,
+    DEFAULT_UNIFIED_COLUMNS,
+    ColumnConfig,
 } from '../../types';
 
 // Sub-components
@@ -103,6 +107,110 @@ export function GanttChart({
     const [editingTask, setEditingTask] = useState<ConstructionTask | null>(null);
     const [isTaskEditModalOpen, setIsTaskEditModalOpen] = useState(false);
     const [sidebarTotalWidth, setSidebarTotalWidth] = useState<number | null>(null);
+
+    // ====================================
+    // Sidebar Column State (두 인스턴스 간 공유)
+    // ====================================
+    const [masterColumnWidths, setMasterColumnWidths] = useState<number[]>(
+        DEFAULT_MASTER_COLUMNS.map(col => col.width)
+    );
+    const [detailColumnWidths, setDetailColumnWidths] = useState<number[]>(
+        DEFAULT_DETAIL_COLUMNS.map(col => col.width)
+    );
+    const [unifiedColumnWidths, setUnifiedColumnWidths] = useState<number[]>(
+        DEFAULT_UNIFIED_COLUMNS.map(col => col.width)
+    );
+    const [sidebarResizingIndex, setSidebarResizingIndex] = useState<number | null>(null);
+    const sidebarIsResizingRef = useRef(false);
+
+    // 뷰 모드에 따른 컬럼 설정
+    const sidebarBaseColumns = useMemo((): ColumnConfig[] => {
+        switch (viewMode) {
+            case 'MASTER': return DEFAULT_MASTER_COLUMNS;
+            case 'DETAIL': return DEFAULT_DETAIL_COLUMNS;
+            case 'UNIFIED': return DEFAULT_UNIFIED_COLUMNS;
+        }
+    }, [viewMode]);
+
+    const sidebarColumnWidths = useMemo(() => {
+        switch (viewMode) {
+            case 'MASTER': return masterColumnWidths;
+            case 'DETAIL': return detailColumnWidths;
+            case 'UNIFIED': return unifiedColumnWidths;
+        }
+    }, [viewMode, masterColumnWidths, detailColumnWidths, unifiedColumnWidths]);
+
+    const setSidebarColumnWidths = useMemo(() => {
+        switch (viewMode) {
+            case 'MASTER': return setMasterColumnWidths;
+            case 'DETAIL': return setDetailColumnWidths;
+            case 'UNIFIED': return setUnifiedColumnWidths;
+        }
+    }, [viewMode]);
+
+    const sidebarColumns = useMemo(() =>
+        sidebarBaseColumns.map((col, idx) => ({
+            ...col,
+            width: sidebarColumnWidths[idx] ?? col.width,
+        })),
+        [sidebarBaseColumns, sidebarColumnWidths]
+    );
+
+    const sidebarDragHandleWidth = onTaskReorder ? 24 : 0;
+
+    // 컬럼 리사이즈 핸들러
+    const handleSidebarColumnResizeStart = useCallback((e: React.MouseEvent, columnIndex: number) => {
+        if (e.detail >= 2) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        sidebarIsResizingRef.current = true;
+        setSidebarResizingIndex(columnIndex);
+
+        const startX = e.clientX;
+        const startWidth = sidebarColumnWidths[columnIndex];
+        const minWidth = sidebarBaseColumns[columnIndex].minWidth;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!sidebarIsResizingRef.current) return;
+            const delta = e.clientX - startX;
+            const newWidth = Math.max(minWidth, startWidth + delta);
+
+            setSidebarColumnWidths(prev => {
+                const updated = [...prev];
+                updated[columnIndex] = newWidth;
+                return updated;
+            });
+        };
+
+        const handleMouseUp = () => {
+            sidebarIsResizingRef.current = false;
+            setSidebarResizingIndex(null);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }, [sidebarColumnWidths, sidebarBaseColumns, setSidebarColumnWidths]);
+
+    // 더블클릭 시 리사이징 상태만 초기화 (너비 변경은 onOptimalColumnWidth에서 처리)
+    const handleSidebarColumnResizeDoubleClick = useCallback((e: React.MouseEvent, _columnIndex: number) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        sidebarIsResizingRef.current = false;
+        setSidebarResizingIndex(null);
+    }, []);
+
+    // 최적 컬럼 너비 설정 콜백 (GanttSidebar에서 계산된 값 수신)
+    const handleOptimalColumnWidth = useCallback((columnIndex: number, width: number) => {
+        setSidebarColumnWidths(prev => {
+            const updated = [...prev];
+            updated[columnIndex] = width;
+            return updated;
+        });
+    }, [setSidebarColumnWidths]);
 
     // 좌우 스크롤 동기화 핸들러
     const handleContentScroll = useCallback(() => {
@@ -290,8 +398,8 @@ export function GanttChart({
         return depth;
     }, [viewMode, taskMap]);
 
-    // 확장 가능한 항목들 (GROUP, CP)
-    const expandableItems = useMemo(() => {
+    // 확장 가능한 항목들 (GROUP, CP) - Map으로 O(1) 조회 지원
+    const expandableItemsMap = useMemo(() => {
         const filterByView = (task: ConstructionTask) => {
             if (viewMode === 'MASTER') {
                 return task.wbsLevel === 1 && (task.type === 'GROUP' || task.type === 'CP');
@@ -303,18 +411,20 @@ export function GanttChart({
             }
         };
 
-        return tasks
-            .filter(filterByView)
-            .map(t => ({
+        const map = new Map<string, { id: string; depth: number; parentId: string | null | undefined }>();
+        tasks.filter(filterByView).forEach(t => {
+            map.set(t.id, {
                 id: t.id,
                 depth: getDepthForTask(t),
                 parentId: t.parentId,
-            }));
+            });
+        });
+        return map;
     }, [tasks, viewMode, getDepthForTask]);
 
-    // 부모가 확장되어 있는지 확인
+    // 부모가 확장되어 있는지 확인 - O(1) Map 조회
     const isParentExpanded = useCallback((taskId: string): boolean => {
-        const item = expandableItems.find(i => i.id === taskId);
+        const item = expandableItemsMap.get(taskId);  // O(1) 조회
         if (!item) return false;
 
         // 부모가 없으면 항상 확장 가능
@@ -328,14 +438,16 @@ export function GanttChart({
 
         // 부모가 확장되어 있어야 함
         return expandedTaskIds.has(item.parentId);
-    }, [expandableItems, viewMode, activeCPId, expandedTaskIds]);
+    }, [expandableItemsMap, viewMode, activeCPId, expandedTaskIds]);
 
-    // 단계별 펼치기
+    // 단계별 펼치기 - O(1) Map 조회 사용
     const handleExpandNextLevel = useCallback(() => {
         // 1. 현재 확장된 항목들의 depth 확인
-        const expandedDepths = expandableItems
-            .filter(item => expandedTaskIds.has(item.id))
-            .map(item => item.depth);
+        const expandedDepths: number[] = [];
+        expandedTaskIds.forEach(id => {
+            const item = expandableItemsMap.get(id);  // O(1) 조회
+            if (item) expandedDepths.push(item.depth);
+        });
 
         // 2. 다음 레벨 결정
         const currentMaxDepth = expandedDepths.length > 0
@@ -344,37 +456,43 @@ export function GanttChart({
         const nextDepth = currentMaxDepth + 1;
 
         // 3. 해당 depth의 항목들 중 부모가 확장된 것만 추가
-        const itemsToExpand = expandableItems
-            .filter(item => item.depth === nextDepth)
-            .filter(item => isParentExpanded(item.id))
-            .map(item => item.id);
+        const itemsToExpand: string[] = [];
+        expandableItemsMap.forEach((item) => {
+            if (item.depth === nextDepth && isParentExpanded(item.id)) {
+                itemsToExpand.push(item.id);
+            }
+        });
 
         if (itemsToExpand.length > 0) {
             const newExpanded = new Set([...expandedTaskIds, ...itemsToExpand]);
             setExpandedTaskIds(newExpanded);
         }
-    }, [expandableItems, expandedTaskIds, isParentExpanded, setExpandedTaskIds]);
+    }, [expandableItemsMap, expandedTaskIds, isParentExpanded, setExpandedTaskIds]);
 
-    // 단계별 접기
+    // 단계별 접기 - O(1) Map 조회 사용
     const handleCollapseLastLevel = useCallback(() => {
         // 1. 현재 확장된 항목들의 depth 계산
-        const expandedItems = expandableItems.filter(item => expandedTaskIds.has(item.id));
+        const expandedDepths: number[] = [];
+        expandedTaskIds.forEach(id => {
+            const item = expandableItemsMap.get(id);  // O(1) 조회
+            if (item) expandedDepths.push(item.depth);
+        });
 
-        if (expandedItems.length === 0) return;
+        if (expandedDepths.length === 0) return;
 
         // 2. 가장 깊은 depth 찾기
-        const maxDepth = Math.max(...expandedItems.map(item => item.depth));
+        const maxDepth = Math.max(...expandedDepths);
 
         // 3. 가장 깊은 depth의 항목들을 확장에서 제거
         const newExpanded = new Set(
             [...expandedTaskIds].filter(id => {
-                const item = expandedItems.find(i => i.id === id);
+                const item = expandableItemsMap.get(id);  // O(1) 조회
                 return item ? item.depth < maxDepth : true;
             })
         );
 
         setExpandedTaskIds(newExpanded);
-    }, [expandableItems, expandedTaskIds, setExpandedTaskIds]);
+    }, [expandableItemsMap, expandedTaskIds, setExpandedTaskIds]);
 
     const handleTaskClick = useCallback((task: ConstructionTask) => {
         if (viewMode === 'MASTER' && task.type === 'CP') {
@@ -716,6 +834,13 @@ export function GanttChart({
                             onTaskDoubleClick={handleTaskDoubleClick}
                             renderMode="header"
                             rowHeight={layoutValues.rowHeight}
+                            // 외부 컬럼 상태 (두 인스턴스 간 공유)
+                            externalColumns={sidebarColumns}
+                            externalColumnResizeStart={handleSidebarColumnResizeStart}
+                            externalColumnResizeDoubleClick={handleSidebarColumnResizeDoubleClick}
+                            externalDragHandleWidth={sidebarDragHandleWidth}
+                            externalResizingIndex={sidebarResizingIndex}
+                            onOptimalColumnWidth={handleOptimalColumnWidth}
                         />
                     </div>
 
@@ -808,6 +933,13 @@ export function GanttChart({
                                 onTaskDoubleClick={handleTaskDoubleClick}
                                 renderMode="content"
                                 rowHeight={layoutValues.rowHeight}
+                                // 외부 컬럼 상태 (두 인스턴스 간 공유)
+                                externalColumns={sidebarColumns}
+                                externalColumnResizeStart={handleSidebarColumnResizeStart}
+                                externalColumnResizeDoubleClick={handleSidebarColumnResizeDoubleClick}
+                                externalDragHandleWidth={sidebarDragHandleWidth}
+                                externalResizingIndex={sidebarResizingIndex}
+                                onOptimalColumnWidth={handleOptimalColumnWidth}
                             />
 
                             {/* DETAIL 뷰: CriticalPathBar 높이(20px) + 하단 여백(50px) 동기화 */}

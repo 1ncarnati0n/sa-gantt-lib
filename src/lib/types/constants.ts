@@ -134,6 +134,8 @@ export const GANTT_COLORS_STATIC = {
 export const GANTT_LAYOUT = {
     ROW_HEIGHT: 30,
     ROW_HEIGHT_COMPACT: 12,
+    /** 그룹행 컴팩트 높이 (30% 감소: 30px → 21px) */
+    GROUP_ROW_HEIGHT_COMPACT: 21,
     HEADER_HEIGHT: 80,
     MILESTONE_LANE_HEIGHT: 40,
     BAR_HEIGHT: 9,

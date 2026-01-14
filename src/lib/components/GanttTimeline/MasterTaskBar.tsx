@@ -10,8 +10,6 @@ import type { ConstructionTask, CalendarSettings, CriticalPathDay } from '../../
 
 const CP_BAR_HEIGHT = 6; // CP 바 높이
 const BAR_GAP = 0.3;
-// CP 바 전용 수직 오프셋 (GroupSummaryBar의 4px보다 크게 설정하여 하단 여백 축소)
-const CP_VERTICAL_OFFSET = 10;
 
 /**
  * 날짜별 블록 - 소수점 비율로 Vermilion(작업일)과 Teal(비작업일) 표시
@@ -139,8 +137,8 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
     const nonWorkWidth = nonWorkDays * pixelsPerDay;
     const totalWidth = workWidth + nonWorkWidth;
 
-    // CP 바 Y 위치: 행 중앙에서 아래로 VERTICAL_OFFSET만큼 이동 (GroupSummaryBar 스타일)
-    const barY = CP_VERTICAL_OFFSET;
+    // 바 Y 위치 (GanttTimeline에서 이미 중앙 정렬된 y 전달받음)
+    const barY = 0;
 
     return (
         <g transform={`translate(${startX}, ${y})`} className="group cursor-pointer">

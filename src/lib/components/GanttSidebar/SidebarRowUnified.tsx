@@ -57,8 +57,8 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
     rowHeight,
     onTaskDoubleClick,
 }) => {
-    // Block, CP, Group은 고정 높이, Task만 rowHeight 적용 (Compact 모드 대응)
-    const effectiveRowHeight = (isBlock || isCP || isGroup) ? ROW_HEIGHT : (rowHeight ?? ROW_HEIGHT);
+    // Block, CP는 고정 높이, Group과 Task는 rowHeight 적용 (Compact 모드 대응)
+    const effectiveRowHeight = (isBlock || isCP) ? ROW_HEIGHT : (rowHeight ?? ROW_HEIGHT);
     // 기간 계산
     const duration = useMemo(() => {
         return differenceInDays(task.endDate, task.startDate) + 1;

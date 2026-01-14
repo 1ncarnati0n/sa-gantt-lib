@@ -8,7 +8,6 @@ import { calculateGroupDateRange } from '../utils/groupUtils';
 
 // 블록 바 상수
 const BLOCK_POINT_RADIUS = 4;       // 양 끝 포인트 반지름
-const BLOCK_VERTICAL_OFFSET = 10;   // CP/Group과 동일한 수직 오프셋
 const BLOCK_LINE_Y = 3;             // 실선 Y 위치 (포인트 중심)
 
 interface BlockBarProps {
@@ -58,8 +57,8 @@ export const BlockBar: React.FC<BlockBarProps> = React.memo(({
     const startX = dateToX(adjustedStartDate, minDate, pixelsPerDay);
     const totalWidth = totalDays * pixelsPerDay;
 
-    // 바 Y 위치 (CP/Group과 동일한 오프셋)
-    const barY = BLOCK_VERTICAL_OFFSET;
+    // 바 Y 위치 (GanttTimeline에서 이미 중앙 정렬된 y 전달받음)
+    const barY = 0;
 
     const handleDoubleClick = (e: React.MouseEvent) => {
         e.preventDefault();

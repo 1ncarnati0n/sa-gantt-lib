@@ -2,7 +2,7 @@ import { useVirtualizer, Virtualizer } from '@tanstack/react-virtual';
 import { RefObject, useMemo, useCallback, useEffect } from 'react';
 import { GANTT_LAYOUT, ConstructionTask } from '../types';
 
-const { ROW_HEIGHT } = GANTT_LAYOUT;
+const { ROW_HEIGHT, ROW_HEIGHT_COMPACT, GROUP_ROW_HEIGHT_COMPACT } = GANTT_LAYOUT;
 
 export interface UseGanttVirtualizationOptions {
     /** 스크롤 컨테이너 ref */
@@ -68,19 +68,36 @@ export function useGanttVirtualization({
     paddingEnd = 50,
     tasks,
 }: UseGanttVirtualizationOptions) {
+    // Task ID → Task 매핑 (Block 판별용)
+    const taskMap = useMemo(() => {
+        if (!tasks) return new Map<string, ConstructionTask>();
+        return new Map(tasks.map(t => [t.id, t]));
+    }, [tasks]);
+
     // 동적 행 높이 계산 함수
-    // GROUP/CP 행은 항상 ROW_HEIGHT(30px), TASK 행만 rowHeight(compact: 12px, normal: 30px)
+    // CP/Block: 항상 30px, Group(CP 하위): 컴팩트 모드에서 21px, TASK: 컴팩트 모드에서 12px
+    const isCompact = rowHeight === ROW_HEIGHT_COMPACT;
     const getItemSize = useCallback((index: number) => {
         if (!tasks || !tasks[index]) {
             return rowHeight;
         }
         const task = tasks[index];
-        // GROUP, CP 타입은 항상 기본 높이 유지 (Block, CP, Group 행 고정)
-        if (task.type === 'GROUP' || task.type === 'CP') {
+
+        // CP: 항상 30px
+        if (task.type === 'CP') {
             return ROW_HEIGHT;
         }
+        // Block/Group 판별
+        if (task.type === 'GROUP') {
+            const parent = task.parentId ? taskMap.get(task.parentId) : null;
+            const isBlock = !parent || parent.type !== 'CP';
+            // Block: 항상 30px
+            if (isBlock) return ROW_HEIGHT;
+            // Group (CP 하위): 컴팩트 모드에서 30% 감소
+            return isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT;
+        }
         return rowHeight;
-    }, [tasks, rowHeight]);
+    }, [tasks, rowHeight, taskMap, isCompact]);
 
     const rowVirtualizer = useVirtualizer({
         count,

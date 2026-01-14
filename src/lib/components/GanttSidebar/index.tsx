@@ -31,7 +31,7 @@ import {
 // Types
 import type { GanttSidebarProps } from './types';
 
-const { ROW_HEIGHT, MILESTONE_LANE_HEIGHT } = GANTT_LAYOUT;
+const { ROW_HEIGHT, ROW_HEIGHT_COMPACT, GROUP_ROW_HEIGHT_COMPACT, MILESTONE_LANE_HEIGHT } = GANTT_LAYOUT;
 
 export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
     ({
@@ -61,6 +61,13 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         onTaskDoubleClick,
         renderMode = 'all',
         rowHeight,
+        // 외부 컬럼 상태 (두 인스턴스 간 공유용)
+        externalColumns,
+        externalColumnResizeStart,
+        externalColumnResizeDoubleClick,
+        externalDragHandleWidth,
+        externalResizingIndex,
+        onOptimalColumnWidth,
     }, ref) => {
         const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
         const isVirtualized = virtualRows && virtualRows.length > 0;
@@ -76,19 +83,25 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             [allTasks]
         );
 
-        // 동적 행 높이 계산 함수: CP/Block은 항상 30px, Group/TASK는 effectiveRowHeight
+        // 동적 행 높이 계산 함수
+        // CP/Block: 항상 30px, Group(CP 하위): 컴팩트 모드에서 21px, TASK: 컴팩트 모드에서 12px
+        const isCompact = effectiveRowHeight === ROW_HEIGHT_COMPACT;
         const getRowHeight = useCallback((task: ConstructionTask) => {
+            // CP: 항상 30px
             if (task.type === 'CP') {
                 return ROW_HEIGHT;
             }
-            // Block 판별: GROUP이면서 부모가 CP가 아닌 경우
+            // Block/Group 판별
             if (task.type === 'GROUP') {
                 const parent = task.parentId ? taskMap.get(task.parentId) : null;
                 const isBlock = !parent || parent.type !== 'CP';
-                if (isBlock) return ROW_HEIGHT;  // Block은 항상 30px
+                // Block: 항상 30px
+                if (isBlock) return ROW_HEIGHT;
+                // Group (CP 하위): 컴팩트 모드에서 30% 감소
+                return isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT;
             }
             return effectiveRowHeight;
-        }, [effectiveRowHeight, taskMap]);
+        }, [effectiveRowHeight, taskMap, isCompact]);
 
         // Parent ID → 자식 수 매핑 (canExpand 판단용)
         const childrenCountMap = useMemo(() => {
@@ -123,25 +136,55 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         }, [viewMode, allTasks, holidays, calendarSettings]);
 
         // Hooks
-        const {
-            columns,
-            totalWidth,
-            dragHandleWidth,
-            resizingIndex,
-            handleColumnResizeStart,
-            handleColumnResizeDoubleClick,
-            getGroupDepth,
-            getMasterGroupDepth,
-            getUnifiedDepth,
-        } = useSidebarColumns({
+        // 내부 훅은 항상 호출 (React hooks 규칙 준수)
+        // depth 함수들은 항상 내부 훅에서 사용
+        const internalColumnsHook = useSidebarColumns({
             viewMode,
             tasks,
             allTasks,
             activeCPId,
             cpSummaryMap,
-            onTotalWidthChange,
+            onTotalWidthChange: externalColumns ? undefined : onTotalWidthChange,
             onTaskReorder,
         });
+
+        // 외부 값이 제공되면 우선 사용 (State Lifting 패턴)
+        const columns = externalColumns ?? internalColumnsHook.columns;
+        const dragHandleWidth = externalDragHandleWidth ?? internalColumnsHook.dragHandleWidth;
+        const resizingIndex = externalResizingIndex ?? internalColumnsHook.resizingIndex;
+        const handleColumnResizeStart = externalColumnResizeStart ?? internalColumnsHook.handleColumnResizeStart;
+
+        // 더블클릭 핸들러: 최적 너비 계산 후 콜백 호출
+        const handleColumnResizeDoubleClick = useCallback((e: React.MouseEvent, columnIndex: number) => {
+            // 내부 훅의 calculateOptimalWidth로 최적 너비 계산
+            const optimalWidth = internalColumnsHook.calculateOptimalWidth(columnIndex);
+
+            // 콜백으로 최적 너비 전달 (GanttChart의 상태 업데이트)
+            if (onOptimalColumnWidth) {
+                onOptimalColumnWidth(columnIndex, optimalWidth);
+            }
+
+            // 외부 핸들러 호출 (리사이징 상태 초기화 등)
+            if (externalColumnResizeDoubleClick) {
+                externalColumnResizeDoubleClick(e, columnIndex);
+            } else {
+                // 외부 핸들러 없으면 내부 훅 핸들러 사용
+                internalColumnsHook.handleColumnResizeDoubleClick(e, columnIndex);
+            }
+        }, [internalColumnsHook, onOptimalColumnWidth, externalColumnResizeDoubleClick]);
+
+        // totalWidth는 사용 중인 columns에서 계산
+        const totalWidth = columns.reduce((sum, col) => sum + col.width, 0) + dragHandleWidth;
+
+        // depth 함수들은 항상 내부 훅에서 사용
+        const { getGroupDepth, getMasterGroupDepth, getUnifiedDepth } = internalColumnsHook;
+
+        // 외부 columns 사용 시 totalWidth 변경 알림
+        useEffect(() => {
+            if (externalColumns && onTotalWidthChange) {
+                onTotalWidthChange(totalWidth);
+            }
+        }, [externalColumns, totalWidth, onTotalWidthChange]);
 
         const {
             draggedTaskId,
@@ -323,6 +366,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     onTaskGroup={onTaskGroup}
                     onTaskUngroup={onTaskUngroup}
                     onClearSelection={clearSelection}
+                    dragHandleWidth={dragHandleWidth}
                 />
 
                 {/* Milestone Lane Spacer */}
@@ -335,12 +379,16 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                         borderBottom: '1px solid var(--gantt-border-light)',
                     }}
                 >
+                    {/* Drag Handle Spacer - 바디와 컬럼폭 동기화 */}
+                    {dragHandleWidth > 0 && (
+                        <div className="shrink-0" style={{ width: dragHandleWidth }} />
+                    )}
                     {columns.map((col, idx) => (
                         <div
                             key={col.id}
                             className="flex shrink-0 items-center justify-center text-xs"
                             style={{
-                                width: col.width,
+                                width: idx === 0 && dragHandleWidth > 0 ? col.width - dragHandleWidth : col.width,
                                 color: 'var(--gantt-text-primary)',
                                 borderRight: '1px solid var(--gantt-border-light)',
                             }}
@@ -416,6 +464,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     onTaskGroup={onTaskGroup}
                     onTaskUngroup={onTaskUngroup}
                     onClearSelection={clearSelection}
+                    dragHandleWidth={dragHandleWidth}
                 />
 
                 {resizingIndex !== null && (
@@ -437,12 +486,16 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                             borderBottom: '1px solid var(--gantt-border-light)',
                         }}
                     >
+                        {/* Drag Handle Spacer - 바디와 컬럼폭 동기화 */}
+                        {dragHandleWidth > 0 && (
+                            <div className="shrink-0" style={{ width: dragHandleWidth }} />
+                        )}
                         {columns.map((col, idx) => (
                             <div
                                 key={col.id}
                                 className="flex shrink-0 items-center justify-center text-xs"
                                 style={{
-                                    width: col.width,
+                                    width: idx === 0 && dragHandleWidth > 0 ? col.width - dragHandleWidth : col.width,
                                     color: 'var(--gantt-text-primary)',
                                     borderRight: '1px solid var(--gantt-border-light)',
                                 }}

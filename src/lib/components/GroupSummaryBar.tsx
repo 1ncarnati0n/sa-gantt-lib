@@ -8,10 +8,6 @@ import { calculateGroupDateRange, collectDescendantTasks } from '../utils/groupU
 
 const { BAR_HEIGHT } = GANTT_LAYOUT;
 const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT } = GANTT_SUMMARY;
-// CP 바와 동일한 수직 오프셋 적용 (기본 모드)
-const GROUP_VERTICAL_OFFSET = 10;
-// 컴팩트 모드용 수직 오프셋
-const GROUP_VERTICAL_OFFSET_COMPACT = 2;
 
 interface GroupSummaryBarProps {
     group: ConstructionTask;
@@ -80,8 +76,8 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     const totalWidth = totalDays * pixelsPerDay;
     const progressWidth = totalWidth * (progress / 100);
 
-    // Summary 바 Y 위치: 컴팩트 모드에서는 작은 오프셋 사용
-    const barY = isCompact ? GROUP_VERTICAL_OFFSET_COMPACT : GROUP_VERTICAL_OFFSET;
+    // 바 Y 위치 (GanttTimeline에서 이미 중앙 정렬된 y 전달받음)
+    const barY = 0;
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!isDraggable || !onDragStart) return;

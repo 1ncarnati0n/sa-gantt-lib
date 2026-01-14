@@ -10,6 +10,7 @@ import {
     CalendarSettings,
     GANTT_LAYOUT,
     GANTT_COLORS,
+    GANTT_SUMMARY,
     ZOOM_CONFIG,
     GroupDragResult,
     AnchorDependency,
@@ -44,7 +45,8 @@ import { BlockBar } from '../BlockBar';
 // Types
 import type { BarDragResult } from './types';
 
-const { ROW_HEIGHT, MILESTONE_LANE_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
+const { ROW_HEIGHT, GROUP_ROW_HEIGHT_COMPACT, MILESTONE_LANE_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
+const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT } = GANTT_SUMMARY;
 
 export type { BarDragResult };
 
@@ -132,19 +134,24 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             [allTasks, tasks]
         );
 
-        // 동적 행 높이 계산 함수: CP/Block은 항상 30px, Group/TASK는 effectiveRowHeight
+        // 동적 행 높이 계산 함수
+        // CP/Block: 항상 30px, Group(CP 하위): 컴팩트 모드에서 21px, TASK: 컴팩트 모드에서 12px
         const getRowHeight = useCallback((task: ConstructionTask) => {
+            // CP: 항상 30px
             if (task.type === 'CP') {
                 return ROW_HEIGHT;
             }
-            // Block 판별: GROUP이면서 부모가 CP가 아닌 경우
+            // Block/Group 판별
             if (task.type === 'GROUP') {
                 const parent = task.parentId ? taskMap.get(task.parentId) : null;
                 const isBlock = !parent || parent.type !== 'CP';
-                if (isBlock) return ROW_HEIGHT;  // Block은 항상 30px
+                // Block: 항상 30px
+                if (isBlock) return ROW_HEIGHT;
+                // Group (CP 하위): 컴팩트 모드에서 30% 감소
+                return isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT;
             }
             return effectiveRowHeight;
-        }, [effectiveRowHeight, taskMap]);
+        }, [effectiveRowHeight, taskMap, isCompact]);
 
         // 태스크 선택 훅
         const { selectTask, clearSelection: clearTaskSelection } = useGanttSelection();
@@ -619,12 +626,20 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const task = tasks[row.index];
                             if (!task) return null;
 
-                            // GROUP 행은 항상 기본 높이 사용 (Compact 모드에서도 변경 없음)
                             const isGroup = task.type === 'GROUP';
                             const isCP = task.type === 'CP';
-                            const rowHeightForBar = isGroup ? ROW_HEIGHT : row.size;
-                            const barHeightForTask = isGroup ? BAR_HEIGHT : effectiveBarHeight;
-                            const y = row.start + (rowHeightForBar - barHeightForTask) / 2;
+
+                            // CP와 Block은 컴팩트 모드에서도 동일한 스타일 유지
+                            let barHeightForTask: number;
+                            if (isCP) {
+                                barHeightForTask = BAR_HEIGHT; // CP: 항상 노멀 모드 스타일
+                            } else if (isGroup) {
+                                const isBlock = isBlockTask(task);
+                                barHeightForTask = isBlock ? BAR_HEIGHT : SUMMARY_BAR_HEIGHT;
+                            } else {
+                                barHeightForTask = effectiveBarHeight;
+                            }
+                            const y = row.start + (row.size - barHeightForTask) / 2;
 
                             // Detail/Unified View에서 GROUP 렌더링
                             if (!isMasterView && isGroup) {
@@ -789,8 +804,20 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             if (!task) return null;
                             if (!isMasterView && task.type === 'GROUP') return null;
 
-                            const y = row.start + (effectiveRowHeight - effectiveBarHeight) / 2;
                             const isCP = task.type === 'CP';
+                            const isGroup = task.type === 'GROUP';
+
+                            // CP와 Block은 BAR_HEIGHT 기준, 나머지는 effectiveBarHeight 기준
+                            let labelBarHeight: number;
+                            if (isCP) {
+                                labelBarHeight = BAR_HEIGHT;
+                            } else if (isGroup) {
+                                const isBlock = isBlockTask(task);
+                                labelBarHeight = isBlock ? BAR_HEIGHT : SUMMARY_BAR_HEIGHT;
+                            } else {
+                                labelBarHeight = effectiveBarHeight;
+                            }
+                            const y = row.start + (row.size - labelBarHeight) / 2;
                             const useMasterStyle = isMasterView || (isUnifiedView && isCP);
 
                             return (
@@ -1097,12 +1124,20 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const task = tasks[row.index];
                             if (!task) return null;
 
-                            // GROUP 행은 항상 기본 높이 사용 (Compact 모드에서도 변경 없음)
                             const isGroup = task.type === 'GROUP';
                             const isCP = task.type === 'CP';
-                            const rowHeightForBar = isGroup ? ROW_HEIGHT : row.size;
-                            const barHeightForTask = isGroup ? BAR_HEIGHT : effectiveBarHeight;
-                            const y = row.start + (rowHeightForBar - barHeightForTask) / 2 + MILESTONE_LANE_HEIGHT;
+
+                            // CP와 Block은 컴팩트 모드에서도 동일한 스타일 유지
+                            let barHeightForTask: number;
+                            if (isCP) {
+                                barHeightForTask = BAR_HEIGHT; // CP: 항상 노멀 모드 스타일
+                            } else if (isGroup) {
+                                const isBlock = isBlockTask(task);
+                                barHeightForTask = isBlock ? BAR_HEIGHT : SUMMARY_BAR_HEIGHT;
+                            } else {
+                                barHeightForTask = effectiveBarHeight;
+                            }
+                            const y = row.start + (row.size - barHeightForTask) / 2 + MILESTONE_LANE_HEIGHT;
 
                             // Detail/Unified View에서 GROUP 렌더링
                             if (!isMasterView && isGroup) {
@@ -1268,10 +1303,22 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             // GROUP은 별도 처리 (GroupSummaryBar에서 라벨 포함)
                             if (!isMasterView && task.type === 'GROUP') return null;
 
-                            const y = row.start + (effectiveRowHeight - effectiveBarHeight) / 2 + MILESTONE_LANE_HEIGHT;
+                            const isCP = task.type === 'CP';
+                            const isGroup = task.type === 'GROUP';
+
+                            // CP와 Block은 BAR_HEIGHT 기준, 나머지는 effectiveBarHeight 기준
+                            let labelBarHeight: number;
+                            if (isCP) {
+                                labelBarHeight = BAR_HEIGHT;
+                            } else if (isGroup) {
+                                const isBlock = isBlockTask(task);
+                                labelBarHeight = isBlock ? BAR_HEIGHT : SUMMARY_BAR_HEIGHT;
+                            } else {
+                                labelBarHeight = effectiveBarHeight;
+                            }
+                            const y = row.start + (row.size - labelBarHeight) / 2 + MILESTONE_LANE_HEIGHT;
 
                             // UNIFIED: CP는 MasterTaskBar 스타일, Task는 DetailTaskBar 스타일
-                            const isCP = task.type === 'CP';
                             const useMasterStyle = isMasterView || (isUnifiedView && isCP);
 
                             return (

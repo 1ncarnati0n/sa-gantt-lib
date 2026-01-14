@@ -222,6 +222,7 @@ export {
 export {
     collectDescendantTasks,
     calculateGroupDateRange,
+    buildChildrenMap,
 } from './utils/groupUtils';
 
 // Type Guards
