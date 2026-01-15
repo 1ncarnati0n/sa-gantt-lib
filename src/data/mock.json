@@ -59,13 +59,6 @@
             "milestoneType": "DETAIL"
         },
         {
-            "id": "milestone-1765412891978",
-            "date": "2026-08-22",
-            "name": "102동 지하골조 완",
-            "type": "MILESTONE",
-            "milestoneType": "DETAIL"
-        },
-        {
             "id": "milestone-1765412923698",
             "date": "2026-11-05",
             "name": "101동 지상 골조 완료",
@@ -1473,9 +1466,9 @@
             "type": "CP",
             "name": "지하골조: B2F, B1F 2단",
             "startDate": "2026-04-24",
-            "endDate": "2026-08-24",
+            "endDate": "2026-08-21",
             "cp": {
-                "workDaysTotal": 93,
+                "workDaysTotal": 91,
                 "nonWorkDaysTotal": 14
             },
             "dependencies": []
@@ -2038,9 +2031,9 @@
             "type": "TASK",
             "name": "거푸집 해체정리",
             "startDate": "2026-08-08",
-            "endDate": "2026-08-24",
+            "endDate": "2026-08-21",
             "task": {
-                "netWorkDays": 12,
+                "netWorkDays": 10,
                 "indirectWorkDaysPre": 0,
                 "indirectWorkDaysPost": 0
             },

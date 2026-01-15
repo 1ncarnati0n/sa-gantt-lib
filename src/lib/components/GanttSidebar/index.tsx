@@ -1,14 +1,11 @@
 'use client';
 
-import { forwardRef, useMemo, useState, useCallback, useEffect, memo } from 'react';
+import { forwardRef, useState, useCallback, useEffect, memo } from 'react';
 import { addDays } from 'date-fns';
 import {
     ConstructionTask,
     GANTT_LAYOUT,
-    CriticalPathSummary,
 } from '../../types';
-import { calculateCriticalPath } from '../../utils/criticalPathUtils';
-import { collectDescendantTasks } from '../../utils/groupUtils';
 import { GanttSidebarContextMenu } from '../GanttSidebarContextMenu';
 import { GanttSidebarNewTaskForm } from '../GanttSidebarNewTaskForm';
 import { GanttSidebarNewCPForm } from '../GanttSidebarNewCPForm';
@@ -18,6 +15,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { SidebarRowMaster } from './SidebarRowMaster';
 import { SidebarRowDetail } from './SidebarRowDetail';
 import { SidebarRowUnified } from './SidebarRowUnified';
+import { MilestoneLaneSpacer } from './MilestoneLaneSpacer';
 
 // Hooks
 import {
@@ -26,12 +24,19 @@ import {
     useMultiSelect,
     useClipboard,
     useInlineEdit,
+    useSidebarData,
 } from './hooks';
 
 // Types
 import type { GanttSidebarProps } from './types';
 
-const { ROW_HEIGHT, MILESTONE_LANE_HEIGHT } = GANTT_LAYOUT;
+const { ROW_HEIGHT } = GANTT_LAYOUT;
+
+const DEFAULT_CALENDAR_SETTINGS = {
+    workOnSaturdays: true,
+    workOnSundays: false,
+    workOnHolidays: false,
+};
 
 export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
     ({
@@ -61,60 +66,90 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         onTaskDoubleClick,
         renderMode = 'all',
         rowHeight,
+        // 외부 컬럼 상태 (두 인스턴스 간 공유용)
+        externalColumns,
+        externalColumnResizeStart,
+        externalColumnResizeDoubleClick,
+        externalDragHandleWidth,
+        externalResizingIndex,
+        onOptimalColumnWidth,
     }, ref) => {
         const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
-        const isVirtualized = virtualRows && virtualRows.length > 0;
+        const effectiveCalendarSettings = calendarSettings ?? DEFAULT_CALENDAR_SETTINGS;
 
-        // 동적 행 높이 계산 함수: GROUP/CP는 항상 30px, TASK는 effectiveRowHeight
-        const getRowHeight = useCallback((task: ConstructionTask) => {
-            if (task.type === 'GROUP' || task.type === 'CP') {
-                return ROW_HEIGHT;
-            }
-            return effectiveRowHeight;
-        }, [effectiveRowHeight]);
-
-        // CP별 Critical Path 요약 계산 (Master View용)
-        const cpSummaryMap = useMemo(() => {
-            const map = new Map<string, CriticalPathSummary>();
-            if (viewMode !== 'MASTER') return map;
-
-            allTasks.forEach(task => {
-                if (task.type === 'CP') {
-                    // 통합된 collectDescendantTasks 사용 (wbsLevel: 2 필터링)
-                    const childTasks = collectDescendantTasks(task.id, allTasks, { wbsLevel: 2 });
-                    const summary = calculateCriticalPath(
-                        childTasks,
-                        holidays,
-                        calendarSettings || { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false }
-                    );
-                    map.set(task.id, summary);
-                }
-            });
-
-            return map;
-        }, [viewMode, allTasks, holidays, calendarSettings]);
-
-        // Hooks
+        // ====================================
+        // Data Hook - O(1) Maps, Row Data, Heights
+        // ====================================
         const {
-            columns,
-            totalWidth,
-            dragHandleWidth,
-            resizingIndex,
-            handleColumnResizeStart,
-            handleColumnResizeDoubleClick,
-            getGroupDepth,
-            getMasterGroupDepth,
-            getUnifiedDepth,
-        } = useSidebarColumns({
+            taskMap,
+            childrenCountMap,
+            cpSummaryMap,
+            rowData,
+            dynamicTotalHeight,
+            activeCPName,
+            activeGroupName,
+            isVirtualized,
+        } = useSidebarData({
+            tasks,
+            allTasks,
+            viewMode,
+            activeCPId,
+            holidays,
+            calendarSettings: effectiveCalendarSettings,
+            effectiveRowHeight,
+            virtualRows,
+        });
+
+        // ====================================
+        // Column Hook
+        // ====================================
+        const internalColumnsHook = useSidebarColumns({
             viewMode,
             tasks,
             allTasks,
             activeCPId,
             cpSummaryMap,
-            onTotalWidthChange,
+            onTotalWidthChange: externalColumns ? undefined : onTotalWidthChange,
             onTaskReorder,
         });
 
+        // 외부 값이 제공되면 우선 사용 (State Lifting 패턴)
+        const columns = externalColumns ?? internalColumnsHook.columns;
+        const dragHandleWidth = externalDragHandleWidth ?? internalColumnsHook.dragHandleWidth;
+        const resizingIndex = externalResizingIndex ?? internalColumnsHook.resizingIndex;
+        const handleColumnResizeStart = externalColumnResizeStart ?? internalColumnsHook.handleColumnResizeStart;
+
+        // 더블클릭 핸들러: 최적 너비 계산 후 콜백 호출
+        const handleColumnResizeDoubleClick = useCallback((e: React.MouseEvent, columnIndex: number) => {
+            const optimalWidth = internalColumnsHook.calculateOptimalWidth(columnIndex);
+
+            if (onOptimalColumnWidth) {
+                onOptimalColumnWidth(columnIndex, optimalWidth);
+            }
+
+            if (externalColumnResizeDoubleClick) {
+                externalColumnResizeDoubleClick(e, columnIndex);
+            } else {
+                internalColumnsHook.handleColumnResizeDoubleClick(e, columnIndex);
+            }
+        }, [internalColumnsHook, onOptimalColumnWidth, externalColumnResizeDoubleClick]);
+
+        // totalWidth는 사용 중인 columns에서 계산
+        const totalWidth = columns.reduce((sum, col) => sum + col.width, 0) + dragHandleWidth;
+
+        // depth 함수들은 항상 내부 훅에서 사용
+        const { getGroupDepth, getMasterGroupDepth, getUnifiedDepth } = internalColumnsHook;
+
+        // 외부 columns 사용 시 totalWidth 변경 알림
+        useEffect(() => {
+            if (externalColumns && onTotalWidthChange) {
+                onTotalWidthChange(totalWidth);
+            }
+        }, [externalColumns, totalWidth, onTotalWidthChange]);
+
+        // ====================================
+        // Drag & Drop Hook
+        // ====================================
         const {
             draggedTaskId,
             dragOverTaskId,
@@ -126,6 +161,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             handleDragEnd,
         } = useSidebarDragDrop({ tasks, onTaskReorder, onTaskMove });
 
+        // ====================================
+        // Selection Hook
+        // ====================================
         const {
             selectedTaskIds,
             focusedTaskId,
@@ -134,6 +172,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             selectTask,
         } = useMultiSelect({ tasks, draggedTaskId });
 
+        // ====================================
+        // Clipboard Hook
+        // ====================================
         useClipboard({
             selectedTaskIds,
             allTasks,
@@ -142,6 +183,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             onTaskCreate,
         });
 
+        // ====================================
+        // Inline Edit Hook
+        // ====================================
         const {
             editingTaskId,
             editingName,
@@ -153,13 +197,15 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             handleEditKeyDown,
         } = useInlineEdit({ tasks, onTaskUpdate });
 
-        // 컨텍스트 메뉴 상태
+        // ====================================
+        // Local State
+        // ====================================
         const [contextMenu, setContextMenu] = useState<{ x: number; y: number; taskId: string } | null>(null);
-
-        // 일수 입력 필드 상태
         const [editingDays, setEditingDays] = useState<{ taskId: string; field: string; value: string } | null>(null);
 
-        // 컨텍스트 메뉴 핸들러
+        // ====================================
+        // Context Menu Handler
+        // ====================================
         const handleContextMenu = useCallback((e: React.MouseEvent, task: ConstructionTask) => {
             e.preventDefault();
             if (!selectedTaskIds.has(task.id)) {
@@ -193,7 +239,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             return () => document.removeEventListener('keydown', handleKeyDown);
         }, [clearSelection]);
 
-        // 일수 변경 핸들러 (순작업 날짜 고정, 간접작업은 앞뒤로 확장)
+        // ====================================
+        // Duration Change Handler
+        // ====================================
         const handleDurationChange = useCallback((
             task: ConstructionTask,
             field: 'indirectWorkDaysPre' | 'netWorkDays' | 'indirectWorkDaysPost',
@@ -204,22 +252,17 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             const oldPreDays = task.task.indirectWorkDaysPre;
             const oldPostDays = task.task.indirectWorkDaysPost;
 
-            // 순작업 시작일 계산 (현재 startDate + 기존 선간접)
             const netWorkStartDate = addDays(task.startDate, oldPreDays);
-            // 순작업 종료일 계산 (현재 endDate - 기존 후간접)
             const netWorkEndDate = addDays(task.endDate, -oldPostDays);
 
             let newStartDate = task.startDate;
             let newEndDate = task.endDate;
 
             if (field === 'indirectWorkDaysPre') {
-                // 선간접 변경: 순작업 시작일 고정, startDate 조정
                 newStartDate = addDays(netWorkStartDate, -value);
             } else if (field === 'indirectWorkDaysPost') {
-                // 후간접 변경: 순작업 종료일 고정, endDate 조정
                 newEndDate = addDays(netWorkEndDate, value);
             }
-            // netWorkDays 변경 시: startDate 고정, endDate는 타임라인에서 재계산
 
             const updatedTask: ConstructionTask = {
                 ...task,
@@ -230,147 +273,261 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             onTaskUpdate(updatedTask);
         }, [onTaskUpdate]);
 
-        // Row data (비가상화 시 동적 높이 누적 계산)
-        const rowData = useMemo(() => {
-            if (isVirtualized) {
-                return virtualRows!;
-            }
-            // 비가상화: 각 행의 높이를 누적 계산
-            let cumulativeStart = 0;
-            return tasks.map((task, i) => {
-                const size = getRowHeight(task);
-                const row = { index: i, start: cumulativeStart, size, key: i };
-                cumulativeStart += size;
-                return row;
-            });
-        }, [isVirtualized, virtualRows, tasks, getRowHeight]);
-
-        // 동적 높이 기반 총 높이 계산
-        const dynamicTotalHeight = useMemo(() => {
-            if (rowData.length === 0) return 100;
-            const lastRow = rowData[rowData.length - 1];
-            return lastRow.start + lastRow.size + 100;
-        }, [rowData]);
-
-        // Active CP와 상위 그룹 정보 계산
-        const { activeGroupName, activeCPName } = useMemo(() => {
-            if (!activeCPId) return { activeGroupName: undefined, activeCPName: undefined };
-
-            const activeCP = allTasks.find(t => t.id === activeCPId);
-            if (!activeCP) return { activeGroupName: undefined, activeCPName: undefined };
-
-            const cpName = activeCP.name;
-
-            // CP의 parentId로 상위 GROUP 찾기
-            if (!activeCP.parentId) {
-                return { activeGroupName: undefined, activeCPName: cpName };
-            }
-
-            const parentGroup = allTasks.find(t => t.id === activeCP.parentId);
-
-            return {
-                activeGroupName: parentGroup?.name,
-                activeCPName: cpName,
-            };
-        }, [activeCPId, allTasks]);
+        // ====================================
+        // Shared Props for Row Components
+        // ====================================
+        const sharedRowProps = {
+            isVirtualized,
+            draggedTaskId,
+            dragOverTaskId,
+            dragOverPosition,
+            selectedTaskIds,
+            focusedTaskId,
+            expandedIds,
+            editingTaskId,
+            editingName,
+            setEditingName,
+            editInputRef,
+            columns,
+            dragHandleWidth,
+            onDragStart: handleDragStart,
+            onDragOver: handleDragOver,
+            onDragLeave: handleDragLeave,
+            onDrop: handleDrop,
+            onDragEnd: handleDragEnd,
+            onRowClick: handleRowClick,
+            onContextMenu: handleContextMenu,
+            onToggle,
+            onStartEdit: handleStartEdit,
+            onSaveEdit: handleSaveEdit,
+            onEditKeyDown: handleEditKeyDown,
+            onTaskReorder,
+            onTaskMove,
+            onTaskUpdate,
+        };
 
         // ====================================
-        // Header Only 렌더링 (스크롤 외부용)
+        // Context Menu Component
         // ====================================
-        const renderHeaderOnly = () => (
-            <div
-                className="flex flex-col select-none shrink-0"
-                style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
-            >
-                <SidebarHeader
-                    viewMode={viewMode}
-                    activeGroupName={activeGroupName}
-                    activeCPName={activeCPName}
-                    columns={columns}
-                    resizingIndex={resizingIndex}
-                    selectedTaskIds={selectedTaskIds}
-                    tasks={tasks}
-                    onColumnResizeStart={handleColumnResizeStart}
-                    onColumnResizeDoubleClick={handleColumnResizeDoubleClick}
-                    onTaskGroup={onTaskGroup}
-                    onTaskUngroup={onTaskUngroup}
-                    onClearSelection={clearSelection}
-                />
-
-                {/* Milestone Lane Spacer */}
-                <div
-                    className="flex items-center"
-                    style={{
-                        height: MILESTONE_LANE_HEIGHT,
-                        minWidth: totalWidth,
-                        backgroundColor: 'var(--gantt-bg-secondary)',
-                        borderBottom: '1px solid var(--gantt-border-light)',
-                    }}
-                >
-                    {columns.map((col, idx) => (
-                        <div
-                            key={col.id}
-                            className="flex shrink-0 items-center justify-center text-xs"
-                            style={{
-                                width: col.width,
-                                color: 'var(--gantt-text-primary)',
-                                borderRight: '1px solid var(--gantt-border-light)',
-                            }}
-                        >
-                            {idx === 0 && 'Milestone'}
-                        </div>
-                    ))}
-                </div>
-
-                {resizingIndex !== null && (
-                    <div className="fixed inset-0 z-50 cursor-col-resize" />
-                )}
-            </div>
+        const contextMenuElement = contextMenu && (
+            <GanttSidebarContextMenu
+                x={contextMenu.x}
+                y={contextMenu.y}
+                taskId={contextMenu.taskId}
+                selectedTaskIds={selectedTaskIds}
+                tasks={tasks}
+                onTaskGroup={onTaskGroup}
+                onTaskUngroup={onTaskUngroup}
+                onTaskDelete={onTaskDelete}
+                onStartRename={handleStartRename}
+                onClose={() => setContextMenu(null)}
+                onDeselect={clearSelection}
+            />
         );
 
         // ====================================
-        // Content Only 렌더링 (스크롤 내부용)
+        // Render Row Content by ViewMode
         // ====================================
-        const renderContentOnly = (content: React.ReactNode) => (
-            <div
-                ref={ref}
-                className="relative select-none"
-                style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
-                onClick={clearSelection}
-            >
-                <div
-                    style={{
-                        minWidth: totalWidth,
-                        height: isVirtualized ? totalHeight : dynamicTotalHeight,
-                        position: 'relative',
-                    }}
-                    onClick={clearSelection}
-                >
-                    {content}
-                </div>
+        const renderRowContent = () => {
+            if (viewMode === 'MASTER') {
+                return (
+                    <>
+                        {rowData.map((row) => {
+                            const task = tasks[row.index];
+                            if (!task) return null;
 
-                {contextMenu && (
-                    <GanttSidebarContextMenu
-                        x={contextMenu.x}
-                        y={contextMenu.y}
-                        taskId={contextMenu.taskId}
+                            const isGroup = task.type === 'GROUP';
+                            const canExpand = isGroup && (childrenCountMap.get(task.id) || 0) > 0;
+                            const cpSummary = task.type === 'CP' ? cpSummaryMap.get(task.id) || null : null;
+
+                            return (
+                                <SidebarRowMaster
+                                    key={row.key}
+                                    task={task}
+                                    rowIndex={row.index}
+                                    rowStart={row.start}
+                                    isDragging={draggedTaskId === task.id}
+                                    isDragOver={dragOverTaskId === task.id}
+                                    isSelected={selectedTaskIds.has(task.id)}
+                                    isFocused={focusedTaskId === task.id}
+                                    isExpanded={expandedIds.has(task.id)}
+                                    canExpand={canExpand}
+                                    indent={getMasterGroupDepth(task) * 12}
+                                    isGroup={isGroup}
+                                    cpSummary={cpSummary}
+                                    onTaskClick={onTaskClick}
+                                    {...sharedRowProps}
+                                />
+                            );
+                        })}
+                        {isAddingCP && (
+                            <GanttSidebarNewCPForm
+                                columns={columns}
+                                tasks={tasks}
+                                onTaskCreate={onTaskCreate}
+                                onCancel={onCancelAddCP || (() => { })}
+                                isVirtualized={isVirtualized}
+                                virtualRowIndex={tasks.length}
+                                dragHandleWidth={dragHandleWidth}
+                            />
+                        )}
+                    </>
+                );
+            }
+
+            if (viewMode === 'UNIFIED') {
+                return rowData.map((row) => {
+                    const task = tasks[row.index];
+                    if (!task) return null;
+
+                    const isCP = task.type === 'CP';
+                    const isGroup = task.type === 'GROUP';
+                    const parentTask = task.parentId ? taskMap.get(task.parentId) : null;
+                    const isBlock = isGroup && (!parentTask || parentTask.type !== 'CP');
+                    const canExpand = (isCP || isGroup) && (childrenCountMap.get(task.id) || 0) > 0;
+
+                    return (
+                        <SidebarRowUnified
+                            key={row.key}
+                            task={task}
+                            rowIndex={row.index}
+                            rowStart={row.start}
+                            isDragging={draggedTaskId === task.id}
+                            isDragOver={dragOverTaskId === task.id}
+                            isSelected={selectedTaskIds.has(task.id)}
+                            isFocused={focusedTaskId === task.id}
+                            isExpanded={expandedIds.has(task.id)}
+                            canExpand={canExpand}
+                            indent={getUnifiedDepth(task) * 16}
+                            isGroup={isGroup && !isBlock}
+                            isCP={isCP}
+                            isBlock={isBlock}
+                            rowHeight={row.size}
+                            onTaskClick={onTaskClick}
+                            onTaskDoubleClick={onTaskDoubleClick}
+                            {...sharedRowProps}
+                        />
+                    );
+                });
+            }
+
+            // DETAIL View
+            return (
+                <>
+                    {rowData.map((row) => {
+                        const task = tasks[row.index];
+                        if (!task) return null;
+
+                        const isGroup = task.type === 'GROUP';
+                        const canExpand = isGroup && (childrenCountMap.get(task.id) || 0) > 0;
+
+                        return (
+                            <SidebarRowDetail
+                                key={row.key}
+                                task={task}
+                                rowIndex={row.index}
+                                rowStart={row.start}
+                                isDragging={draggedTaskId === task.id}
+                                isDragOver={dragOverTaskId === task.id}
+                                isSelected={selectedTaskIds.has(task.id)}
+                                isFocused={focusedTaskId === task.id}
+                                isExpanded={expandedIds.has(task.id)}
+                                canExpand={canExpand}
+                                indent={getGroupDepth(task) * 12}
+                                isGroup={isGroup}
+                                rowHeight={row.size}
+                                editingDays={editingDays}
+                                setEditingDays={setEditingDays}
+                                onDurationChange={handleDurationChange}
+                                onTaskDoubleClick={onTaskDoubleClick}
+                                {...sharedRowProps}
+                            />
+                        );
+                    })}
+                    {isAddingTask && activeCPId && (
+                        <GanttSidebarNewTaskForm
+                            columns={columns}
+                            tasks={tasks}
+                            activeCPId={activeCPId}
+                            onTaskCreate={onTaskCreate}
+                            onCancel={onCancelAddTask || (() => { })}
+                            isVirtualized={isVirtualized}
+                            virtualRowIndex={tasks.length}
+                        />
+                    )}
+                </>
+            );
+        };
+
+        // ====================================
+        // Header Only Mode (스크롤 외부용)
+        // ====================================
+        if (renderMode === 'header') {
+            return (
+                <div
+                    className="flex flex-col select-none shrink-0"
+                    style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
+                >
+                    <SidebarHeader
+                        viewMode={viewMode}
+                        activeGroupName={activeGroupName}
+                        activeCPName={activeCPName}
+                        columns={columns}
+                        resizingIndex={resizingIndex}
                         selectedTaskIds={selectedTaskIds}
                         tasks={tasks}
+                        onColumnResizeStart={handleColumnResizeStart}
+                        onColumnResizeDoubleClick={handleColumnResizeDoubleClick}
                         onTaskGroup={onTaskGroup}
                         onTaskUngroup={onTaskUngroup}
-                        onTaskDelete={onTaskDelete}
-                        onStartRename={handleStartRename}
-                        onClose={() => setContextMenu(null)}
-                        onDeselect={clearSelection}
+                        onClearSelection={clearSelection}
+                        dragHandleWidth={dragHandleWidth}
                     />
-                )}
-            </div>
-        );
+
+                    <MilestoneLaneSpacer
+                        columns={columns}
+                        dragHandleWidth={dragHandleWidth}
+                        totalWidth={totalWidth}
+                    />
+
+                    {resizingIndex !== null && (
+                        <div className="fixed inset-0 z-50 cursor-col-resize" />
+                    )}
+                </div>
+            );
+        }
 
         // ====================================
-        // Full 렌더링 (기존 방식, 하위 호환용)
+        // Content Only Mode (스크롤 내부용)
         // ====================================
-        const renderContainer = (content: React.ReactNode) => (
+        if (renderMode === 'content') {
+            return (
+                <div
+                    ref={ref}
+                    className="relative select-none"
+                    style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
+                    onClick={clearSelection}
+                >
+                    <div
+                        style={{
+                            minWidth: totalWidth,
+                            height: isVirtualized ? totalHeight : dynamicTotalHeight,
+                            position: 'relative',
+                        }}
+                        onClick={clearSelection}
+                    >
+                        {renderRowContent()}
+                    </div>
+
+                    {contextMenuElement}
+                </div>
+            );
+        }
+
+        // ====================================
+        // Full Mode (기존 방식, 하위 호환용)
+        // ====================================
+        return (
             <div
                 className="flex h-full flex-col select-none"
                 style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
@@ -388,6 +545,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     onTaskGroup={onTaskGroup}
                     onTaskUngroup={onTaskUngroup}
                     onClearSelection={clearSelection}
+                    dragHandleWidth={dragHandleWidth}
                 />
 
                 {resizingIndex !== null && (
@@ -399,32 +557,12 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     className="relative flex-1"
                     onClick={clearSelection}
                 >
-                    {/* Milestone Lane Spacer */}
-                    <div
-                        className="flex items-center"
-                        style={{
-                            height: MILESTONE_LANE_HEIGHT,
-                            minWidth: totalWidth,
-                            backgroundColor: 'var(--gantt-bg-secondary)',
-                            borderBottom: '1px solid var(--gantt-border-light)',
-                        }}
-                    >
-                        {columns.map((col, idx) => (
-                            <div
-                                key={col.id}
-                                className="flex shrink-0 items-center justify-center text-xs"
-                                style={{
-                                    width: col.width,
-                                    color: 'var(--gantt-text-primary)',
-                                    borderRight: '1px solid var(--gantt-border-light)',
-                                }}
-                            >
-                                {idx === 0 && 'Milestone'}
-                            </div>
-                        ))}
-                    </div>
+                    <MilestoneLaneSpacer
+                        columns={columns}
+                        dragHandleWidth={dragHandleWidth}
+                        totalWidth={totalWidth}
+                    />
 
-                    {/* Task Rows */}
                     <div
                         style={{
                             minWidth: totalWidth,
@@ -433,238 +571,12 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                         }}
                         onClick={clearSelection}
                     >
-                        {content}
+                        {renderRowContent()}
                     </div>
                 </div>
 
-                {contextMenu && (
-                    <GanttSidebarContextMenu
-                        x={contextMenu.x}
-                        y={contextMenu.y}
-                        taskId={contextMenu.taskId}
-                        selectedTaskIds={selectedTaskIds}
-                        tasks={tasks}
-                        onTaskGroup={onTaskGroup}
-                        onTaskUngroup={onTaskUngroup}
-                        onTaskDelete={onTaskDelete}
-                        onStartRename={handleStartRename}
-                        onClose={() => setContextMenu(null)}
-                        onDeselect={clearSelection}
-                    />
-                )}
+                {contextMenuElement}
             </div>
-        );
-
-        // ====================================
-        // renderMode에 따른 분기 함수
-        // ====================================
-        const renderByMode = (content: React.ReactNode) => {
-            if (renderMode === 'header') {
-                return renderHeaderOnly();
-            }
-            if (renderMode === 'content') {
-                return renderContentOnly(content);
-            }
-            return renderContainer(content);
-        };
-
-        // Master View
-        if (viewMode === 'MASTER') {
-            return renderByMode(
-                <>
-                    {rowData.map((row) => {
-                        const task = tasks[row.index];
-                        if (!task) return null;
-
-                        const isGroup = task.type === 'GROUP';
-                        const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
-                        const cpSummary = task.type === 'CP' ? cpSummaryMap.get(task.id) || null : null;
-
-                        return (
-                            <SidebarRowMaster
-                                key={row.key}
-                                task={task}
-                                rowIndex={row.index}
-                                isVirtualized={isVirtualized!}
-                                rowStart={row.start}
-                                isDragging={draggedTaskId === task.id}
-                                isDragOver={dragOverTaskId === task.id}
-                                dragOverPosition={dragOverPosition}
-                                isSelected={selectedTaskIds.has(task.id)}
-                                isFocused={focusedTaskId === task.id}
-                                isExpanded={expandedIds.has(task.id)}
-                                canExpand={canExpand}
-                                indent={getMasterGroupDepth(task) * 12}
-                                isGroup={isGroup}
-                                onDragStart={handleDragStart}
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                                onDragEnd={handleDragEnd}
-                                onRowClick={handleRowClick}
-                                onContextMenu={handleContextMenu}
-                                onToggle={onToggle}
-                                editingTaskId={editingTaskId}
-                                editingName={editingName}
-                                setEditingName={setEditingName}
-                                editInputRef={editInputRef}
-                                onStartEdit={handleStartEdit}
-                                onSaveEdit={handleSaveEdit}
-                                onEditKeyDown={handleEditKeyDown}
-                                columns={columns}
-                                dragHandleWidth={dragHandleWidth}
-                                onTaskReorder={onTaskReorder}
-                                onTaskMove={onTaskMove}
-                                onTaskUpdate={onTaskUpdate}
-                                cpSummary={cpSummary}
-                                onTaskClick={onTaskClick}
-                            />
-                        );
-                    })}
-                    {isAddingCP && (
-                        <GanttSidebarNewCPForm
-                            columns={columns}
-                            tasks={tasks}
-                            onTaskCreate={onTaskCreate}
-                            onCancel={onCancelAddCP || (() => { })}
-                            isVirtualized={isVirtualized!}
-                            virtualRowIndex={tasks.length}
-                            dragHandleWidth={dragHandleWidth}
-                        />
-                    )}
-                </>
-            );
-        }
-
-        // Unified View
-        if (viewMode === 'UNIFIED') {
-            return renderByMode(
-                <>
-                    {rowData.map((row) => {
-                        const task = tasks[row.index];
-                        if (!task) return null;
-
-                        const isCP = task.type === 'CP';
-                        const isGroup = task.type === 'GROUP';
-                        // 블록: GROUP이면서 부모가 CP가 아닌 경우 (마스터뷰의 그룹)
-                        const parentTask = task.parentId ? allTasks.find(t => t.id === task.parentId) : null;
-                        const isBlock = isGroup && (!parentTask || parentTask.type !== 'CP');
-                        const canExpand = (isCP || isGroup) && allTasks.some(t => t.parentId === task.id);
-
-                        return (
-                            <SidebarRowUnified
-                                key={row.key}
-                                task={task}
-                                rowIndex={row.index}
-                                isVirtualized={isVirtualized!}
-                                rowStart={row.start}
-                                isDragging={draggedTaskId === task.id}
-                                isDragOver={dragOverTaskId === task.id}
-                                dragOverPosition={dragOverPosition}
-                                isSelected={selectedTaskIds.has(task.id)}
-                                isFocused={focusedTaskId === task.id}
-                                isExpanded={expandedIds.has(task.id)}
-                                canExpand={canExpand}
-                                indent={getUnifiedDepth(task) * 16}
-                                isGroup={isGroup && !isBlock}
-                                isCP={isCP}
-                                isBlock={isBlock}
-                                onDragStart={handleDragStart}
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                                onDragEnd={handleDragEnd}
-                                onRowClick={handleRowClick}
-                                onContextMenu={handleContextMenu}
-                                onToggle={onToggle}
-                                editingTaskId={editingTaskId}
-                                editingName={editingName}
-                                setEditingName={setEditingName}
-                                editInputRef={editInputRef}
-                                onStartEdit={handleStartEdit}
-                                onSaveEdit={handleSaveEdit}
-                                onEditKeyDown={handleEditKeyDown}
-                                columns={columns}
-                                dragHandleWidth={dragHandleWidth}
-                                onTaskReorder={onTaskReorder}
-                                onTaskMove={onTaskMove}
-                                onTaskUpdate={onTaskUpdate}
-                                onTaskClick={onTaskClick}
-                                rowHeight={row.size}
-                                onTaskDoubleClick={onTaskDoubleClick}
-                            />
-                        );
-                    })}
-                </>
-            );
-        }
-
-        // Detail View
-        return renderByMode(
-            <>
-                {rowData.map((row) => {
-                    const task = tasks[row.index];
-                    if (!task) return null;
-
-                    const isGroup = task.type === 'GROUP';
-                    const canExpand = isGroup && allTasks.some(t => t.parentId === task.id);
-
-                    return (
-                        <SidebarRowDetail
-                            key={row.key}
-                            task={task}
-                            rowIndex={row.index}
-                            isVirtualized={isVirtualized!}
-                            rowStart={row.start}
-                            isDragging={draggedTaskId === task.id}
-                            isDragOver={dragOverTaskId === task.id}
-                            dragOverPosition={dragOverPosition}
-                            isSelected={selectedTaskIds.has(task.id)}
-                            isFocused={focusedTaskId === task.id}
-                            isExpanded={expandedIds.has(task.id)}
-                            canExpand={canExpand}
-                            indent={getGroupDepth(task) * 12}
-                            isGroup={isGroup}
-                            onDragStart={handleDragStart}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                            onDragEnd={handleDragEnd}
-                            onRowClick={handleRowClick}
-                            onContextMenu={handleContextMenu}
-                            onToggle={onToggle}
-                            editingTaskId={editingTaskId}
-                            editingName={editingName}
-                            setEditingName={setEditingName}
-                            editInputRef={editInputRef}
-                            onStartEdit={handleStartEdit}
-                            onSaveEdit={handleSaveEdit}
-                            onEditKeyDown={handleEditKeyDown}
-                            columns={columns}
-                            dragHandleWidth={dragHandleWidth}
-                            onTaskReorder={onTaskReorder}
-                            onTaskMove={onTaskMove}
-                            onTaskUpdate={onTaskUpdate}
-                            onTaskDoubleClick={onTaskDoubleClick}
-                            editingDays={editingDays}
-                            setEditingDays={setEditingDays}
-                            onDurationChange={handleDurationChange}
-                            rowHeight={row.size}
-                        />
-                    );
-                })}
-                {isAddingTask && activeCPId && (
-                    <GanttSidebarNewTaskForm
-                        columns={columns}
-                        tasks={tasks}
-                        activeCPId={activeCPId}
-                        onTaskCreate={onTaskCreate}
-                        onCancel={onCancelAddTask || (() => { })}
-                        isVirtualized={isVirtualized!}
-                        virtualRowIndex={tasks.length}
-                    />
-                )}
-            </>
         );
     }
 ));

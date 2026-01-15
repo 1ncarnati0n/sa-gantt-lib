@@ -27,6 +27,7 @@
   --gantt-grid-dark: #D1D5DB;
   --gantt-focus: #3B82F6;
   --gantt-success: #10B981;
+  --gantt-excel: #217346;
 
   /* 배경 */
   --gantt-bg-primary: #ffffff;
@@ -102,6 +103,7 @@
   --gantt-grid-dark: #4B5563;
   --gantt-focus: #60A5FA;
   --gantt-success: #34D399;
+  --gantt-excel: #2d8a5e;
 
   /* 배경 */
   --gantt-bg-primary: #111827;
@@ -176,6 +178,7 @@
     --gantt-grid-dark: #4B5563;
     --gantt-focus: #60A5FA;
     --gantt-success: #34D399;
+    --gantt-excel: #2d8a5e;
     /* 배경 */
     --gantt-bg-primary: #111827;
     --gantt-bg-secondary: #1F2937;

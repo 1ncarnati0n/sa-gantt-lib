@@ -39,6 +39,18 @@ export interface GanttSidebarProps {
     scrollLeft?: number;
     /** Compact 모드용 행 높이 */
     rowHeight?: number;
+    /** 외부에서 주입된 컬럼 배열 (상태 공유용) */
+    externalColumns?: ColumnConfig[];
+    /** 외부 컬럼 리사이즈 시작 핸들러 */
+    externalColumnResizeStart?: (e: React.MouseEvent, columnIndex: number) => void;
+    /** 외부 컬럼 리사이즈 더블클릭 핸들러 */
+    externalColumnResizeDoubleClick?: (e: React.MouseEvent, columnIndex: number) => void;
+    /** 외부 Drag Handle 너비 */
+    externalDragHandleWidth?: number;
+    /** 외부 리사이징 인덱스 */
+    externalResizingIndex?: number | null;
+    /** 최적 컬럼 너비 계산 완료 시 호출되는 콜백 */
+    onOptimalColumnWidth?: (columnIndex: number, width: number) => void;
 }
 
 export interface SidebarHeaderProps {
@@ -54,6 +66,8 @@ export interface SidebarHeaderProps {
     onTaskGroup?: (taskIds: string[]) => void;
     onTaskUngroup?: (groupId: string) => void;
     onClearSelection: () => void;
+    /** Drag Handle 너비 (바디와 컬럼폭 동기화용) */
+    dragHandleWidth?: number;
 }
 
 export interface SidebarRowProps {

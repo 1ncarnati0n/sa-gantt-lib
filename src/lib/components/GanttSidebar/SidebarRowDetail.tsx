@@ -1,13 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
 import { DaysInputCell } from './DaysInputCell';
 import type { SidebarRowDetailProps } from './types';
 
-const { ROW_HEIGHT } = GANTT_LAYOUT;
+const { ROW_HEIGHT, GROUP_ROW_HEIGHT_COMPACT } = GANTT_LAYOUT;
 
 export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
     task,
@@ -49,9 +49,14 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
     onDurationChange,
     rowHeight,
 }) => {
-    const effectiveRowHeight = rowHeight ?? ROW_HEIGHT;
-    // 행 스타일 계산
-    const getRowStyle = () => {
+    // Group은 컴팩트 모드에서 21px, Task는 rowHeight 적용 (통합뷰와 동일한 로직)
+    const isCompact = (rowHeight ?? ROW_HEIGHT) < ROW_HEIGHT;
+    const effectiveRowHeight = isGroup
+        ? (isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT)
+        : (rowHeight ?? ROW_HEIGHT);
+
+    // 행 스타일 계산 (메모이제이션)
+    const rowStyle = useMemo(() => {
         let backgroundColor = 'var(--gantt-bg-primary)';
         let borderColor = 'var(--gantt-border-light)';
         let boxShadow = 'none';
@@ -89,7 +94,32 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                 transform: `translateY(${rowStart}px)`,
             } : {}),
         };
-    };
+    }, [isDragging, isDragOver, dragOverPosition, isFocused, isSelected, isGroup, isVirtualized, rowStart, effectiveRowHeight]);
+
+    // 토글 핸들러 메모이제이션
+    const handleToggle = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onToggle(task.id);
+    }, [onToggle, task.id]);
+
+    // 편집 시작 핸들러 메모이제이션
+    const handleStartEdit = useCallback((e: React.MouseEvent) => {
+        if (onTaskUpdate) {
+            e.stopPropagation();
+            onStartEdit(task);
+        }
+    }, [onTaskUpdate, onStartEdit, task]);
+
+    // 배지 스타일 (GANTT_COLORS 상수 사용)
+    const badgeStyle = useMemo(() => {
+        if (isGroup) {
+            return {
+                backgroundColor: GANTT_COLORS.badgeGroup,
+                color: 'white',
+            };
+        }
+        return null;
+    }, [isGroup]);
 
     return (
         <div
@@ -109,7 +139,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
             }}
             onContextMenu={(e) => onContextMenu(e, task)}
             className="box-border flex items-center transition-colors"
-            style={getRowStyle()}
+            style={rowStyle}
             title={isGroup && canExpand ? '더블클릭하여 접기/펼치기' : !isGroup && task.type === 'TASK' ? '더블클릭하여 공정 설정' : undefined}
         >
             {/* Drag Handle */}
@@ -133,12 +163,11 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
             >
                 {canExpand ? (
                     <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onToggle(task.id);
-                        }}
+                        onClick={handleToggle}
                         className="mr-1 shrink-0 rounded p-1"
                         style={{ color: 'var(--gantt-text-muted)' }}
+                        aria-label={isExpanded ? '접기' : '펼치기'}
+                        aria-expanded={isExpanded}
                     >
                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>
@@ -146,14 +175,11 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                     <div className="w-6 shrink-0" />
                 )}
 
-                {/* Group/Task 뱃지 */}
-                {isGroup ? (
+                {/* Group/Task 뱃지 (GANTT_COLORS 상수 사용) */}
+                {isGroup && badgeStyle ? (
                     <span
                         className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
-                        style={{
-                            backgroundColor: '#b0b3b8',
-                            color: 'white',
-                        }}
+                        style={badgeStyle}
                     >
                         G
                     </span>
@@ -192,12 +218,7 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                             color: 'var(--gantt-text-primary)',
                             cursor: isGroup ? 'text' : 'default',
                         }}
-                        onDoubleClick={(e) => {
-                            if (onTaskUpdate) {
-                                e.stopPropagation();
-                                onStartEdit(task);
-                            }
-                        }}
+                        onDoubleClick={handleStartEdit}
                         title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
                     >
                         {task.name}

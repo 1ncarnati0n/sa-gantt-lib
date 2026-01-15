@@ -18,6 +18,7 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
   onTaskGroup,
   onTaskUngroup,
   onClearSelection,
+  dragHandleWidth = 0,
 }) => {
   const selectedGroupTask = selectedTaskIds.size === 1
     ? tasks.find(t => t.id === Array.from(selectedTaskIds)[0] && t.type === 'GROUP')
@@ -74,11 +75,18 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
       className="flex h-[32px]"
       style={{ borderTop: '1px solid var(--gantt-border-light)' }}
     >
+      {/* Drag Handle Spacer - 바디와 컬럼폭 동기화 */}
+      {dragHandleWidth > 0 && (
+        <div className="shrink-0" style={{ width: dragHandleWidth }} />
+      )}
       {columns.map((col, idx) => (
         <div
           key={col.id}
           className="relative flex shrink-0 items-center justify-center text-xs font-medium"
-          style={{ width: col.width, color: 'var(--gantt-text-secondary)' }}
+          style={{
+            width: idx === 0 && dragHandleWidth > 0 ? col.width - dragHandleWidth : col.width,
+            color: 'var(--gantt-text-secondary)',
+          }}
         >
           {col.label}
           {idx < columns.length - 1 && (
@@ -123,6 +131,8 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
         <span style={{ color: 'var(--gantt-text-secondary)', fontSize: '0.875rem' }}>
           {viewMode === 'MASTER' ? (
             '공구공정표 Master'
+          ) : viewMode === 'UNIFIED' ? (
+            '통합보기 공정표'
           ) : (
             <>
               주공정(C.P)표 Detail : {' '}

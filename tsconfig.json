@@ -22,7 +22,19 @@
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
         "declaration": true,
-        "declarationDir": "./dist"
+        "declarationDir": "./dist",
+        /* Path Aliases */
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/lib/*"],
+            "@/components/*": ["src/lib/components/*"],
+            "@/hooks/*": ["src/lib/hooks/*"],
+            "@/utils/*": ["src/lib/utils/*"],
+            "@/types/*": ["src/lib/types/*"],
+            "@/store/*": ["src/lib/store/*"],
+            "@/context/*": ["src/lib/context/*"],
+            "@/services/*": ["src/lib/services/*"]
+        }
     },
     "include": [
         "src"

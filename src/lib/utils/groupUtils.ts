@@ -6,6 +6,25 @@ import { ConstructionTask, TaskType, WbsLevel } from '../types';
 // ============================================
 
 /**
+ * Parent ID → Children 매핑 생성 (O(1) 조회용)
+ * @param allTasks - 전체 Task 배열
+ * @returns Map<parentId, children[]>
+ */
+export const buildChildrenMap = (
+    allTasks: ConstructionTask[]
+): Map<string | null | undefined, ConstructionTask[]> => {
+    const map = new Map<string | null | undefined, ConstructionTask[]>();
+    allTasks.forEach(task => {
+        const parentId = task.parentId;
+        if (!map.has(parentId)) {
+            map.set(parentId, []);
+        }
+        map.get(parentId)!.push(task);
+    });
+    return map;
+};
+
+/**
  * collectDescendantTasks 함수의 옵션
  */
 export interface CollectDescendantTasksOptions {
@@ -15,10 +34,14 @@ export interface CollectDescendantTasksOptions {
     includeTypes?: TaskType[];
     /** GROUP도 결과에 포함할지 (기본: false) */
     includeGroups?: boolean;
+    /** 미리 계산된 childrenMap (성능 최적화용) */
+    childrenMap?: Map<string | null | undefined, ConstructionTask[]>;
 }
 
 /**
  * 재귀적으로 GROUP의 모든 자손 TASK 수집
+ *
+ * 성능 최적화: childrenMap을 전달하면 O(n) 스캔 대신 O(1) 조회 사용
  *
  * @param parentId - 부모 ID (GROUP 또는 CP)
  * @param allTasks - 전체 Task 배열
@@ -26,8 +49,13 @@ export interface CollectDescendantTasksOptions {
  * @returns 하위의 모든 TASK 타입 배열
  *
  * @example
- * // 기본 사용 (기존과 동일)
+ * // 기본 사용 (기존과 동일 - 하위 호환성 유지)
  * collectDescendantTasks(groupId, allTasks);
+ *
+ * @example
+ * // 성능 최적화: childrenMap 전달
+ * const childrenMap = buildChildrenMap(allTasks);
+ * collectDescendantTasks(groupId, allTasks, { childrenMap });
  *
  * @example
  * // wbsLevel 2인 TASK만 수집
@@ -46,25 +74,30 @@ export const collectDescendantTasks = (
         wbsLevel,
         includeTypes = ['TASK'],
         includeGroups = false,
+        childrenMap: providedMap,
     } = options ?? {};
+
+    // childrenMap이 제공되지 않으면 내부에서 생성 (하위 호환성)
+    const childrenMap = providedMap ?? buildChildrenMap(allTasks);
 
     const result: ConstructionTask[] = [];
 
-    allTasks.forEach(task => {
-        if (task.parentId === parentId) {
-            // wbsLevel 필터링 (옵션이 지정된 경우에만)
-            const matchesWbsLevel = wbsLevel === undefined || task.wbsLevel === wbsLevel;
+    // O(1) 조회로 해당 부모의 자식들만 가져옴
+    const children = childrenMap.get(parentId) || [];
 
-            if (task.type === 'GROUP') {
-                // GROUP 자체를 결과에 포함할지 여부
-                if (includeGroups && matchesWbsLevel) {
-                    result.push(task);
-                }
-                // 재귀적으로 GROUP 하위 탐색
-                result.push(...collectDescendantTasks(task.id, allTasks, options));
-            } else if (includeTypes.includes(task.type) && matchesWbsLevel) {
+    children.forEach(task => {
+        // wbsLevel 필터링 (옵션이 지정된 경우에만)
+        const matchesWbsLevel = wbsLevel === undefined || task.wbsLevel === wbsLevel;
+
+        if (task.type === 'GROUP' || task.type === 'CP') {
+            // GROUP/CP 자체를 결과에 포함할지 여부
+            if (includeGroups && matchesWbsLevel) {
                 result.push(task);
             }
+            // 재귀적으로 GROUP/CP 하위 탐색 (같은 childrenMap 재사용)
+            result.push(...collectDescendantTasks(task.id, allTasks, { ...options, childrenMap }));
+        } else if (includeTypes.includes(task.type) && matchesWbsLevel) {
+            result.push(task);
         }
     });
 
@@ -76,13 +109,15 @@ export const collectDescendantTasks = (
  *
  * @param groupId - GROUP ID
  * @param allTasks - 전체 Task 배열
+ * @param childrenMap - 미리 계산된 childrenMap (성능 최적화용)
  * @returns { startDate, endDate, totalDays } 또는 하위 Task가 없으면 null
  */
 export const calculateGroupDateRange = (
     groupId: string,
-    allTasks: ConstructionTask[]
+    allTasks: ConstructionTask[],
+    childrenMap?: Map<string | null | undefined, ConstructionTask[]>
 ): { startDate: Date; endDate: Date; totalDays: number } | null => {
-    const descendantTasks = collectDescendantTasks(groupId, allTasks);
+    const descendantTasks = collectDescendantTasks(groupId, allTasks, { childrenMap });
 
     if (descendantTasks.length === 0) return null;
 
