@@ -17,6 +17,8 @@ export interface UseGanttVirtualizationOptions {
     paddingEnd?: number;
     /** 태스크 배열 (동적 행 높이 계산용) */
     tasks?: ConstructionTask[];
+    /** 전체 태스크 배열 (Block 판별용, 없으면 tasks 사용) */
+    allTasks?: ConstructionTask[];
 }
 
 export interface VirtualRow {
@@ -67,12 +69,15 @@ export function useGanttVirtualization({
     overscan = 5,
     paddingEnd = 50,
     tasks,
+    allTasks,
 }: UseGanttVirtualizationOptions) {
     // Task ID → Task 매핑 (Block 판별용)
+    // allTasks가 있으면 전체 태스크로 부모 조회 가능 (Detail View에서 CP 부모 참조)
     const taskMap = useMemo(() => {
-        if (!tasks) return new Map<string, ConstructionTask>();
-        return new Map(tasks.map(t => [t.id, t]));
-    }, [tasks]);
+        const source = allTasks || tasks;
+        if (!source) return new Map<string, ConstructionTask>();
+        return new Map(source.map(t => [t.id, t]));
+    }, [allTasks, tasks]);
 
     // 동적 행 높이 계산 함수
     // CP/Block: 항상 30px, Group(CP 하위): 컴팩트 모드에서 21px, TASK: 컴팩트 모드에서 12px

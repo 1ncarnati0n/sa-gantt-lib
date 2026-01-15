@@ -322,6 +322,7 @@ export function GanttChart({
         overscan: 30, // 스크롤 시 렌더링 지연 방지를 위해 오버스캔 증가
         rowHeight: layoutValues.rowHeight,
         tasks: visibleTasks, // 동적 행 높이 계산을 위해 tasks 전달
+        allTasks: tasks, // Block 판별을 위해 전체 tasks 전달 (Detail View에서 CP 부모 참조)
     });
 
     // 날짜 범위 계산 (포커싱에 필요)
@@ -385,7 +386,22 @@ export function GanttChart({
             return 2; // Task
         }
 
-        // MASTER / DETAIL: GROUP 중첩 깊이 - O(depth) 복잡도
+        if (viewMode === 'DETAIL') {
+            // DETAIL: CP 기준 상대 depth (CP 바로 아래 = 0)
+            let depth = 0;
+            let currentId: string | null | undefined = task.parentId;
+            while (currentId) {
+                const parent = taskMap.get(currentId);
+                if (!parent) break;
+                // CP에 도달하면 중단 (CP 상위는 카운트하지 않음)
+                if (parent.type === 'CP') break;
+                if (parent.type === 'GROUP') depth++;
+                currentId = parent.parentId;
+            }
+            return depth;
+        }
+
+        // MASTER: 기존 로직 유지
         let depth = 0;
         let currentId: string | null | undefined = task.parentId;
         while (currentId) {
@@ -398,13 +414,16 @@ export function GanttChart({
         return depth;
     }, [viewMode, taskMap]);
 
-    // 확장 가능한 항목들 (GROUP, CP) - Map으로 O(1) 조회 지원
+    // 확장 가능한 항목들 (GROUP만, CP는 클릭 시 디테일 뷰로 이동) - Map으로 O(1) 조회 지원
     const expandableItemsMap = useMemo(() => {
         const filterByView = (task: ConstructionTask) => {
             if (viewMode === 'MASTER') {
-                return task.wbsLevel === 1 && (task.type === 'GROUP' || task.type === 'CP');
+                // 마스터 뷰: GROUP(Block)만 확장 가능, CP는 클릭 시 디테일 뷰로 이동
+                return task.wbsLevel === 1 && task.type === 'GROUP';
             } else if (viewMode === 'DETAIL') {
-                return task.wbsLevel === 2 && task.type === 'GROUP';
+                // Detail 뷰: wbsLevel 2 이상의 모든 GROUP (중첩 GROUP 포함)
+                // 현재 activeCPId 하위인지는 isParentExpanded에서 검증
+                return task.wbsLevel >= 2 && task.type === 'GROUP';
             } else {
                 // UNIFIED: Block (부모 없는 GROUP), CP, Detail Group 모두
                 return task.type === 'GROUP' || task.type === 'CP';
@@ -942,16 +961,14 @@ export function GanttChart({
                                 onOptimalColumnWidth={handleOptimalColumnWidth}
                             />
 
-                            {/* DETAIL 뷰: CriticalPathBar 높이(20px) + 하단 여백(50px) 동기화 */}
-                            {viewMode !== 'MASTER' && (
-                                <div
-                                    style={{
-                                        height: 70,
-                                        backgroundColor: 'var(--gantt-bg-secondary)',
-                                        borderTop: '2px solid var(--gantt-border)',
-                                    }}
-                                />
-                            )}
+                            {/* CriticalPathBar 높이(20px) + WorkDaysRatioBar(마스터뷰 20px) + 하단 여백(50px) 동기화 */}
+                            <div
+                                style={{
+                                    height: viewMode === 'MASTER' ? 90 : 70,
+                                    backgroundColor: 'var(--gantt-bg-secondary)',
+                                    borderTop: '2px solid var(--gantt-border)',
+                                }}
+                            />
                         </div>
                     </div>
 

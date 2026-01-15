@@ -34,6 +34,7 @@ export { GanttSidebar } from './components/GanttSidebar';
 export { GanttTimeline } from './components/GanttTimeline';
 export { TaskEditModal } from './components/TaskEditModal';
 export { CriticalPathBar } from './components/CriticalPathBar';
+export { WorkDaysRatioBar } from './components/WorkDaysRatioBar';
 export { GroupSummaryBar } from './components/GroupSummaryBar';
 export { BlockBar } from './components/BlockBar';
 export { GanttErrorBoundary } from './components/GanttErrorBoundary';

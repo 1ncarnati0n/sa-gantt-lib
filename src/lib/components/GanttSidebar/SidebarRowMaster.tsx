@@ -102,6 +102,24 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
         }
     }, [onTaskUpdate, onStartEdit, task]);
 
+    // 배지 스타일 (GANTT_COLORS 상수 사용)
+    const badgeStyle = useMemo(() => {
+        if (isGroup) {
+            // Block 배지
+            return {
+                backgroundColor: GANTT_COLORS.badgeBlock,
+                color: GANTT_COLORS.badgeBlockText,
+                border: `1.5px solid ${GANTT_COLORS.badgeBlockBorder}`,
+            };
+        } else {
+            // CP 배지
+            return {
+                backgroundColor: GANTT_COLORS.vermilion,
+                color: 'white',
+            };
+        }
+    }, [isGroup]);
+
     return (
         <div
             draggable={!!(onTaskReorder || onTaskMove)}
@@ -154,29 +172,13 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                     <div className="w-6 shrink-0" />
                 )}
 
-                {/* Block/CP 뱃지 */}
-                {isGroup ? (
-                    <span
-                        className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
-                        style={{
-                            backgroundColor: '#e5e7eb',
-                            color: '#1f2937',
-                            border: '1.5px solid #374151',
-                        }}
-                    >
-                        B
-                    </span>
-                ) : (
-                    <span
-                        className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
-                        style={{
-                            backgroundColor: GANTT_COLORS.vermilion,
-                            color: 'white',
-                        }}
-                    >
-                        CP
-                    </span>
-                )}
+                {/* Block/CP 뱃지 (GANTT_COLORS 상수 사용) */}
+                <span
+                    className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
+                    style={badgeStyle}
+                >
+                    {isGroup ? 'B' : 'CP'}
+                </span>
 
                 {editingTaskId === task.id ? (
                     <input

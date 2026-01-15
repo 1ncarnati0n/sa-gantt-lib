@@ -39,6 +39,7 @@ import { useGanttSelection } from '../../store/useGanttStore';
 
 // External components
 import { CriticalPathBar } from '../CriticalPathBar';
+import { WorkDaysRatioBar } from '../WorkDaysRatioBar';
 import { GroupSummaryBar } from '../GroupSummaryBar';
 import { BlockBar } from '../BlockBar';
 
@@ -928,8 +929,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         })()}
                     </svg>
 
-                    {/* Critical Path Bar (Level 2에서만 표시) */}
-                    {!isMasterView && showCriticalPath && (
+                    {/* Critical Path Bar (모든 뷰에서 표시) */}
+                    {showCriticalPath && (
                         <CriticalPathBar
                             tasks={allTasks || tasks}
                             holidays={holidays}
@@ -938,6 +939,18 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             pixelsPerDay={pixelsPerDay}
                             totalWidth={chartWidth}
                             activeCPId={activeCPId}
+                        />
+                    )}
+
+                    {/* Work Days Ratio Bar (Master View 전용) */}
+                    {isMasterView && showCriticalPath && (
+                        <WorkDaysRatioBar
+                            tasks={allTasks || tasks}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            minDate={minDate}
+                            pixelsPerDay={pixelsPerDay}
+                            totalWidth={chartWidth}
                         />
                     )}
 
@@ -1243,7 +1256,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
                                 getTaskDeltaDays={getCombinedTaskDeltaDays}
-                                offsetY={0}
+                                offsetY={MILESTONE_LANE_HEIGHT}
                                 rowData={fullRowData}
                                 effectiveBarHeight={effectiveBarHeight}
                                 isCompact={isCompact}
@@ -1260,7 +1273,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 holidays={holidays}
                                 calendarSettings={calendarSettings}
                                 getTaskDeltaDays={getCombinedTaskDeltaDays}
-                                offsetY={0}
+                                offsetY={MILESTONE_LANE_HEIGHT}
                                 rowData={fullRowData}
                                 effectiveBarHeight={effectiveBarHeight}
                                 isCompact={isCompact}
@@ -1286,7 +1299,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     holidays={holidays}
                                     calendarSettings={calendarSettings}
                                     dependencyDragDeltaDays={getCombinedTaskDeltaDays(task.id)}
-                                    offsetY={0}
+                                    offsetY={MILESTONE_LANE_HEIGHT}
                                     rowStart={row.start}
                                     rowHeight={row.size}
                                     effectiveBarHeight={effectiveBarHeight}
@@ -1378,12 +1391,12 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
 
                             const sourcePos = getAnchorPosition(
                                 sourceTask, connectingFrom.dayIndex, sourceIndex,
-                                minDate, pixelsPerDay, holidays, calendarSettings, 0,
+                                minDate, pixelsPerDay, holidays, calendarSettings, MILESTONE_LANE_HEIGHT,
                                 sourceRow?.start, sourceRow?.size, effectiveBarHeight
                             );
                             const targetPos = getAnchorPosition(
                                 targetTask, hoveredAnchor.dayIndex, targetIndex,
-                                minDate, pixelsPerDay, holidays, calendarSettings, 0,
+                                minDate, pixelsPerDay, holidays, calendarSettings, MILESTONE_LANE_HEIGHT,
                                 targetRow?.start, targetRow?.size, effectiveBarHeight
                             );
 
@@ -1429,8 +1442,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         })()}
                     </svg>
 
-                    {/* Critical Path Bar (Level 2에서만 표시) */}
-                    {!isMasterView && showCriticalPath && (
+                    {/* Critical Path Bar (모든 뷰에서 표시) */}
+                    {showCriticalPath && (
                         <CriticalPathBar
                             tasks={allTasks || tasks}
                             holidays={holidays}
@@ -1439,6 +1452,18 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             pixelsPerDay={pixelsPerDay}
                             totalWidth={chartWidth}
                             activeCPId={activeCPId}
+                        />
+                    )}
+
+                    {/* Work Days Ratio Bar (Master View 전용) */}
+                    {isMasterView && showCriticalPath && (
+                        <WorkDaysRatioBar
+                            tasks={allTasks || tasks}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            minDate={minDate}
+                            pixelsPerDay={pixelsPerDay}
+                            totalWidth={chartWidth}
                         />
                     )}
 

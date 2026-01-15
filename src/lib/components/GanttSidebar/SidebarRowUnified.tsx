@@ -6,7 +6,7 @@ import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
 import type { SidebarRowUnifiedProps } from './types';
 
-const { ROW_HEIGHT } = GANTT_LAYOUT;
+const { ROW_HEIGHT, GROUP_ROW_HEIGHT_COMPACT } = GANTT_LAYOUT;
 
 /**
  * Unified View 전용 사이드바 행 컴포넌트
@@ -57,8 +57,13 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
     rowHeight,
     onTaskDoubleClick,
 }) => {
-    // Block, CP는 고정 높이, Group과 Task는 rowHeight 적용 (Compact 모드 대응)
-    const effectiveRowHeight = (isBlock || isCP) ? ROW_HEIGHT : (rowHeight ?? ROW_HEIGHT);
+    // Block, CP는 고정 높이 30px, Group은 컴팩트 시 21px, Task는 rowHeight 적용
+    const isCompact = (rowHeight ?? ROW_HEIGHT) < ROW_HEIGHT;
+    const effectiveRowHeight = (isBlock || isCP)
+        ? ROW_HEIGHT
+        : isGroup
+            ? (isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT)
+            : (rowHeight ?? ROW_HEIGHT);
     // 기간 계산
     const duration = useMemo(() => {
         return differenceInDays(task.endDate, task.startDate) + 1;
