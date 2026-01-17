@@ -1,9 +1,38 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ZOOM_CONFIG } from '../../types';
 import type { GanttHeaderProps } from './types';
+
+// ============================================
+// 버튼 스타일 상수 (통일성 부여)
+// ============================================
+const BTN_BASE = 'flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors';
+const BTN_SECONDARY_STYLE = {
+    backgroundColor: 'var(--gantt-bg-tertiary)',
+    color: 'var(--gantt-text-secondary)',
+};
+const BTN_HOVER_HANDLERS = {
+    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLLabelElement>) => {
+        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
+    },
+    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLLabelElement>) => {
+        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
+    },
+};
+const BTN_GROUP_CONTAINER = 'flex rounded-md p-0.5';
+const BTN_GROUP_ITEM = 'rounded px-2.5 py-1 text-xs font-medium transition-colors';
+// 액션 버튼 (오른쪽 영역 - 저장, 초기화, 내보내기 등)
+const BTN_ACTION = 'flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors';
+const BTN_ACTION_HOVER = {
+    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLLabelElement>) => {
+        e.currentTarget.style.filter = 'brightness(1.1)';
+    },
+    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLLabelElement>) => {
+        e.currentTarget.style.filter = 'brightness(1)';
+    },
+};
 
 export const GanttHeader: React.FC<GanttHeaderProps> = ({
     viewMode,
@@ -51,8 +80,11 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
         };
     }, [isAddDropdownOpen]);
 
-    // 추가 메뉴 항목 생성
-    const getAddMenuItems = () => {
+    // 드롭다운 닫기 핸들러 (useCallback으로 안정적인 참조 유지)
+    const closeDropdown = useCallback(() => setIsAddDropdownOpen(false), []);
+
+    // 추가 메뉴 항목 생성 (useMemo로 메모이제이션)
+    const addMenuItems = useMemo(() => {
         const items: { label: string; onClick: () => void; color: string }[] = [];
 
         if (viewMode === 'MASTER' || viewMode === 'UNIFIED') {
@@ -61,7 +93,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     label: 'CP 추가',
                     onClick: () => {
                         onStartAddCP();
-                        setIsAddDropdownOpen(false);
+                        closeDropdown();
                     },
                     color: 'var(--gantt-focus)',
                 });
@@ -74,7 +106,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     label: 'Task 추가',
                     onClick: () => {
                         onStartAddTask();
-                        setIsAddDropdownOpen(false);
+                        closeDropdown();
                     },
                     color: 'var(--gantt-focus)',
                 });
@@ -87,7 +119,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     label: '마일스톤 추가',
                     onClick: () => {
                         onStartAddMilestone();
-                        setIsAddDropdownOpen(false);
+                        closeDropdown();
                     },
                     color: 'var(--gantt-milestone-detail)',
                 });
@@ -95,9 +127,8 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
         }
 
         return items;
-    };
-
-    const addMenuItems = getAddMenuItems();
+    }, [viewMode, canCreateTask, canCreateMilestone, isAddingCP, isAddingTask,
+        onStartAddCP, onStartAddTask, onStartAddMilestone, closeDropdown]);
 
     return (
         <header
@@ -113,17 +144,9 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 {viewMode === 'DETAIL' && (
                     <button
                         onClick={() => onViewChange('MASTER')}
-                        className="rounded px-3 py-1.5 text-xs font-medium transition-colors"
-                        style={{
-                            backgroundColor: 'var(--gantt-bg-tertiary)',
-                            color: 'var(--gantt-text-secondary)',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
-                        }}
+                        className={BTN_BASE}
+                        style={BTN_SECONDARY_STYLE}
+                        {...BTN_HOVER_HANDLERS}
                     >
                         ← 상위 공정표로
                     </button>
@@ -134,7 +157,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     <div className="relative" ref={addDropdownRef}>
                         <button
                             onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
-                            className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
+                            className={BTN_BASE}
                             style={{
                                 backgroundColor: 'var(--gantt-focus)',
                                 color: 'var(--gantt-text-inverse)',
@@ -197,17 +220,9 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 {viewMode === 'MASTER' && (
                     <button
                         onClick={() => onViewChange('UNIFIED')}
-                        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-                        style={{
-                            backgroundColor: 'var(--gantt-bg-tertiary)',
-                            color: 'var(--gantt-text-secondary)',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
-                        }}
+                        className={BTN_BASE}
+                        style={BTN_SECONDARY_STYLE}
+                        {...BTN_HOVER_HANDLERS}
                         title="CP와 Task를 계층형으로 통합하여 표시"
                     >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -219,17 +234,9 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 {viewMode === 'UNIFIED' && (
                     <button
                         onClick={() => onViewChange('MASTER')}
-                        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-                        style={{
-                            backgroundColor: 'var(--gantt-bg-tertiary)',
-                            color: 'var(--gantt-text-secondary)',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
-                        }}
+                        className={BTN_BASE}
+                        style={BTN_SECONDARY_STYLE}
+                        {...BTN_HOVER_HANDLERS}
                         title="마스터 뷰로 전환"
                     >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -241,13 +248,13 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
 
                 {(onCollapseAll || onExpandAll) && (
                     <div
-                        className="flex rounded p-0.5 gap-0.5"
+                        className={BTN_GROUP_CONTAINER}
                         style={{ backgroundColor: 'var(--gantt-bg-tertiary)' }}
                     >
                         {onExpandAll && (
                             <button
                                 onClick={onExpandAll}
-                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                                className={`${BTN_GROUP_ITEM} flex items-center gap-1`}
                                 style={{ color: 'var(--gantt-text-secondary)' }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
@@ -266,7 +273,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         {onCollapseAll && (
                             <button
                                 onClick={onCollapseAll}
-                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
+                                className={`${BTN_GROUP_ITEM} flex items-center gap-1`}
                                 style={{ color: 'var(--gantt-text-secondary)' }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
@@ -287,17 +294,9 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
 
                 <button
                     onClick={onScrollToFirst}
-                    className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-                    style={{
-                        backgroundColor: 'var(--gantt-bg-tertiary)',
-                        color: 'var(--gantt-text-secondary)',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
-                    }}
+                    className={BTN_BASE}
+                    style={BTN_SECONDARY_STYLE}
+                    {...BTN_HOVER_HANDLERS}
                     title={viewMode === 'MASTER' ? '진행 중인 CP로 스크롤' : viewMode === 'UNIFIED' ? '진행 중인 CP/Task로 스크롤' : '진행 중인 작업으로 스크롤'}
                 >
                     Focusing
@@ -306,12 +305,12 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 {/* Compact 토글 버튼 (Detail/Unified View) */}
                 {(viewMode === 'DETAIL' || viewMode === 'UNIFIED') && onToggleCompact && (
                     <div
-                        className="flex rounded p-1"
+                        className={BTN_GROUP_CONTAINER}
                         style={{ backgroundColor: 'var(--gantt-bg-tertiary)' }}
                     >
                         <button
                             onClick={() => isCompactMode && onToggleCompact()}
-                            className="rounded px-3 py-1 text-xs font-medium transition-colors"
+                            className={BTN_GROUP_ITEM}
                             style={{
                                 backgroundColor: !isCompactMode ? 'var(--gantt-bg-primary)' : 'transparent',
                                 color: !isCompactMode ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
@@ -322,7 +321,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         </button>
                         <button
                             onClick={() => !isCompactMode && onToggleCompact()}
-                            className="rounded px-3 py-1 text-xs font-medium transition-colors"
+                            className={BTN_GROUP_ITEM}
                             style={{
                                 backgroundColor: isCompactMode ? 'var(--gantt-bg-primary)' : 'transparent',
                                 color: isCompactMode ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
@@ -335,7 +334,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 )}
 
                 <div
-                    className="flex rounded p-1"
+                    className={BTN_GROUP_CONTAINER}
                     style={{ backgroundColor: 'var(--gantt-bg-tertiary)' }}
                 >
                     {(viewMode === 'MASTER'
@@ -347,7 +346,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         <button
                             key={level}
                             onClick={() => onZoomChange(level)}
-                            className="rounded px-3 py-1 text-xs font-medium transition-colors"
+                            className={BTN_GROUP_ITEM}
                             style={{
                                 backgroundColor: zoomLevel === level ? 'var(--gantt-bg-primary)' : 'transparent',
                                 color: zoomLevel === level ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
@@ -396,7 +395,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     <button
                         onClick={onSave}
                         disabled={!hasUnsavedChanges || saveStatus === 'saving'}
-                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        className={BTN_ACTION}
                         style={{
                             backgroundColor: hasUnsavedChanges ? 'var(--gantt-focus)' : 'var(--gantt-bg-tertiary)',
                             color: hasUnsavedChanges ? 'var(--gantt-text-inverse)' : 'var(--gantt-text-muted)',
@@ -425,19 +424,11 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 {onReset && (
                     <button
                         onClick={onReset}
-                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                        style={{
-                            backgroundColor: 'var(--gantt-bg-tertiary)',
-                            color: 'var(--gantt-text-secondary)',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--gantt-bg-tertiary)';
-                        }}
+                        className={BTN_ACTION}
+                        style={BTN_SECONDARY_STYLE}
+                        {...BTN_HOVER_HANDLERS}
                     >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                         초기화
@@ -453,19 +444,14 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
 
                 {onImport && (
                     <label
-                        className="flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        className={`${BTN_ACTION} cursor-pointer`}
                         style={{
                             backgroundColor: 'var(--gantt-milestone-detail)',
                             color: 'var(--gantt-text-inverse)',
                         }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.filter = 'brightness(1.15)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.filter = 'brightness(1)';
-                        }}
+                        {...BTN_ACTION_HOVER}
                     >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>
                         가져오기
@@ -487,20 +473,15 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 {onExport && (
                     <button
                         onClick={onExport}
-                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        className={BTN_ACTION}
                         style={{
                             backgroundColor: 'var(--gantt-success)',
                             color: 'var(--gantt-text-inverse)',
                         }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.filter = 'brightness(1.15)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.filter = 'brightness(1)';
-                        }}
+                        {...BTN_ACTION_HOVER}
                         title="현재 데이터를 JSON 파일로 내보내기"
                     >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                         JSON
@@ -510,20 +491,15 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 {onExportExcel && (
                     <button
                         onClick={onExportExcel}
-                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                        className={BTN_ACTION}
                         style={{
-                            backgroundColor: '#217346',
+                            backgroundColor: 'var(--gantt-excel)',
                             color: 'var(--gantt-text-inverse)',
                         }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#2d8a5e';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#217346';
-                        }}
+                        {...BTN_ACTION_HOVER}
                         title="현재 데이터를 Excel 파일로 내보내기 (간트 차트 형태)"
                     >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                         </svg>
                         Excel

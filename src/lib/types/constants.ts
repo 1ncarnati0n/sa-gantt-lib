@@ -71,6 +71,12 @@ export const GANTT_COLORS = {
 
     // Drag Preview
     dragPreview: 'var(--gantt-drag-preview)',
+
+    // Badge Colors (Block/Group 구분용)
+    badgeBlock: '#e5e7eb',          // Block 배지 배경 (light gray)
+    badgeBlockText: '#1f2937',      // Block 배지 텍스트 (dark gray)
+    badgeBlockBorder: '#374151',    // Block 배지 테두리
+    badgeGroup: '#b0b3b8',          // Group 배지 배경 (medium gray)
 } as const;
 
 /**
@@ -128,6 +134,8 @@ export const GANTT_COLORS_STATIC = {
 export const GANTT_LAYOUT = {
     ROW_HEIGHT: 30,
     ROW_HEIGHT_COMPACT: 12,
+    /** 그룹행 컴팩트 높이 (30% 감소: 30px → 21px) */
+    GROUP_ROW_HEIGHT_COMPACT: 21,
     HEADER_HEIGHT: 80,
     MILESTONE_LANE_HEIGHT: 40,
     BAR_HEIGHT: 9,

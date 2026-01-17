@@ -392,35 +392,63 @@ sa-gantt-lib/
 ├── src/
 │   ├── lib/                          # 라이브러리 코드
 │   │   ├── components/               # React 컴포넌트
-│   │   │   ├── GanttChart/           # 메인 컨테이너
+│   │   │   ├── GanttChart/           # 메인 컨테이너 (604줄, -42%)
 │   │   │   │   ├── index.tsx         # GanttChart 메인
 │   │   │   │   ├── GanttHeader.tsx   # 상단 툴바
-│   │   │   │   └── hooks/            # 초기화, 스크롤, 리사이즈 훅
+│   │   │   │   └── hooks/            # 커스텀 훅 🆕
+│   │   │   │       ├── useGanttInit.ts         # 초기화 로직
+│   │   │   │       ├── useScrollToDate.ts      # 날짜 스크롤
+│   │   │   │       ├── useSidebarResize.ts     # 사이드바 리사이즈
+│   │   │   │       ├── useSidebarColumns.ts    # 컬럼 상태 관리 🆕
+│   │   │   │       ├── useExpandCollapse.ts    # 펼침/접기 로직 🆕
+│   │   │   │       └── useGanttHandlers.ts     # 핸들러 통합 🆕
 │   │   │   │
-│   │   │   ├── GanttSidebar/         # 사이드바 모듈
+│   │   │   ├── GanttSidebar/         # 사이드바 모듈 (584줄, -23%)
 │   │   │   │   ├── index.tsx         # 사이드바 메인
 │   │   │   │   ├── SidebarHeader.tsx # 컬럼 헤더
 │   │   │   │   ├── SidebarRowMaster.tsx  # Master View 행
 │   │   │   │   ├── SidebarRowDetail.tsx  # Detail View 행
+│   │   │   │   ├── SidebarRowUnified.tsx # Unified View 행
 │   │   │   │   ├── DaysInputCell.tsx     # 일수 편집 셀
-│   │   │   │   └── hooks/            # 드래그, 선택, 클립보드 훅
+│   │   │   │   ├── MilestoneLaneSpacer.tsx # 마일스톤 레인 🆕
+│   │   │   │   └── hooks/            # 커스텀 훅
+│   │   │   │       ├── useSidebarColumns.ts   # 컬럼 관리
+│   │   │   │       ├── useSidebarDragDrop.ts  # 드래그 앤 드롭
+│   │   │   │       ├── useMultiSelect.ts      # 다중 선택
+│   │   │   │       ├── useClipboard.ts        # 클립보드
+│   │   │   │       ├── useInlineEdit.ts       # 인라인 편집
+│   │   │   │       └── useSidebarData.ts      # 데이터 계산 🆕
 │   │   │   │
-│   │   │   ├── GanttTimeline/        # 타임라인 모듈
+│   │   │   ├── GanttTimeline/        # 타임라인 모듈 (1,012줄, -32%)
 │   │   │   │   ├── index.tsx         # 타임라인 메인
 │   │   │   │   ├── TimelineHeader.tsx    # 날짜 헤더
 │   │   │   │   ├── TimelineGrid.tsx      # 배경 그리드
-│   │   │   │   ├── TaskBar.tsx           # 태스크 바
+│   │   │   │   ├── TaskBar.tsx           # 태스크 바 (Master)
+│   │   │   │   ├── DetailTaskBar.tsx     # 태스크 바 (Detail, 484줄, -16%)
 │   │   │   │   ├── AnchorPoints.tsx      # 앵커 포인트
 │   │   │   │   ├── DependencyLines.tsx   # 종속성 선
 │   │   │   │   ├── MilestoneMarker.tsx   # 마일스톤
 │   │   │   │   ├── SvgDefs.tsx           # SVG 정의 (그라데이션 등)
 │   │   │   │   ├── TimelineContextMenu.tsx
+│   │   │   │   ├── renderers/        # 렌더러 컴포넌트 🆕
+│   │   │   │   │   ├── GridLinesRenderer.tsx  # 그리드 라인
+│   │   │   │   │   └── types.ts
 │   │   │   │   └── hooks/            # 드래그 훅들
 │   │   │   │       ├── useBarDrag.ts     # 바 드래그
 │   │   │   │       ├── useGroupDrag.ts   # 그룹 드래그
 │   │   │   │       ├── useMilestoneDrag.ts
 │   │   │   │       ├── useDependencyDrag.ts  # 종속성 드래그
-│   │   │   │       └── useAnchorConnection.ts
+│   │   │   │       ├── useAnchorConnection.ts
+│   │   │   │       ├── useTimelineCore.ts    # 타임라인 코어 로직 🆕
+│   │   │   │       ├── useHoverZone.ts       # 호버 영역 감지 🆕
+│   │   │   │       ├── useEffectiveDates.ts  # 날짜 계산 🆕
+│   │   │   │       └── dragStrategies/   # 드래그 전략 패턴 🆕
+│   │   │   │           ├── index.ts
+│   │   │   │           ├── moveStrategy.ts
+│   │   │   │           ├── moveNetStrategy.ts
+│   │   │   │           ├── resizePreStrategy.ts
+│   │   │   │           ├── resizePostStrategy.ts
+│   │   │   │           └── boundaryStrategy.ts
 │   │   │   │
 │   │   │   ├── CriticalPathBar.tsx   # CP 요약 바
 │   │   │   ├── GroupSummaryBar.tsx   # 그룹 요약 바
@@ -485,7 +513,7 @@ sa-gantt-lib/
 ├── dist/                             # 빌드 출력
 ├── vite.config.ts                    # Vite 설정
 ├── tsconfig.json                     # TypeScript 설정
-└── package.json
+└── package.jsons
 ```
 
 ---
@@ -525,9 +553,16 @@ tsc --noEmit
 - [x] 상수 모듈화 (매직 넘버 제거)
 - [x] 마일스톤 대시선 연속 렌더링 (Header → Body)
 - [x] 그리드 라인 정렬 개선
-- [x] useHistory Immer patches 기반 메모리 최적화 🆕
-- [x] LocalStorage 할당량 초과 에러 처리 🆕
-- [x] 타입 가드 강화 (serializers) 🆕
+- [x] useHistory Immer patches 기반 메모리 최적화
+- [x] LocalStorage 할당량 초과 에러 처리
+- [x] 타입 가드 강화 (serializers)
+- [x] **대규모 리팩토링 완료** 🆕
+  - 드래그 전략 패턴 (6개 전략 파일)
+  - GanttTimeline 32% 감소 (1,490줄 → 1,012줄)
+  - GanttChart 42% 감소 (1,041줄 → 604줄)
+  - GanttSidebar 23% 감소 (756줄 → 584줄)
+  - DetailTaskBar 16% 감소 (577줄 → 484줄)
+  - 테스트 커버리지 186개 테스트 통과
 
 ### v0.2.0 (예정)
 - [ ] Supabase 연동 (SupabaseService)
@@ -547,7 +582,3 @@ tsc --noEmit
 MIT License © 2024-2025
 
 ---
-
-<div align="center">
-  <sub>Built with ❤️ for Construction Project Management</sub>
-</div>

@@ -6,7 +6,7 @@ import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
 import type { SidebarRowUnifiedProps } from './types';
 
-const { ROW_HEIGHT } = GANTT_LAYOUT;
+const { ROW_HEIGHT, GROUP_ROW_HEIGHT_COMPACT } = GANTT_LAYOUT;
 
 /**
  * Unified View 전용 사이드바 행 컴포넌트
@@ -57,8 +57,13 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
     rowHeight,
     onTaskDoubleClick,
 }) => {
-    // Block, CP, Group은 고정 높이, Task만 rowHeight 적용 (Compact 모드 대응)
-    const effectiveRowHeight = (isBlock || isCP || isGroup) ? ROW_HEIGHT : (rowHeight ?? ROW_HEIGHT);
+    // Block, CP는 고정 높이 30px, Group은 컴팩트 시 21px, Task는 rowHeight 적용
+    const isCompact = (rowHeight ?? ROW_HEIGHT) < ROW_HEIGHT;
+    const effectiveRowHeight = (isBlock || isCP)
+        ? ROW_HEIGHT
+        : isGroup
+            ? (isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT)
+            : (rowHeight ?? ROW_HEIGHT);
     // 기간 계산
     const duration = useMemo(() => {
         return differenceInDays(task.endDate, task.startDate) + 1;
@@ -125,13 +130,13 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
         }
     }, [onTaskUpdate, onStartEdit, task]);
 
-    // 타입 배지 색상
+    // 타입 배지 색상 (GANTT_COLORS 상수 사용)
     const badgeStyle = useMemo(() => {
         if (isBlock) {
             return {
-                backgroundColor: '#e5e7eb', // light gray
-                color: '#1f2937', // dark gray (거의 검은색)
-                border: '1.5px solid #374151', // 검은 외곽선
+                backgroundColor: GANTT_COLORS.badgeBlock,
+                color: GANTT_COLORS.badgeBlockText,
+                border: `1.5px solid ${GANTT_COLORS.badgeBlockBorder}`,
             };
         } else if (isCP) {
             return {
@@ -140,7 +145,7 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
             };
         } else if (isGroup) {
             return {
-                backgroundColor: '#b0b3b8', // 밝은 회색
+                backgroundColor: GANTT_COLORS.badgeGroup,
                 color: 'white',
             };
         } else {
@@ -193,12 +198,14 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
                     borderRight: '1px solid var(--gantt-border-light)',
                 }}
             >
-                {/* 접기/펼치기 아이콘 */}
+                {/* 접기/펼치기 아이콘 (A11y 개선: aria-label, aria-expanded 추가) */}
                 {canExpand ? (
                     <button
                         onClick={handleToggle}
                         className="mr-1 shrink-0 rounded p-1"
                         style={{ color: 'var(--gantt-text-muted)' }}
+                        aria-label={isExpanded ? '접기' : '펼치기'}
+                        aria-expanded={isExpanded}
                     >
                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>

@@ -15,6 +15,18 @@ export default defineConfig({
             insertTypesEntry: true,
         })] : []),
     ],
+    resolve: {
+        alias: {
+            '@': resolve(__dirname, 'src/lib'),
+            '@/components': resolve(__dirname, 'src/lib/components'),
+            '@/hooks': resolve(__dirname, 'src/lib/hooks'),
+            '@/utils': resolve(__dirname, 'src/lib/utils'),
+            '@/types': resolve(__dirname, 'src/lib/types'),
+            '@/store': resolve(__dirname, 'src/lib/store'),
+            '@/context': resolve(__dirname, 'src/lib/context'),
+            '@/services': resolve(__dirname, 'src/lib/services'),
+        },
+    },
     server: {
         hmr: {
             overlay: false,
