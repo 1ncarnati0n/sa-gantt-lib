@@ -176,17 +176,50 @@ export const useTheme = (): ThemeContextValue => {
 
 /**
  * ThemeProvider 없이도 안전하게 사용할 수 있는 훅
- * Provider가 없으면 기본값 반환
+ * Provider가 없으면 부모의 .dark 클래스를 감지하여 테마 반환
+ * next-themes 등 외부 테마 시스템과 호환
  */
 export const useThemeSafe = (): ThemeContextValue => {
     const context = useContext(ThemeContext);
+    const [externalDark, setExternalDark] = useState(false);
+
+    // 외부 테마 시스템 (next-themes 등) 감지
+    useEffect(() => {
+        if (context !== undefined) return; // ThemeProvider 있으면 스킵
+
+        const checkDarkMode = () => {
+            if (typeof document === 'undefined') return;
+            // html 또는 body에 .dark 클래스가 있는지 확인
+            const isDark = document.documentElement.classList.contains('dark') ||
+                          document.body.classList.contains('dark');
+            setExternalDark(isDark);
+        };
+
+        checkDarkMode();
+
+        // MutationObserver로 클래스 변경 감지
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    checkDarkMode();
+                }
+            });
+        });
+
+        observer.observe(document.documentElement, { attributes: true });
+        observer.observe(document.body, { attributes: true });
+
+        return () => observer.disconnect();
+    }, [context]);
 
     if (context === undefined) {
         return {
             theme: 'system',
-            resolvedTheme: 'light',
-            setTheme: () => {},
-            isDark: false,
+            resolvedTheme: externalDark ? 'dark' : 'light',
+            setTheme: () => {
+                console.warn('[sa-gantt-lib] setTheme called without ThemeProvider. Use ThemeProvider or your app\'s theme system.');
+            },
+            isDark: externalDark,
         };
     }
 

@@ -439,7 +439,7 @@ export function GanttChart({
     return (
         <div
             ref={containerRef}
-            className={`flex h-full w-full flex-col ${className || ''}`}
+            className={`sa-gantt-root flex h-full w-full flex-col ${className || ''}`}
             style={{ backgroundColor: 'var(--gantt-bg-secondary)', ...style }}
         >
             <GanttHeader
@@ -535,7 +535,7 @@ export function GanttChart({
                 </div>
 
                 {/* Scrollable Content Row */}
-                <div ref={scrollRef} className="relative flex flex-1 overflow-auto scrollbar-hide" onScroll={handleContentScroll}>
+                <div ref={scrollRef} className="relative flex flex-1 overflow-auto gantt-scrollbar-hide" onScroll={handleContentScroll}>
                     <div
                         className="sticky left-0 z-10 flex shrink-0"
                         style={{ width: sidebarWidth + 4, willChange: 'width', alignSelf: 'flex-start' }}

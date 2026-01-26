@@ -1,13 +1,15 @@
-@import "tailwindcss";
-
 /* ============================================
  * SA-Gantt-Lib 테마 시스템
+ * NOTE: 이 라이브러리는 호스트 앱에 Tailwind CSS가 필요합니다.
+ * 컴포넌트에서 flex, items-center 등 표준 Tailwind 클래스를 사용합니다.
  * ============================================ */
 
 /* ============================================
  * 라이트 모드 (기본)
+ * CSS 변수는 .sa-gantt-root 컨테이너로 스코핑됨
+ * 호스트 앱의 전역 스타일과 충돌 방지
  * ============================================ */
-:root {
+.sa-gantt-root {
   /* Level 1: 공구 공정표 */
   --gantt-vermilion: #E34234;
   --gantt-teal: #008080;
@@ -81,9 +83,12 @@
 
 /* ============================================
  * 다크 모드 (클래스 기반)
+ * next-themes 호환: 부모 어딘가에 .dark 클래스가 있으면 적용
+ * .sa-gantt-root.dark: 라이브러리 자체 ThemeProvider 사용 시
+ * .dark .sa-gantt-root: 호스트 앱(next-themes 등)에서 .dark 클래스 사용 시
  * ============================================ */
-:root.dark,
-.dark {
+.sa-gantt-root.dark,
+.dark .sa-gantt-root {
   /* Level 1: 공구 공정표 (밝기 증가) */
   --gantt-vermilion: #F97066;
   --gantt-teal: #2DD4BF;
@@ -157,10 +162,11 @@
 
 /* ============================================
  * 시스템 설정 자동 적용 (수동 선택 없을 때)
- * .dark 클래스가 없고 시스템이 다크모드일 때 적용
+ * .dark/.light 클래스가 없고 시스템이 다크모드일 때 적용
+ * next-themes의 enableSystem 옵션과 호환
  * ============================================ */
 @media (prefers-color-scheme: dark) {
-  :root:not(.light):not(.dark) {
+  .sa-gantt-root:not(.light):not(.dark) {
     /* 다크모드 색상은 .dark 클래스와 동일하게 적용 */
     /* Level 1: 공구 공정표 */
     --gantt-vermilion: #F97066;
@@ -222,102 +228,9 @@
 }
 
 /* ============================================
- * Tailwind Design Token 시스템
- * 모든 CSS 변수를 Tailwind 유틸리티로 사용 가능
- * 예: bg-gantt-bg-primary, text-gantt-text-secondary
- * ============================================ */
-@theme {
-  /* ===== Color Palette ===== */
-  
-  /* Level 1: 공구 공정표 */
-  --color-vermilion: var(--gantt-vermilion);
-  --color-teal: var(--gantt-teal);
-
-  /* Level 2: 주공정표 */
-  --color-gantt-red: var(--gantt-red);
-  --color-gantt-blue: var(--gantt-blue);
-
-  /* Milestone */
-  --color-gantt-milestone: var(--gantt-milestone);
-  --color-gantt-milestone-detail: var(--gantt-milestone-detail);
-  --color-gantt-milestone-detail-hover: var(--gantt-milestone-detail-hover);
-
-  /* UI Elements */
-  --color-gantt-dependency: var(--gantt-dependency);
-  --color-gantt-grid: var(--gantt-grid);
-  --color-gantt-grid-dark: var(--gantt-grid-dark);
-  --color-gantt-focus: var(--gantt-focus);
-  --color-gantt-success: var(--gantt-success);
-
-  /* Backgrounds */
-  --color-gantt-bg-primary: var(--gantt-bg-primary);
-  --color-gantt-bg-secondary: var(--gantt-bg-secondary);
-  --color-gantt-bg-tertiary: var(--gantt-bg-tertiary);
-  --color-gantt-bg-hover: var(--gantt-bg-hover);
-  --color-gantt-bg-selected: var(--gantt-bg-selected);
-
-  /* Text */
-  --color-gantt-text-primary: var(--gantt-text-primary);
-  --color-gantt-text-secondary: var(--gantt-text-secondary);
-  --color-gantt-text-muted: var(--gantt-text-muted);
-  --color-gantt-text-inverse: var(--gantt-text-inverse);
-
-  /* Borders */
-  --color-gantt-border: var(--gantt-border);
-  --color-gantt-border-light: var(--gantt-border-light);
-  --color-gantt-border-focus: var(--gantt-border-focus);
-
-  /* Special Days Background */
-  --color-gantt-weekend-bg: var(--gantt-weekend-bg);
-  --color-gantt-holiday-bg: var(--gantt-holiday-bg);
-  --color-gantt-sunday-bg: var(--gantt-sunday-bg);
-
-  /* Special Days Text */
-  --color-gantt-weekend-text: var(--gantt-weekend-text);
-  --color-gantt-holiday-text: var(--gantt-holiday-text);
-  --color-gantt-sunday-text: var(--gantt-sunday-text);
-
-  /* Summary Bar */
-  --color-gantt-summary-bar: var(--gantt-summary-bar);
-  --color-gantt-summary-progress: var(--gantt-summary-progress);
-
-  /* Anchor Points */
-  --color-gantt-anchor-fill: var(--gantt-anchor-fill);
-  --color-gantt-anchor-stroke: var(--gantt-anchor-stroke);
-  --color-gantt-anchor-hover: var(--gantt-anchor-hover);
-
-  /* Tooltip */
-  --color-gantt-tooltip-bg: var(--gantt-tooltip-bg);
-  --color-gantt-tooltip-text: var(--gantt-tooltip-text);
-
-  /* Drag Preview */
-  --color-gantt-drag-preview: var(--gantt-drag-preview);
-
-  /* Resizer */
-  --color-gantt-resizer: var(--gantt-resizer);
-  --color-gantt-resizer-hover: var(--gantt-resizer-hover);
-  --color-gantt-resizer-active: var(--gantt-resizer-active);
-
-  /* ===== Spacing ===== */
-  --spacing-gantt-row: 30px;
-  --spacing-gantt-header: 80px;
-  --spacing-gantt-milestone-lane: 40px;
-  --spacing-gantt-bar: 14px;
-  --spacing-gantt-sidebar: 500px;
-  --spacing-gantt-sidebar-min: 300px;
-  --spacing-gantt-sidebar-max: 800px;
-
-  /* ===== Animation ===== */
-  --transition-timing-gantt-fast: 150ms;
-  --transition-timing-gantt-normal: 200ms;
-  --transition-timing-gantt-slow: 300ms;
-}
-
-/* ============================================
  * 커스텀 유틸리티 클래스
- * Tailwind @apply로 조합하여 재사용 가능한 클래스
+ * CSS 변수를 사용한 간트 전용 스타일
  * ============================================ */
-@layer utilities {
   /* ===== Background Colors ===== */
   .gantt-bg {
     background-color: var(--gantt-bg-primary);
@@ -508,12 +421,11 @@
     background: var(--gantt-text-muted);
   }
 
-  .scrollbar-hide {
+  .gantt-scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  .scrollbar-hide::-webkit-scrollbar {
+  .gantt-scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-}
 
