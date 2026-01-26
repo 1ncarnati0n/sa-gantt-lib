@@ -6,6 +6,7 @@ import {
     ConstructionTask,
     GANTT_LAYOUT,
 } from '../../types';
+import { DEFAULT_CALENDAR_SETTINGS } from '../../utils/date';
 import { GanttSidebarContextMenu } from '../GanttSidebarContextMenu';
 import { GanttSidebarNewTaskForm } from '../GanttSidebarNewTaskForm';
 import { GanttSidebarNewCPForm } from '../GanttSidebarNewCPForm';
@@ -31,12 +32,6 @@ import {
 import type { GanttSidebarProps } from './types';
 
 const { ROW_HEIGHT } = GANTT_LAYOUT;
-
-const DEFAULT_CALENDAR_SETTINGS = {
-    workOnSaturdays: true,
-    workOnSundays: false,
-    workOnHolidays: false,
-};
 
 export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
     ({

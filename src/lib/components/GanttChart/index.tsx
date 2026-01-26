@@ -21,10 +21,10 @@ import { calculateDateRange } from '../../utils/dateUtils';
 import {
     GanttChartProps,
     ConstructionTask,
-    CalendarSettings,
     ZOOM_CONFIG,
     getLayoutValues,
 } from '../../types';
+import { DEFAULT_CALENDAR_SETTINGS } from '../../utils/date';
 
 // Sub-components
 import { GanttHeader } from './GanttHeader';
@@ -40,12 +40,6 @@ import {
 } from './hooks';
 
 export type { BarDragResult };
-
-const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
-    workOnSaturdays: true,
-    workOnSundays: false,
-    workOnHolidays: false,
-};
 
 export function GanttChart({
     tasks,

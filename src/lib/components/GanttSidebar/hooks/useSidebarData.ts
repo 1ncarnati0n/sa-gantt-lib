@@ -1,20 +1,17 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import type {
-    ConstructionTask,
-    ViewMode,
-    CalendarSettings,
-    CriticalPathSummary,
+import {
+    type ConstructionTask,
+    type ViewMode,
+    type CalendarSettings,
+    type CriticalPathSummary,
+    GANTT_LAYOUT,
 } from '../../../types';
 import { calculateCriticalPath } from '../../../utils/criticalPathUtils';
 import { collectDescendantTasks } from '../../../utils/groupUtils';
 
-const { ROW_HEIGHT, ROW_HEIGHT_COMPACT, GROUP_ROW_HEIGHT_COMPACT } = {
-    ROW_HEIGHT: 30,
-    ROW_HEIGHT_COMPACT: 12,
-    GROUP_ROW_HEIGHT_COMPACT: 21,
-};
+const { ROW_HEIGHT, ROW_HEIGHT_COMPACT, GROUP_ROW_HEIGHT_COMPACT } = GANTT_LAYOUT;
 
 // ============================================
 // useSidebarData Hook

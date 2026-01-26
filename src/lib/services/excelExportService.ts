@@ -6,7 +6,9 @@
  * - CP별 시트: 각 공구의 Level 2 상세 공정
  */
 
-import ExcelJS from 'exceljs';
+// ExcelJS는 동적으로 import됩니다 (번들 최적화)
+// 타입 정의만 정적으로 가져옵니다
+import type ExcelJS from 'exceljs';
 import { format, eachDayOfInterval, differenceInDays, isSameDay } from 'date-fns';
 import type { ConstructionTask, Milestone } from '../types';
 
@@ -481,6 +483,9 @@ const addGanttSheet = (
 
 export const exportToExcel = async (data: ExcelExportData): Promise<void> => {
     const { tasks, milestones, fileName } = data;
+
+    // ExcelJS 동적 로드 (번들 최적화: ~200KB 절약)
+    const ExcelJS = (await import('exceljs')).default;
 
     // 워크북 생성
     const workbook = new ExcelJS.Workbook();
