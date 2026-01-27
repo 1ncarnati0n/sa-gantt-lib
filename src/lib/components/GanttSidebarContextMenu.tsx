@@ -28,41 +28,65 @@ const DeleteConfirmModal: React.FC<{
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 z-[60] bg-black/50 transition-opacity"
+                className="fixed inset-0 z-[10000] bg-black/50 transition-opacity"
                 onClick={onCancel}
             />
 
             {/* Modal */}
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4">
                 <div
-                    className="w-[400px] rounded-xl bg-white shadow-2xl border border-gray-200"
+                    className="w-[400px] rounded-xl shadow-2xl"
+                    style={{
+                        backgroundColor: 'var(--gantt-bg-primary)',
+                        border: '1px solid var(--gantt-border)',
+                    }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-5 py-4 border-b border-gray-100">
+                    <div
+                        className="px-5 py-4"
+                        style={{ borderBottom: '1px solid var(--gantt-border)' }}
+                    >
                         <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                                <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                                <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-base font-bold text-gray-900">삭제 확인</h3>
-                                <p className="text-sm text-gray-500">이 작업은 되돌릴 수 없습니다</p>
+                                <h3
+                                    className="text-base font-bold"
+                                    style={{ color: 'var(--gantt-text-primary)' }}
+                                >
+                                    삭제 확인
+                                </h3>
+                                <p
+                                    className="text-sm"
+                                    style={{ color: 'var(--gantt-text-muted)' }}
+                                >
+                                    이 작업은 되돌릴 수 없습니다
+                                </p>
                             </div>
                         </div>
                     </div>
 
                     {/* Body */}
                     <div className="px-5 py-4">
-                        <div className="rounded-lg bg-red-50 p-4">
-                            <p className="text-sm text-gray-600 mb-3">
-                                다음 <span className="font-semibold text-red-600">{taskNames.length}개</span> 항목을 삭제하시겠습니까?
+                        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-4">
+                            <p
+                                className="text-sm mb-3"
+                                style={{ color: 'var(--gantt-text-secondary)' }}
+                            >
+                                다음 <span className="font-semibold text-red-600 dark:text-red-400">{taskNames.length}개</span> 항목을 삭제하시겠습니까?
                             </p>
                             <ul className="max-h-[150px] overflow-auto space-y-1.5">
                                 {taskNames.map((name, idx) => (
-                                    <li key={idx} className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                                        <span className="h-2 w-2 rounded-full bg-red-400 shrink-0" />
+                                    <li
+                                        key={idx}
+                                        className="flex items-center gap-2 text-sm font-medium"
+                                        style={{ color: 'var(--gantt-text-primary)' }}
+                                    >
+                                        <span className="h-2 w-2 rounded-full bg-red-400 dark:bg-red-500 shrink-0" />
                                         {name}
                                     </li>
                                 ))}
@@ -71,10 +95,19 @@ const DeleteConfirmModal: React.FC<{
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-xl">
+                    <div
+                        className="flex justify-end gap-3 px-5 py-4 rounded-b-xl"
+                        style={{
+                            borderTop: '1px solid var(--gantt-border)',
+                            backgroundColor: 'var(--gantt-bg-secondary)',
+                        }}
+                    >
                         <button
                             onClick={onCancel}
-                            className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                            className="rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                            style={{ color: 'var(--gantt-text-primary)' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gantt-bg-hover)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
                             취소
                         </button>
@@ -174,15 +207,21 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
 
     return ReactDOM.createPortal(
         <div
-            className="fixed z-[9999] min-w-[160px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-            style={{ left: x, top: y }}
+            className="fixed z-[9999] min-w-[160px] rounded-lg py-1 shadow-lg"
+            style={{
+                left: x,
+                top: y,
+                backgroundColor: 'var(--gantt-bg-primary)',
+                border: '1px solid var(--gantt-border)',
+            }}
             onClick={(e) => e.stopPropagation()}
         >
             {/* 그룹화 (1개 이상 선택 시, GROUP이 아닌 경우) */}
             {selectedTaskIds.size >= 1 && !hasGroupSelected && onTaskGroup && (
                 <button
                     onClick={handleGroup}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    className="context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm"
+                    style={{ color: 'var(--gantt-text-primary)' }}
                 >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -190,12 +229,13 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
                     그룹화 ({selectedTaskIds.size}개 선택됨)
                 </button>
             )}
-            
+
             {/* 그룹 해제 (GROUP 1개 선택 시) */}
             {isGroupSelected && onTaskUngroup && (
                 <button
                     onClick={handleUngroup}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    className="context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm"
+                    style={{ color: 'var(--gantt-text-primary)' }}
                 >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
@@ -203,7 +243,7 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
                     그룹 해제
                 </button>
             )}
-            
+
             {/* 이름 변경 (1개 선택 시) */}
             {selectedTaskIds.size === 1 && onStartRename && (
                 <button
@@ -212,7 +252,8 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
                         onStartRename(selectedId);
                         onClose();
                     }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    className="context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm"
+                    style={{ color: 'var(--gantt-text-primary)' }}
                 >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -220,14 +261,14 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
                     이름 변경
                 </button>
             )}
-            
+
             {/* 삭제 */}
             {onTaskDelete && (
                 <>
-                    <div className="my-1 border-t border-gray-200" />
+                    <div className="my-1" style={{ borderTop: '1px solid var(--gantt-border)' }} />
                     <button
                         onClick={handleDeleteClick}
-                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                        className="context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 dark:text-red-400"
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -236,22 +277,23 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
                     </button>
                 </>
             )}
-            
+
             {/* 선택 해제 */}
-            <div className="my-1 border-t border-gray-200" />
+            <div className="my-1" style={{ borderTop: '1px solid var(--gantt-border)' }} />
             <button
                 onClick={() => {
                     onDeselect();
                     onClose();
                 }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-100"
+                className="context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm"
+                style={{ color: 'var(--gantt-text-muted)' }}
             >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 선택 해제
             </button>
-            
+
             {/* 삭제 확인 모달 */}
             {showDeleteConfirm && (
                 <DeleteConfirmModal

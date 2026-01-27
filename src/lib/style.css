@@ -10,6 +10,11 @@
  * 호스트 앱의 전역 스타일과 충돌 방지
  * ============================================ */
 .sa-gantt-root {
+  /* 폰트 렌더링 일관성 (호스트 앱과 동일하게) */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+
   /* Level 1: 공구 공정표 */
   --gantt-vermilion: #E34234;
   --gantt-teal: #008080;
@@ -427,5 +432,13 @@
   }
   .gantt-scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* ===== Context Menu Item ===== */
+  .context-menu-item {
+    transition: background-color 150ms ease;
+  }
+  .context-menu-item:hover {
+    background-color: var(--gantt-bg-hover);
   }
 

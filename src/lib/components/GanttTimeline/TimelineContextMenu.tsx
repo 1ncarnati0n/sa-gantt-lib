@@ -69,12 +69,23 @@ export const TimelineContextMenu: React.FC<TimelineContextMenuProps> = ({
 
     return ReactDOM.createPortal(
         <div
-            className="fixed z-100 min-w-[180px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-            style={{ left: adjustedX, top: adjustedY }}
+            className="fixed z-[9999] min-w-[180px] rounded-lg py-1 shadow-lg"
+            style={{
+                left: adjustedX,
+                top: adjustedY,
+                backgroundColor: 'var(--gantt-bg-primary)',
+                border: '1px solid var(--gantt-border)',
+            }}
             onClick={(e) => e.stopPropagation()}
         >
             {/* 날짜 표시 헤더 */}
-            <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
+            <div
+                className="px-4 py-2 text-xs"
+                style={{
+                    color: 'var(--gantt-text-muted)',
+                    borderBottom: '1px solid var(--gantt-border)',
+                }}
+            >
                 {format(clickedDate, 'yyyy-MM-dd (EEE)', { locale: ko })}
             </div>
 
@@ -86,14 +97,15 @@ export const TimelineContextMenu: React.FC<TimelineContextMenuProps> = ({
                             onDeleteDependency!(selectedDependencyId!);
                             onClose();
                         }}
-                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                        className="context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 dark:text-red-400"
+                        style={{ ['--hover-bg' as string]: 'var(--gantt-bg-hover)' }}
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                         종속성 삭제
                     </button>
-                    <div className="my-1 border-t border-gray-200" />
+                    <div className="my-1" style={{ borderTop: '1px solid var(--gantt-border)' }} />
                 </>
             )}
 
@@ -104,7 +116,8 @@ export const TimelineContextMenu: React.FC<TimelineContextMenuProps> = ({
                         onAddTask(clickedDate);
                         onClose();
                     }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    className="context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm"
+                    style={{ color: 'var(--gantt-text-primary)' }}
                 >
                     <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -119,7 +132,8 @@ export const TimelineContextMenu: React.FC<TimelineContextMenuProps> = ({
                     onAddMilestone(clickedDate);
                     onClose();
                 }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                className="context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm"
+                style={{ color: 'var(--gantt-text-primary)' }}
             >
                 <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
@@ -128,10 +142,11 @@ export const TimelineContextMenu: React.FC<TimelineContextMenuProps> = ({
             </button>
 
             {/* 구분선 + 취소 */}
-            <div className="my-1 border-t border-gray-200" />
+            <div className="my-1" style={{ borderTop: '1px solid var(--gantt-border)' }} />
             <button
                 onClick={onClose}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-100"
+                className="context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm"
+                style={{ color: 'var(--gantt-text-muted)' }}
             >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

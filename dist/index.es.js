@@ -156,7 +156,7 @@ function si() {
         "Accessing element.ref was removed in React 19. ref is now a regular prop. It will be removed from the JSX Element type in a future release."
       )), S = this.props.ref, S !== void 0 ? S : null;
     }
-    function f(S, A, M, F, C, Y) {
+    function f(S, A, M, F, I, Y) {
       var G = M.ref;
       return S = {
         $$typeof: u,
@@ -181,7 +181,7 @@ function si() {
         configurable: !1,
         enumerable: !1,
         writable: !0,
-        value: C
+        value: I
       }), Object.defineProperty(S, "_debugTask", {
         configurable: !1,
         enumerable: !1,
@@ -189,7 +189,7 @@ function si() {
         value: Y
       }), Object.freeze && (Object.freeze(S.props), Object.freeze(S)), S;
     }
-    function d(S, A, M, F, C, Y) {
+    function d(S, A, M, F, I, Y) {
       var G = A.children;
       if (G !== void 0)
         if (F)
@@ -233,7 +233,7 @@ React keys must be passed directly to JSX without using spread:
         G,
         M,
         s(),
-        C,
+        I,
         Y
       );
     }
@@ -251,7 +251,7 @@ React keys must be passed directly to JSX without using spread:
         return S();
       }
     };
-    var K, U = {}, I = m.react_stack_bottom_frame.bind(
+    var K, U = {}, C = m.react_stack_bottom_frame.bind(
       m,
       o
     )(), V = H(n(o)), X = {};
@@ -262,7 +262,7 @@ React keys must be passed directly to JSX without using spread:
         A,
         M,
         !1,
-        F ? Error("react-stack-top-frame") : I,
+        F ? Error("react-stack-top-frame") : C,
         F ? H(n(S)) : V
       );
     }, er.jsxs = function(S, A, M) {
@@ -272,7 +272,7 @@ React keys must be passed directly to JSX without using spread:
         A,
         M,
         !0,
-        F ? Error("react-stack-top-frame") : I,
+        F ? Error("react-stack-top-frame") : C,
         F ? H(n(S)) : V
       );
     };
@@ -613,7 +613,7 @@ const wi = {
     evening: "evening",
     night: "night"
   }
-}, Ii = {
+}, Ci = {
   narrow: {
     am: "a",
     pm: "p",
@@ -644,7 +644,7 @@ const wi = {
     evening: "in the evening",
     night: "at night"
   }
-}, Ci = (e, t) => {
+}, Ii = (e, t) => {
   const r = Number(e), n = r % 100;
   if (n > 20 || n < 10)
     switch (n % 10) {
@@ -657,7 +657,7 @@ const wi = {
     }
   return r + "th";
 }, Mi = {
-  ordinalNumber: Ci,
+  ordinalNumber: Ii,
   era: dt({
     values: wi,
     defaultWidth: "wide"
@@ -678,7 +678,7 @@ const wi = {
   dayPeriod: dt({
     values: Si,
     defaultWidth: "wide",
-    formattingValues: Ii,
+    formattingValues: Ci,
     defaultFormattingWidth: "wide"
   })
 };
@@ -1648,7 +1648,7 @@ function Dl(e) {
   const t = e.match(gl);
   if (!t) return NaN;
   const r = kn(t[1]), n = kn(t[2]), s = kn(t[3]);
-  return Il(r, n, s) ? r * Go + n * Bo + s * 1e3 : NaN;
+  return Cl(r, n, s) ? r * Go + n * Bo + s * 1e3 : NaN;
 }
 function kn(e) {
   return e && parseFloat(e.replace(",", ".")) || 0;
@@ -1658,7 +1658,7 @@ function vl(e) {
   const t = e.match(yl);
   if (!t) return 0;
   const r = t[1] === "+" ? -1 : 1, n = parseInt(t[2]), s = t[3] && parseInt(t[3]) || 0;
-  return Cl(n, s) ? r * (n * Go + s * Bo) : NaN;
+  return Il(n, s) ? r * (n * Go + s * Bo) : NaN;
 }
 function wl(e, t, r) {
   const n = /* @__PURE__ */ new Date(0);
@@ -1679,10 +1679,10 @@ function Tl(e, t) {
 function Sl(e, t, r) {
   return t >= 1 && t <= 53 && r >= 0 && r <= 6;
 }
-function Il(e, t, r) {
+function Cl(e, t, r) {
   return e === 24 ? t === 0 && r === 0 : r >= 0 && r < 60 && t >= 0 && t < 60 && e >= 0 && e < 25;
 }
-function Cl(e, t) {
+function Il(e, t) {
   return t >= 0 && t <= 59;
 }
 const je = (e, t = [], r) => !!(!r.workOnSaturdays && Vo(e) || !r.workOnSundays && Yo(e) || !r.workOnHolidays && t.some((n) => vr(n, e))), oh = (e) => Vo(e) || Yo(e), Zo = (e, t, r = [], n) => {
@@ -1961,7 +1961,7 @@ const Xr = [
   HOVER: 1,
   /** 선택 상태 스트로크 너비 */
   SELECTED: 1.25
-}, Ie = {
+}, Ce = {
   /** 마커 너비 */
   WIDTH: 3,
   /** 마커 높이 */
@@ -2143,55 +2143,108 @@ const Xr = [
     /* @__PURE__ */ a.jsx(
       "div",
       {
-        className: "fixed inset-0 z-[60] bg-black/50 transition-opacity",
+        className: "fixed inset-0 z-[10000] bg-black/50 transition-opacity",
         onClick: r
       }
     ),
-    /* @__PURE__ */ a.jsx("div", { className: "fixed inset-0 z-[60] flex items-center justify-center p-4", children: /* @__PURE__ */ a.jsxs(
+    /* @__PURE__ */ a.jsx("div", { className: "fixed inset-0 z-[10001] flex items-center justify-center p-4", children: /* @__PURE__ */ a.jsxs(
       "div",
       {
-        className: "w-[400px] rounded-xl bg-white shadow-2xl border border-gray-200",
+        className: "w-[400px] rounded-xl shadow-2xl",
+        style: {
+          backgroundColor: "var(--gantt-bg-primary)",
+          border: "1px solid var(--gantt-border)"
+        },
         onClick: (n) => n.stopPropagation(),
         children: [
-          /* @__PURE__ */ a.jsx("div", { className: "px-5 py-4 border-b border-gray-100", children: /* @__PURE__ */ a.jsxs("div", { className: "flex items-center gap-3", children: [
-            /* @__PURE__ */ a.jsx("div", { className: "flex h-10 w-10 items-center justify-center rounded-full bg-red-100", children: /* @__PURE__ */ a.jsx("svg", { className: "h-5 w-5 text-red-600", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" }) }) }),
-            /* @__PURE__ */ a.jsxs("div", { children: [
-              /* @__PURE__ */ a.jsx("h3", { className: "text-base font-bold text-gray-900", children: "삭제 확인" }),
-              /* @__PURE__ */ a.jsx("p", { className: "text-sm text-gray-500", children: "이 작업은 되돌릴 수 없습니다" })
-            ] })
-          ] }) }),
-          /* @__PURE__ */ a.jsx("div", { className: "px-5 py-4", children: /* @__PURE__ */ a.jsxs("div", { className: "rounded-lg bg-red-50 p-4", children: [
-            /* @__PURE__ */ a.jsxs("p", { className: "text-sm text-gray-600 mb-3", children: [
-              "다음 ",
-              /* @__PURE__ */ a.jsxs("span", { className: "font-semibold text-red-600", children: [
-                e.length,
-                "개"
-              ] }),
-              " 항목을 삭제하시겠습니까?"
-            ] }),
-            /* @__PURE__ */ a.jsx("ul", { className: "max-h-[150px] overflow-auto space-y-1.5", children: e.map((n, s) => /* @__PURE__ */ a.jsxs("li", { className: "flex items-center gap-2 text-sm font-medium text-gray-800", children: [
-              /* @__PURE__ */ a.jsx("span", { className: "h-2 w-2 rounded-full bg-red-400 shrink-0" }),
-              n
-            ] }, s)) })
-          ] }) }),
-          /* @__PURE__ */ a.jsxs("div", { className: "flex justify-end gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-xl", children: [
-            /* @__PURE__ */ a.jsx(
-              "button",
+          /* @__PURE__ */ a.jsx(
+            "div",
+            {
+              className: "px-5 py-4",
+              style: { borderBottom: "1px solid var(--gantt-border)" },
+              children: /* @__PURE__ */ a.jsxs("div", { className: "flex items-center gap-3", children: [
+                /* @__PURE__ */ a.jsx("div", { className: "flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30", children: /* @__PURE__ */ a.jsx("svg", { className: "h-5 w-5 text-red-600 dark:text-red-400", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" }) }) }),
+                /* @__PURE__ */ a.jsxs("div", { children: [
+                  /* @__PURE__ */ a.jsx(
+                    "h3",
+                    {
+                      className: "text-base font-bold",
+                      style: { color: "var(--gantt-text-primary)" },
+                      children: "삭제 확인"
+                    }
+                  ),
+                  /* @__PURE__ */ a.jsx(
+                    "p",
+                    {
+                      className: "text-sm",
+                      style: { color: "var(--gantt-text-muted)" },
+                      children: "이 작업은 되돌릴 수 없습니다"
+                    }
+                  )
+                ] })
+              ] })
+            }
+          ),
+          /* @__PURE__ */ a.jsx("div", { className: "px-5 py-4", children: /* @__PURE__ */ a.jsxs("div", { className: "rounded-lg bg-red-50 dark:bg-red-900/20 p-4", children: [
+            /* @__PURE__ */ a.jsxs(
+              "p",
               {
-                onClick: r,
-                className: "rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors",
-                children: "취소"
+                className: "text-sm mb-3",
+                style: { color: "var(--gantt-text-secondary)" },
+                children: [
+                  "다음 ",
+                  /* @__PURE__ */ a.jsxs("span", { className: "font-semibold text-red-600 dark:text-red-400", children: [
+                    e.length,
+                    "개"
+                  ] }),
+                  " 항목을 삭제하시겠습니까?"
+                ]
               }
             ),
-            /* @__PURE__ */ a.jsx(
-              "button",
+            /* @__PURE__ */ a.jsx("ul", { className: "max-h-[150px] overflow-auto space-y-1.5", children: e.map((n, s) => /* @__PURE__ */ a.jsxs(
+              "li",
               {
-                onClick: t,
-                className: "rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors shadow-sm",
-                children: "삭제"
-              }
-            )
-          ] })
+                className: "flex items-center gap-2 text-sm font-medium",
+                style: { color: "var(--gantt-text-primary)" },
+                children: [
+                  /* @__PURE__ */ a.jsx("span", { className: "h-2 w-2 rounded-full bg-red-400 dark:bg-red-500 shrink-0" }),
+                  n
+                ]
+              },
+              s
+            )) })
+          ] }) }),
+          /* @__PURE__ */ a.jsxs(
+            "div",
+            {
+              className: "flex justify-end gap-3 px-5 py-4 rounded-b-xl",
+              style: {
+                borderTop: "1px solid var(--gantt-border)",
+                backgroundColor: "var(--gantt-bg-secondary)"
+              },
+              children: [
+                /* @__PURE__ */ a.jsx(
+                  "button",
+                  {
+                    onClick: r,
+                    className: "rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+                    style: { color: "var(--gantt-text-primary)" },
+                    onMouseEnter: (n) => n.currentTarget.style.backgroundColor = "var(--gantt-bg-hover)",
+                    onMouseLeave: (n) => n.currentTarget.style.backgroundColor = "transparent",
+                    children: "취소"
+                  }
+                ),
+                /* @__PURE__ */ a.jsx(
+                  "button",
+                  {
+                    onClick: t,
+                    className: "rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors shadow-sm",
+                    children: "삭제"
+                  }
+                )
+              ]
+            }
+          )
         ]
       }
     ) })
@@ -2240,15 +2293,21 @@ const Xr = [
     /* @__PURE__ */ a.jsxs(
       "div",
       {
-        className: "fixed z-[9999] min-w-[160px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg",
-        style: { left: e, top: t },
+        className: "fixed z-[9999] min-w-[160px] rounded-lg py-1 shadow-lg",
+        style: {
+          left: e,
+          top: t,
+          backgroundColor: "var(--gantt-bg-primary)",
+          border: "1px solid var(--gantt-border)"
+        },
         onClick: (k) => k.stopPropagation(),
         children: [
           n.size >= 1 && !m && o && /* @__PURE__ */ a.jsxs(
             "button",
             {
               onClick: u,
-              className: "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100",
+              className: "context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm",
+              style: { color: "var(--gantt-text-primary)" },
               children: [
                 /* @__PURE__ */ a.jsx("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" }) }),
                 "그룹화 (",
@@ -2261,7 +2320,8 @@ const Xr = [
             "button",
             {
               onClick: g,
-              className: "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100",
+              className: "context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm",
+              style: { color: "var(--gantt-text-primary)" },
               children: [
                 /* @__PURE__ */ a.jsx("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M4 6h16M4 12h16m-7 6h7" }) }),
                 "그룹 해제"
@@ -2275,7 +2335,8 @@ const Xr = [
                 const k = Array.from(n)[0];
                 c(k), f();
               },
-              className: "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100",
+              className: "context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm",
+              style: { color: "var(--gantt-text-primary)" },
               children: [
                 /* @__PURE__ */ a.jsx("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" }) }),
                 "이름 변경"
@@ -2283,12 +2344,12 @@ const Xr = [
             }
           ),
           l && /* @__PURE__ */ a.jsxs(a.Fragment, { children: [
-            /* @__PURE__ */ a.jsx("div", { className: "my-1 border-t border-gray-200" }),
+            /* @__PURE__ */ a.jsx("div", { className: "my-1", style: { borderTop: "1px solid var(--gantt-border)" } }),
             /* @__PURE__ */ a.jsxs(
               "button",
               {
                 onClick: p,
-                className: "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50",
+                className: "context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 dark:text-red-400",
                 children: [
                   /* @__PURE__ */ a.jsx("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" }) }),
                   "삭제 ",
@@ -2297,14 +2358,15 @@ const Xr = [
               }
             )
           ] }),
-          /* @__PURE__ */ a.jsx("div", { className: "my-1 border-t border-gray-200" }),
+          /* @__PURE__ */ a.jsx("div", { className: "my-1", style: { borderTop: "1px solid var(--gantt-border)" } }),
           /* @__PURE__ */ a.jsxs(
             "button",
             {
               onClick: () => {
                 d(), f();
               },
-              className: "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-100",
+              className: "context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm",
+              style: { color: "var(--gantt-text-muted)" },
               children: [
                 /* @__PURE__ */ a.jsx("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M6 18L18 6M6 6l12 12" }) }),
                 "선택 해제"
@@ -2998,16 +3060,16 @@ const ql = [
   onTaskMove: H,
   onTaskUpdate: K,
   cpSummary: U,
-  onTaskClick: I
+  onTaskClick: C
 }) => {
   const V = re(() => {
-    let M = "var(--gantt-bg-primary)", F = "var(--gantt-border-light)", C = "none";
-    return s ? M = "var(--gantt-bg-selected)" : o ? i === "into" && (M = "var(--gantt-bg-selected)", F = "var(--gantt-focus)", C = "inset 0 0 0 2px var(--gantt-focus)") : c ? (M = "var(--gantt-bg-selected)", C = "inset 0 0 0 2px var(--gantt-focus)") : l ? (M = "var(--gantt-bg-selected)", C = "inset 0 0 0 2px rgba(59, 130, 246, 0.3)") : h && (M = "var(--gantt-bg-secondary)"), {
+    let M = "var(--gantt-bg-primary)", F = "var(--gantt-border-light)", I = "none";
+    return s ? M = "var(--gantt-bg-selected)" : o ? i === "into" && (M = "var(--gantt-bg-selected)", F = "var(--gantt-focus)", I = "inset 0 0 0 2px var(--gantt-focus)") : c ? (M = "var(--gantt-bg-selected)", I = "inset 0 0 0 2px var(--gantt-focus)") : l ? (M = "var(--gantt-bg-selected)", I = "inset 0 0 0 2px rgba(59, 130, 246, 0.3)") : h && (M = "var(--gantt-bg-secondary)"), {
       height: ec,
       backgroundColor: M,
       borderBottom: `1px solid ${F}`,
       borderTop: o && i === "before" ? "2px solid var(--gantt-focus)" : "none",
-      boxShadow: C,
+      boxShadow: I,
       opacity: s ? 0.5 : 1,
       ...r ? {
         position: "absolute",
@@ -3043,7 +3105,7 @@ const ql = [
       className: "box-border flex items-center transition-all duration-150",
       style: V,
       onDoubleClick: () => {
-        h && d ? v(e.id) : h || I(e);
+        h && d ? v(e.id) : h || C(e);
       },
       title: h && d ? "더블클릭하여 접기/펼치기" : h ? void 0 : "더블클릭하여 상세 공정표 보기",
       children: [
@@ -3264,7 +3326,7 @@ const ql = [
   onTaskMove: H,
   onTaskUpdate: K,
   onTaskDoubleClick: U,
-  editingDays: I,
+  editingDays: C,
   setEditingDays: V,
   onDurationChange: X,
   rowHeight: S
@@ -3286,7 +3348,7 @@ const ql = [
         transform: `translateY(${n}px)`
       } : {}
     };
-  }, [s, o, i, c, l, h, r, n, M]), C = W((q) => {
+  }, [s, o, i, c, l, h, r, n, M]), I = W((q) => {
     q.stopPropagation(), v(e.id);
   }, [v, e.id]), Y = W((q) => {
     K && (q.stopPropagation(), j(e));
@@ -3333,7 +3395,7 @@ const ql = [
               d ? /* @__PURE__ */ a.jsx(
                 "button",
                 {
-                  onClick: C,
+                  onClick: I,
                   className: "mr-1 shrink-0 rounded p-1",
                   style: { color: "var(--gantt-text-muted)" },
                   "aria-label": f ? "접기" : "펼치기",
@@ -3398,7 +3460,7 @@ const ql = [
           {
             task: e,
             field: "indirectWorkDaysPre",
-            editingDays: I,
+            editingDays: C,
             setEditingDays: V,
             onDurationChange: X,
             width: L[1].width,
@@ -3410,7 +3472,7 @@ const ql = [
           {
             task: e,
             field: "netWorkDays",
-            editingDays: I,
+            editingDays: C,
             setEditingDays: V,
             onDurationChange: X,
             width: L[2].width,
@@ -3422,7 +3484,7 @@ const ql = [
           {
             task: e,
             field: "indirectWorkDaysPost",
-            editingDays: I,
+            editingDays: C,
             setEditingDays: V,
             onDurationChange: X,
             width: L[3].width,
@@ -3491,12 +3553,12 @@ const ql = [
   dragHandleWidth: H,
   onTaskReorder: K,
   onTaskMove: U,
-  onTaskUpdate: I,
+  onTaskUpdate: C,
   onTaskClick: V,
   rowHeight: X,
   onTaskDoubleClick: S
 }) => {
-  const A = (X ?? rr) < rr, M = u || m ? rr : h ? A ? oc : rr : X ?? rr, F = re(() => $e(e.endDate, e.startDate) + 1, [e.startDate, e.endDate]), C = re(() => {
+  const A = (X ?? rr) < rr, M = u || m ? rr : h ? A ? oc : rr : X ?? rr, F = re(() => $e(e.endDate, e.startDate) + 1, [e.startDate, e.endDate]), I = re(() => {
     let Q = "var(--gantt-bg-primary)", de = "var(--gantt-border-light)", he = "none";
     return s ? Q = "var(--gantt-bg-selected)" : o ? i === "into" && (Q = "var(--gantt-bg-selected)", de = "var(--gantt-focus)", he = "inset 0 0 0 2px var(--gantt-focus)") : c ? (Q = "var(--gantt-bg-selected)", he = "inset 0 0 0 2px var(--gantt-focus)") : l ? (Q = "var(--gantt-bg-selected)", he = "inset 0 0 0 2px rgba(59, 130, 246, 0.3)") : u ? Q = "var(--gantt-bg-tertiary)" : (m || h) && (Q = "var(--gantt-bg-secondary)"), {
       height: M,
@@ -3516,8 +3578,8 @@ const ql = [
   }, [s, o, i, c, l, u, m, h, r, n, M]), Y = W((Q) => {
     Q.stopPropagation(), k(e.id);
   }, [k, e.id]), G = W((Q) => {
-    I && (Q.stopPropagation(), P(e));
-  }, [I, P, e]), q = re(() => u ? {
+    C && (Q.stopPropagation(), P(e));
+  }, [C, P, e]), q = re(() => u ? {
     backgroundColor: _.badgeBlock,
     color: _.badgeBlockText,
     border: `1.5px solid ${_.badgeBlockBorder}`
@@ -3543,7 +3605,7 @@ const ql = [
       onClick: (Q) => v(Q, e, t),
       onContextMenu: (Q) => w(Q, e),
       className: "box-border flex items-center transition-all duration-150",
-      style: C,
+      style: I,
       onDoubleClick: () => {
         d ? k(e.id) : S ? S(e) : V && V(e);
       },
@@ -3625,7 +3687,7 @@ const ql = [
                     color: "var(--gantt-text-primary)"
                   },
                   onDoubleClick: G,
-                  title: I ? "더블클릭하여 이름 편집" : void 0,
+                  title: C ? "더블클릭하여 이름 편집" : void 0,
                   children: e.name
                 }
               )
@@ -3755,13 +3817,13 @@ const ic = ({
     o && o(w);
   }, [w, o]);
   const k = W((R, H = 12, K = "normal") => {
-    const I = document.createElement("canvas").getContext("2d");
-    return I ? (I.font = `${K} ${H}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`, I.measureText(R).width) : 0;
+    const C = document.createElement("canvas").getContext("2d");
+    return C ? (C.font = `${K} ${H}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`, C.measureText(R).width) : 0;
   }, []), T = W((R) => {
     if (!n || R.parentId === n) return 0;
     let H = 0, K = R.parentId;
     for (; K && K !== n; ) {
-      const U = r.find((I) => I.id === K);
+      const U = r.find((C) => C.id === K);
       (U == null ? void 0 : U.type) === "GROUP" && H++, K = (U == null ? void 0 : U.parentId) || null;
     }
     return H;
@@ -3769,30 +3831,30 @@ const ic = ({
     if (!R.parentId) return 0;
     let H = 0, K = R.parentId;
     for (; K; ) {
-      const U = r.find((I) => I.id === K);
+      const U = r.find((C) => C.id === K);
       (U == null ? void 0 : U.type) === "GROUP" && H++, K = U == null ? void 0 : U.parentId;
     }
     return H;
   }, [r]), j = W((R) => {
     if (R.type === "GROUP") {
-      const U = R.parentId ? r.find((I) => I.id === R.parentId) : null;
+      const U = R.parentId ? r.find((C) => C.id === R.parentId) : null;
       if (!U || U.type !== "CP") return 0;
     }
     if (R.type === "CP") return 1;
     let H = 2, K = R.parentId;
     for (; K; ) {
-      const U = r.find((I) => I.id === K);
+      const U = r.find((C) => C.id === K);
       if (!U || U.type === "CP") break;
       if (U.type === "GROUP") {
-        const I = U.parentId ? r.find((V) => V.id === U.parentId) : null;
-        (I == null ? void 0 : I.type) === "CP" && H++;
+        const C = U.parentId ? r.find((V) => V.id === U.parentId) : null;
+        (C == null ? void 0 : C.type) === "CP" && H++;
       }
       K = U.parentId;
     }
     return H;
   }, [r]), N = W((R) => {
-    const H = p[R].minWidth, K = R === 0, U = K ? 72 : 20, I = p[R].label;
-    let V = k(I, 12, "500") + 16;
+    const H = p[R].minWidth, K = R === 0, U = K ? 72 : 20, C = p[R].label;
+    let V = k(C, 12, "500") + 16;
     return t.forEach((X) => {
       let S = "", A = 0;
       if (e === "MASTER") {
@@ -3849,18 +3911,18 @@ const ic = ({
             break;
         }
       }
-      const C = k(S, K ? 14 : 12, K ? "500" : "normal") + U + A;
-      V = Math.max(V, C);
+      const I = k(S, K ? 14 : 12, K ? "500" : "normal") + U + A;
+      V = Math.max(V, I);
     }), Math.max(H, Math.ceil(V));
   }, [t, e, p, k, E, T, j, s]), P = W((R, H) => {
     if (R.detail >= 2) return;
     R.preventDefault(), R.stopPropagation(), g.current = !0, u(H);
-    const K = R.clientX, U = b[H], I = p[H].minWidth, V = (S) => {
+    const K = R.clientX, U = b[H], C = p[H].minWidth, V = (S) => {
       if (!g.current) return;
-      const A = S.clientX - K, M = Math.max(I, U + A);
+      const A = S.clientX - K, M = Math.max(C, U + A);
       x((F) => {
-        const C = [...F];
-        return C[H] = M, C;
+        const I = [...F];
+        return I[H] = M, I;
       });
     }, X = () => {
       g.current = !1, u(null), document.removeEventListener("mousemove", V), document.removeEventListener("mouseup", X);
@@ -3870,8 +3932,8 @@ const ic = ({
     R.preventDefault(), R.stopPropagation(), g.current = !1, u(null);
     const K = N(H);
     x((U) => {
-      const I = [...U];
-      return I[H] = K, I;
+      const C = [...U];
+      return C[H] = K, C;
     });
   }, [N, x]), $ = be({ master: "", detail: "", unified: "" });
   return fe(() => {
@@ -4466,7 +4528,7 @@ const zt = fc((e, t) => ({
   if (n.length === 0) return null;
   const s = n.map((f) => f.startDate), o = n.map((f) => f.endDate), i = new Date(Math.min(...s.map((f) => f.getTime()))), l = new Date(Math.max(...o.map((f) => f.getTime()))), c = $e(l, i) + 1;
   return { startDate: i, endDate: l, totalDays: c };
-}, { ROW_HEIGHT: Tn, ROW_HEIGHT_COMPACT: Tc, GROUP_ROW_HEIGHT_COMPACT: Sc } = ce, Ic = ({
+}, { ROW_HEIGHT: Tn, ROW_HEIGHT_COMPACT: Tc, GROUP_ROW_HEIGHT_COMPACT: Sc } = ce, Cc = ({
   tasks: e,
   allTasks: t,
   viewMode: r,
@@ -4541,7 +4603,7 @@ const zt = fc((e, t) => ({
     isVirtualized: c,
     isCompact: f
   };
-}, { ROW_HEIGHT: Cc } = ce, Jn = xr(un(
+}, { ROW_HEIGHT: Ic } = ce, Jn = xr(un(
   ({
     tasks: e,
     allTasks: t,
@@ -4577,22 +4639,22 @@ const zt = fc((e, t) => ({
     externalResizingIndex: R,
     onOptimalColumnWidth: H
   }, K) => {
-    const U = j ?? Cc, I = y ?? mn, {
+    const U = j ?? Ic, C = y ?? mn, {
       taskMap: V,
       childrenCountMap: X,
       cpSummaryMap: S,
       rowData: A,
       dynamicTotalHeight: M,
       activeCPName: F,
-      activeGroupName: C,
+      activeGroupName: I,
       isVirtualized: Y
-    } = Ic({
+    } = Cc({
       tasks: e,
       allTasks: t,
       viewMode: r,
       activeCPId: f,
       holidays: d,
-      calendarSettings: I,
+      calendarSettings: C,
       effectiveRowHeight: U,
       virtualRows: h
     }), G = ic({
@@ -4833,7 +4895,7 @@ const zt = fc((e, t) => ({
             Ks,
             {
               viewMode: r,
-              activeGroupName: C,
+              activeGroupName: I,
               activeCPName: F,
               columns: q,
               resizingIndex: de,
@@ -4891,7 +4953,7 @@ const zt = fc((e, t) => ({
             Ks,
             {
               viewMode: r,
-              activeGroupName: C,
+              activeGroupName: I,
               activeCPName: F,
               columns: q,
               resizingIndex: de,
@@ -5312,7 +5374,7 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
       ]
     }
   );
-}, In = () => /* @__PURE__ */ a.jsxs("defs", { children: [
+}, Cn = () => /* @__PURE__ */ a.jsxs("defs", { children: [
   /* @__PURE__ */ a.jsx(
     "marker",
     {
@@ -5431,10 +5493,10 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
     "marker",
     {
       id: "dependency-arrow-compact",
-      markerWidth: Ie.WIDTH,
-      markerHeight: Ie.HEIGHT,
-      refX: Ie.REF_X,
-      refY: Ie.REF_Y,
+      markerWidth: Ce.WIDTH,
+      markerHeight: Ce.HEIGHT,
+      refX: Ce.REF_X,
+      refY: Ce.REF_Y,
       orient: "auto",
       children: /* @__PURE__ */ a.jsx(
         "path",
@@ -5442,7 +5504,7 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
           d: "M0.25,0.25 L2.5,1.5 L0.25,2.75",
           fill: "none",
           stroke: _.textPrimary,
-          strokeWidth: Ie.STROKE_WIDTH,
+          strokeWidth: Ce.STROKE_WIDTH,
           strokeLinecap: "round",
           strokeLinejoin: "round"
         }
@@ -5453,10 +5515,10 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
     "marker",
     {
       id: "dependency-arrow-selected-compact",
-      markerWidth: Ie.WIDTH,
-      markerHeight: Ie.HEIGHT,
-      refX: Ie.REF_X,
-      refY: Ie.REF_Y,
+      markerWidth: Ce.WIDTH,
+      markerHeight: Ce.HEIGHT,
+      refX: Ce.REF_X,
+      refY: Ce.REF_Y,
       orient: "auto",
       children: /* @__PURE__ */ a.jsx(
         "path",
@@ -5464,7 +5526,7 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
           d: "M0.25,0.25 L2.5,1.5 L0.25,2.75",
           fill: "none",
           stroke: _.focus,
-          strokeWidth: Ie.STROKE_WIDTH * 1.2,
+          strokeWidth: Ce.STROKE_WIDTH * 1.2,
           strokeLinecap: "round",
           strokeLinejoin: "round"
         }
@@ -5475,10 +5537,10 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
     "marker",
     {
       id: "dependency-arrow-connecting-compact",
-      markerWidth: Ie.WIDTH,
-      markerHeight: Ie.HEIGHT,
-      refX: Ie.REF_X,
-      refY: Ie.REF_Y,
+      markerWidth: Ce.WIDTH,
+      markerHeight: Ce.HEIGHT,
+      refX: Ce.REF_X,
+      refY: Ce.REF_Y,
       orient: "auto",
       children: /* @__PURE__ */ a.jsx(
         "path",
@@ -5486,7 +5548,7 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
           d: "M0.25,0.25 L2.5,1.5 L0.25,2.75",
           fill: "none",
           stroke: _.success,
-          strokeWidth: Ie.STROKE_WIDTH * 1.2,
+          strokeWidth: Ce.STROKE_WIDTH * 1.2,
           strokeLinecap: "round",
           strokeLinejoin: "round"
         }
@@ -5497,10 +5559,10 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
     "marker",
     {
       id: "dependency-arrow-hover-compact",
-      markerWidth: Ie.WIDTH,
-      markerHeight: Ie.HEIGHT,
-      refX: Ie.REF_X,
-      refY: Ie.REF_Y,
+      markerWidth: Ce.WIDTH,
+      markerHeight: Ce.HEIGHT,
+      refX: Ce.REF_X,
+      refY: Ce.REF_Y,
       orient: "auto",
       children: /* @__PURE__ */ a.jsx(
         "path",
@@ -5508,20 +5570,20 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
           d: "M0.25,0.25 L2.5,1.5 L0.25,2.75",
           fill: "none",
           stroke: _.textPrimary,
-          strokeWidth: Ie.STROKE_WIDTH * 1.2,
+          strokeWidth: Ce.STROKE_WIDTH * 1.2,
           strokeLinecap: "round",
           strokeLinejoin: "round"
         }
       )
     }
   )
-] }), so = 6, Cn = 0.3, Wc = ({ day: e, x: t, width: r, barHeight: n, barY: s }) => {
-  const o = Math.max(r - Cn, 1), i = o * e.workDayValue, l = o * e.nonWorkDayValue;
+] }), so = 6, In = 0.3, Wc = ({ day: e, x: t, width: r, barHeight: n, barY: s }) => {
+  const o = Math.max(r - In, 1), i = o * e.workDayValue, l = o * e.nonWorkDayValue;
   return /* @__PURE__ */ a.jsxs("g", { children: [
     i > 0 && /* @__PURE__ */ a.jsx(
       "rect",
       {
-        x: t + Cn / 2,
+        x: t + In / 2,
         y: s,
         width: i,
         height: n,
@@ -5532,7 +5594,7 @@ const { HEADER_HEIGHT: Mc } = ce, ro = ({
     l > 0 && /* @__PURE__ */ a.jsx(
       "rect",
       {
-        x: t + Cn / 2 + i,
+        x: t + In / 2 + i,
         y: s,
         width: l,
         height: n,
@@ -6345,7 +6407,7 @@ const Vc = ({
     groupDragInfo: m,
     dependencyDragDeltaDays: u,
     dependencyDragInfo: g
-  }), $ = Ge(N, r, n), R = re(() => l ? je(N, i, l) : !1, [N, i, l]), { netWorkDays: H, indirectWorkDaysPre: K, indirectWorkDaysPost: U, indirectWorkNamePre: I, indirectWorkNamePost: V } = e.task, X = (f == null ? void 0 : f.indirectWorkDaysPre) ?? K, S = (f == null ? void 0 : f.indirectWorkDaysPost) ?? U, A = (f == null ? void 0 : f.netWorkDays) ?? H, M = l ? ms(e.task, l) : { workOnSaturdays: !0, workOnSundays: !1, workOnHolidays: !1 }, F = ne(N, X), C = S > 0 ? ne(P, -S) : P, Y = l && i ? Zo(F, C, i, M) : [], G = Y.length, q = A > 0 ? A + G : 0, Q = X * n, de = q * n, he = S * n, pe = Q + de + he, Te = 0, We = Q, qe = Q + de, _e = Jr.HANDLE_WIDTH, ve = Jr.BOUNDARY_HANDLE_WIDTH, De = {
+  }), $ = Ge(N, r, n), R = re(() => l ? je(N, i, l) : !1, [N, i, l]), { netWorkDays: H, indirectWorkDaysPre: K, indirectWorkDaysPost: U, indirectWorkNamePre: C, indirectWorkNamePost: V } = e.task, X = (f == null ? void 0 : f.indirectWorkDaysPre) ?? K, S = (f == null ? void 0 : f.indirectWorkDaysPost) ?? U, A = (f == null ? void 0 : f.netWorkDays) ?? H, M = l ? ms(e.task, l) : { workOnSaturdays: !0, workOnSundays: !1, workOnHolidays: !1 }, F = ne(N, X), I = S > 0 ? ne(P, -S) : P, Y = l && i ? Zo(F, I, i, M) : [], G = Y.length, q = A > 0 ? A + G : 0, Q = X * n, de = q * n, he = S * n, pe = Q + de + he, Te = 0, We = Q, qe = Q + de, _e = Jr.HANDLE_WIDTH, ve = Jr.BOUNDARY_HANDLE_WIDTH, De = {
     startDate: N,
     endDate: P,
     indirectWorkDaysPre: X,
@@ -6445,7 +6507,7 @@ const Vc = ({
               style: { pointerEvents: "none" }
             }
           ),
-          T && I && /* @__PURE__ */ a.jsx(
+          T && C && /* @__PURE__ */ a.jsx(
             "text",
             {
               x: Te + Q / 2,
@@ -6453,7 +6515,7 @@ const Vc = ({
               textAnchor: "middle",
               className: "pointer-events-none select-none text-[9px] font-medium",
               fill: _.blue,
-              children: I
+              children: C
             }
           )
         ] }),
@@ -6980,7 +7042,7 @@ const sd = {
   narrow: /^(1[012]|[123456789])/,
   abbreviated: /^(1[012]|[123456789])월/i,
   wide: /^(1[012]|[123456789])월/i
-}, Id = {
+}, Cd = {
   any: [
     /^1월?$/,
     /^2/,
@@ -6995,7 +7057,7 @@ const sd = {
     /^11/,
     /^12/
   ]
-}, Cd = {
+}, Id = {
   narrow: /^[일월화수목금토]/,
   short: /^[일월화수목금토]/,
   abbreviated: /^[일월화수목금토]/,
@@ -7037,11 +7099,11 @@ const sd = {
   month: ut({
     matchPatterns: Sd,
     defaultMatchWidth: "wide",
-    parsePatterns: Id,
+    parsePatterns: Cd,
     defaultParseWidth: "any"
   }),
   day: ut({
-    matchPatterns: Cd,
+    matchPatterns: Id,
     defaultMatchWidth: "wide",
     parsePatterns: Md,
     defaultParseWidth: "any"
@@ -7093,11 +7155,26 @@ const sd = {
     /* @__PURE__ */ a.jsxs(
       "div",
       {
-        className: "fixed z-100 min-w-[180px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg",
-        style: { left: u, top: g },
+        className: "fixed z-[9999] min-w-[180px] rounded-lg py-1 shadow-lg",
+        style: {
+          left: u,
+          top: g,
+          backgroundColor: "var(--gantt-bg-primary)",
+          border: "1px solid var(--gantt-border)"
+        },
         onClick: (p) => p.stopPropagation(),
         children: [
-          /* @__PURE__ */ a.jsx("div", { className: "px-4 py-2 text-xs text-gray-500 border-b border-gray-100", children: xe(r, "yyyy-MM-dd (EEE)", { locale: _d }) }),
+          /* @__PURE__ */ a.jsx(
+            "div",
+            {
+              className: "px-4 py-2 text-xs",
+              style: {
+                color: "var(--gantt-text-muted)",
+                borderBottom: "1px solid var(--gantt-border)"
+              },
+              children: xe(r, "yyyy-MM-dd (EEE)", { locale: _d })
+            }
+          ),
           d && /* @__PURE__ */ a.jsxs(a.Fragment, { children: [
             /* @__PURE__ */ a.jsxs(
               "button",
@@ -7105,14 +7182,15 @@ const sd = {
                 onClick: () => {
                   c(l), i();
                 },
-                className: "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50",
+                className: "context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 dark:text-red-400",
+                style: { "--hover-bg": "var(--gantt-bg-hover)" },
                 children: [
                   /* @__PURE__ */ a.jsx("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" }) }),
                   "종속성 삭제"
                 ]
               }
             ),
-            /* @__PURE__ */ a.jsx("div", { className: "my-1 border-t border-gray-200" })
+            /* @__PURE__ */ a.jsx("div", { className: "my-1", style: { borderTop: "1px solid var(--gantt-border)" } })
           ] }),
           f && s && /* @__PURE__ */ a.jsxs(
             "button",
@@ -7120,7 +7198,8 @@ const sd = {
               onClick: () => {
                 s(r), i();
               },
-              className: "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100",
+              className: "context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm",
+              style: { color: "var(--gantt-text-primary)" },
               children: [
                 /* @__PURE__ */ a.jsx("svg", { className: "h-4 w-4 text-blue-500", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 4v16m8-8H4" }) }),
                 "Task 추가"
@@ -7133,19 +7212,21 @@ const sd = {
               onClick: () => {
                 o(r), i();
               },
-              className: "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100",
+              className: "context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm",
+              style: { color: "var(--gantt-text-primary)" },
               children: [
                 /* @__PURE__ */ a.jsx("svg", { className: "h-4 w-4 text-purple-500", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" }) }),
                 "마일스톤 추가"
               ]
             }
           ),
-          /* @__PURE__ */ a.jsx("div", { className: "my-1 border-t border-gray-200" }),
+          /* @__PURE__ */ a.jsx("div", { className: "my-1", style: { borderTop: "1px solid var(--gantt-border)" } }),
           /* @__PURE__ */ a.jsxs(
             "button",
             {
               onClick: i,
-              className: "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-100",
+              className: "context-menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-sm",
+              style: { color: "var(--gantt-text-muted)" },
               children: [
                 /* @__PURE__ */ a.jsx("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: /* @__PURE__ */ a.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M6 18L18 6M6 6l12 12" }) }),
                 "취소"
@@ -7208,9 +7289,9 @@ const sd = {
   const b = g ? ra : Nt, x = re(() => {
     const T = $e(e.startDate, r), { ROW_HEIGHT: E, BAR_HEIGHT: j } = ce, N = h ?? t * E, P = m ?? E, L = u ?? j, $ = y + N + (P - L) / 2 + L, R = [];
     if (e.task) {
-      const { netWorkDays: H, indirectWorkDaysPre: K, indirectWorkDaysPost: U } = e.task, I = pa(e, c, f), V = I.size, X = K + H + V + U, S = Math.floor(X);
-      for (let C = 1; C < K; C++) {
-        const Y = C - 1, G = C - K;
+      const { netWorkDays: H, indirectWorkDaysPre: K, indirectWorkDaysPost: U } = e.task, C = pa(e, c, f), V = C.size, X = K + H + V + U, S = Math.floor(X);
+      for (let I = 1; I < K; I++) {
+        const Y = I - 1, G = I - K;
         R.push({
           taskId: e.id,
           dayIndex: G,
@@ -7219,20 +7300,20 @@ const sd = {
         });
       }
       let A = 0;
-      for (let C = K; C <= K + H + V; C++)
-        if (!I.has(C)) {
+      for (let I = K; I <= K + H + V; I++)
+        if (!C.has(I)) {
           if (A > H)
             break;
           R.push({
             taskId: e.id,
             dayIndex: A,
-            x: (T + C) * n,
+            x: (T + I) * n,
             y: $
           }), A++;
         }
       const M = K + H + V;
-      for (let C = 1; C <= U; C++) {
-        const Y = M + C, G = H + C;
+      for (let I = 1; I <= U; I++) {
+        const Y = M + I, G = H + I;
         R.push({
           taskId: e.id,
           dayIndex: G,
@@ -7241,10 +7322,10 @@ const sd = {
         });
       }
       if (X - S >= 0.5) {
-        const C = H + U + 1;
+        const I = H + U + 1;
         R.push({
           taskId: e.id,
-          dayIndex: C,
+          dayIndex: I,
           x: (T + X) * n,
           y: $
         });
@@ -7737,7 +7818,7 @@ const sd = {
     if (!se.parentId) return !0;
     const z = R.get(se.parentId);
     return !z || z.type !== "CP";
-  }, [R]), { selectTask: U, clearSelection: I } = yn(), [V, X] = te(null), { minDate: S, totalDays: A } = re(() => ps(r || t, n, 60), [r, t, n]), M = re(() => E ? n.filter((se) => !se.milestoneType || se.milestoneType === "MASTER") : n, [n, E]), F = re(() => jc(M, S, T), [M, S, T]), C = A * T, { rowData: Y, fullRowData: G, dynamicTotalHeight: q } = re(() => {
+  }, [R]), { selectTask: U, clearSelection: C } = yn(), [V, X] = te(null), { minDate: S, totalDays: A } = re(() => ps(r || t, n, 60), [r, t, n]), M = re(() => E ? n.filter((se) => !se.milestoneType || se.milestoneType === "MASTER") : n, [n, E]), F = re(() => jc(M, S, T), [M, S, T]), I = A * T, { rowData: Y, fullRowData: G, dynamicTotalHeight: q } = re(() => {
     let se = 0;
     const z = t.map((J, B) => {
       const ae = H(J), me = { index: B, start: se, size: ae, key: B };
@@ -7821,8 +7902,8 @@ const sd = {
   }, []), gt = W((se) => {
     v == null || v(se);
   }, [v]), at = W((se) => {
-    se.target === se.currentTarget && (ge(), I());
-  }, [ge, I]);
+    se.target === se.currentTarget && (ge(), C());
+  }, [ge, C]);
   return {
     values: {
       pixelsPerDay: T,
@@ -7834,7 +7915,7 @@ const sd = {
       effectiveBarHeight: L,
       minDate: S,
       totalDays: A,
-      chartWidth: C,
+      chartWidth: I,
       chartHeight: de,
       taskAreaHeight: Q,
       dynamicTotalHeight: q,
@@ -7875,7 +7956,7 @@ const sd = {
     },
     eventHandlers: {
       selectTask: U,
-      clearTaskSelection: I,
+      clearTaskSelection: C,
       handleMilestoneDoubleClick: Ue,
       handleContextMenu: Je,
       handleContextMenuClose: Tt,
@@ -8602,14 +8683,14 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
       onAnchorDependencyDrag: E,
       onCycleDetected: j
     }), {
-      pixelsPerDay: I,
+      pixelsPerDay: C,
       isMasterView: V,
       isUnifiedView: X,
       isCompact: S,
       effectiveBarHeight: A,
       minDate: M,
       totalDays: F,
-      chartWidth: C,
+      chartWidth: I,
       chartHeight: Y,
       taskAreaHeight: G,
       rowData: q,
@@ -8656,7 +8737,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
         {
           minDate: M,
           totalDays: F,
-          pixelsPerDay: I,
+          pixelsPerDay: C,
           zoomLevel: i,
           holidays: l,
           calendarSettings: c
@@ -8665,7 +8746,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
       /* @__PURE__ */ a.jsxs(
         "svg",
         {
-          width: C,
+          width: I,
           height: Ae,
           className: "block",
           style: {
@@ -8674,27 +8755,27 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
             borderBottom: "1px solid var(--gantt-border-light)"
           },
           children: [
-            /* @__PURE__ */ a.jsx(In, {}),
+            /* @__PURE__ */ a.jsx(Cn, {}),
             /* @__PURE__ */ a.jsx(
               Sn,
               {
                 minDate: M,
                 totalDays: F,
                 chartHeight: Ae,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 holidays: l,
                 calendarSettings: c,
                 zoomLevel: i
               }
             ),
-            /* @__PURE__ */ a.jsx("rect", { x: 0, y: 0, width: C, height: Ae, fill: "transparent" }),
+            /* @__PURE__ */ a.jsx("rect", { x: 0, y: 0, width: I, height: Ae, fill: "transparent" }),
             /* @__PURE__ */ a.jsx(
               $r,
               {
                 minDate: M,
                 totalDays: F,
                 chartHeight: G + Ae,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 zoomLevel: i
               }
             ),
@@ -8722,37 +8803,37 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
       /* @__PURE__ */ a.jsxs(
         "svg",
         {
-          width: C,
+          width: I,
           height: G,
           className: "block",
           onContextMenu: Ue,
           onClick: Tt,
           children: [
-            /* @__PURE__ */ a.jsx(In, {}),
+            /* @__PURE__ */ a.jsx(Cn, {}),
             /* @__PURE__ */ a.jsx(
               Sn,
               {
                 minDate: M,
                 totalDays: F,
                 chartHeight: G,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 holidays: l,
                 calendarSettings: c,
                 zoomLevel: i
               }
             ),
-            /* @__PURE__ */ a.jsx(es, { tasks: r, rowData: q, chartWidth: C }),
+            /* @__PURE__ */ a.jsx(es, { tasks: r, rowData: q, chartWidth: I }),
             /* @__PURE__ */ a.jsx(
               $r,
               {
                 minDate: M,
                 totalDays: F,
                 chartHeight: G,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 zoomLevel: i
               }
             ),
-            /* @__PURE__ */ a.jsx(Zn, { rowData: q, chartWidth: C }),
+            /* @__PURE__ */ a.jsx(Zn, { rowData: q, chartWidth: I }),
             q.map((z) => {
               const O = r[z.index];
               if (!O) return null;
@@ -8768,7 +8849,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                     allTasks: n || r,
                     y: ae,
                     minDate: M,
-                    pixelsPerDay: I,
+                    pixelsPerDay: C,
                     currentDeltaDays: De(O.id),
                     onToggle: b,
                     onClick: (oe, Fe) => {
@@ -8788,7 +8869,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                     allTasks: n || r,
                     y: ae,
                     minDate: M,
-                    pixelsPerDay: I,
+                    pixelsPerDay: C,
                     isDraggable: !X && !!d,
                     currentDeltaDays: De(O.id),
                     onDragStart: ve,
@@ -8813,7 +8894,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                   task: O,
                   y: ae,
                   minDate: M,
-                  pixelsPerDay: I,
+                  pixelsPerDay: C,
                   isMasterView: me,
                   renderMode: "bar",
                   allTasks: n || r,
@@ -8843,7 +8924,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                 tasks: r,
                 dependencies: w,
                 minDate: M,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 selectedDepId: st,
                 hoveredDepId: vt,
                 onDependencyClick: kt,
@@ -8863,7 +8944,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                 tasks: r,
                 dependencies: w,
                 minDate: M,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 holidays: l,
                 calendarSettings: c,
                 getTaskDeltaDays: Ke,
@@ -8881,7 +8962,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                   task: O,
                   rowIndex: z.index,
                   minDate: M,
-                  pixelsPerDay: I,
+                  pixelsPerDay: C,
                   connectingFrom: ge,
                   dependencies: w,
                   onAnchorClick: ot,
@@ -8912,7 +8993,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                   task: O,
                   y: ae,
                   minDate: M,
-                  pixelsPerDay: I,
+                  pixelsPerDay: C,
                   isMasterView: me,
                   renderMode: "label",
                   allTasks: n || r,
@@ -8954,7 +9035,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                 ge.dayIndex,
                 ue,
                 M,
-                I,
+                C,
                 l,
                 c,
                 0,
@@ -8966,7 +9047,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                 Re.dayIndex,
                 J,
                 M,
-                I,
+                C,
                 l,
                 c,
                 0,
@@ -9006,8 +9087,8 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
           holidays: l,
           calendarSettings: c,
           minDate: M,
-          pixelsPerDay: I,
-          totalWidth: C,
+          pixelsPerDay: C,
+          totalWidth: I,
           activeCPId: x
         }
       ),
@@ -9018,8 +9099,8 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
           holidays: l,
           calendarSettings: c,
           minDate: M,
-          pixelsPerDay: I,
-          totalWidth: C
+          pixelsPerDay: C,
+          totalWidth: I
         }
       ),
       se && v && /* @__PURE__ */ a.jsx(
@@ -9042,7 +9123,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
         {
           minDate: M,
           totalDays: F,
-          pixelsPerDay: I,
+          pixelsPerDay: C,
           zoomLevel: i,
           holidays: l,
           calendarSettings: c
@@ -9051,39 +9132,39 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
       /* @__PURE__ */ a.jsxs(
         "svg",
         {
-          width: C,
+          width: I,
           height: Y,
           className: "block",
           style: { backgroundColor: "var(--gantt-bg-primary)" },
           onContextMenu: Ue,
           onClick: Tt,
           children: [
-            /* @__PURE__ */ a.jsx(In, {}),
+            /* @__PURE__ */ a.jsx(Cn, {}),
             /* @__PURE__ */ a.jsx(
               Sn,
               {
                 minDate: M,
                 totalDays: F,
                 chartHeight: Y,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 holidays: l,
                 calendarSettings: c,
                 zoomLevel: i
               }
             ),
-            /* @__PURE__ */ a.jsx(es, { tasks: r, rowData: q, chartWidth: C, offsetY: Ae }),
+            /* @__PURE__ */ a.jsx(es, { tasks: r, rowData: q, chartWidth: I, offsetY: Ae }),
             /* @__PURE__ */ a.jsx(
               $r,
               {
                 minDate: M,
                 totalDays: F,
                 chartHeight: Y,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 zoomLevel: i
               }
             ),
-            /* @__PURE__ */ a.jsx(Zn, { rowData: q, chartWidth: C, offsetY: Ae }),
-            /* @__PURE__ */ a.jsx("rect", { x: 0, y: 0, width: C, height: Ae, fill: "transparent" }),
+            /* @__PURE__ */ a.jsx(Zn, { rowData: q, chartWidth: I, offsetY: Ae }),
+            /* @__PURE__ */ a.jsx("rect", { x: 0, y: 0, width: I, height: Ae, fill: "transparent" }),
             de.map((z) => {
               const O = _e(z.milestone.id);
               return /* @__PURE__ */ a.jsx(
@@ -9100,7 +9181,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                 z.milestone.id
               );
             }),
-            /* @__PURE__ */ a.jsx("line", { x1: 0, y1: Ae, x2: C, y2: Ae, stroke: _.grid, strokeWidth: 1 }),
+            /* @__PURE__ */ a.jsx("line", { x1: 0, y1: Ae, x2: I, y2: Ae, stroke: _.grid, strokeWidth: 1 }),
             q.map((z) => {
               const O = r[z.index];
               if (!O) return null;
@@ -9116,7 +9197,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                     allTasks: n || r,
                     y: ae,
                     minDate: M,
-                    pixelsPerDay: I,
+                    pixelsPerDay: C,
                     currentDeltaDays: De(O.id),
                     onToggle: b,
                     onClick: (oe, Fe) => {
@@ -9136,7 +9217,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                     allTasks: n || r,
                     y: ae,
                     minDate: M,
-                    pixelsPerDay: I,
+                    pixelsPerDay: C,
                     isDraggable: !X && !!d,
                     currentDeltaDays: De(O.id),
                     onDragStart: ve,
@@ -9161,7 +9242,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                   task: O,
                   y: ae,
                   minDate: M,
-                  pixelsPerDay: I,
+                  pixelsPerDay: C,
                   isMasterView: me,
                   renderMode: "bar",
                   allTasks: n || r,
@@ -9191,7 +9272,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                 tasks: r,
                 dependencies: w,
                 minDate: M,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 selectedDepId: st,
                 hoveredDepId: vt,
                 onDependencyClick: kt,
@@ -9211,7 +9292,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                 tasks: r,
                 dependencies: w,
                 minDate: M,
-                pixelsPerDay: I,
+                pixelsPerDay: C,
                 holidays: l,
                 calendarSettings: c,
                 getTaskDeltaDays: Ke,
@@ -9229,7 +9310,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                   task: O,
                   rowIndex: z.index,
                   minDate: M,
-                  pixelsPerDay: I,
+                  pixelsPerDay: C,
                   connectingFrom: ge,
                   dependencies: w,
                   onAnchorClick: ot,
@@ -9260,7 +9341,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                   task: O,
                   y: ae,
                   minDate: M,
-                  pixelsPerDay: I,
+                  pixelsPerDay: C,
                   isMasterView: me,
                   renderMode: "label",
                   allTasks: n || r,
@@ -9302,7 +9383,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                 ge.dayIndex,
                 ue,
                 M,
-                I,
+                C,
                 l,
                 c,
                 Ae,
@@ -9314,7 +9395,7 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
                 Re.dayIndex,
                 J,
                 M,
-                I,
+                C,
                 l,
                 c,
                 Ae,
@@ -9354,8 +9435,8 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
           holidays: l,
           calendarSettings: c,
           minDate: M,
-          pixelsPerDay: I,
-          totalWidth: C,
+          pixelsPerDay: C,
+          totalWidth: I,
           activeCPId: x
         }
       ),
@@ -9366,8 +9447,8 @@ const { MILESTONE_LANE_HEIGHT: Ae, BAR_HEIGHT: ct } = ce, { BAR_HEIGHT: Ar } = t
           holidays: l,
           calendarSettings: c,
           minDate: M,
-          pixelsPerDay: I,
-          totalWidth: C
+          pixelsPerDay: C,
+          totalWidth: I
         }
       ),
       se && v && /* @__PURE__ */ a.jsx(
@@ -10135,18 +10216,18 @@ const Vd = (e, t) => {
 }, fu = [], Me = (e) => {
   const t = (r) => r[e] || fu;
   return t.isThemeGetter = !0, t;
-}, Ea = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, Ta = /^\((?:(\w[\w-]*):)?(.+)\)$/i, hu = /^\d+\/\d+$/, mu = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, gu = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, yu = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, pu = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, xu = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, Bt = (e) => hu.test(e), le = (e) => !!e && !Number.isNaN(Number(e)), It = (e) => !!e && Number.isInteger(Number(e)), An = (e) => e.endsWith("%") && le(e.slice(0, -1)), yt = (e) => mu.test(e), bu = () => !0, Du = (e) => (
+}, Ea = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, Ta = /^\((?:(\w[\w-]*):)?(.+)\)$/i, hu = /^\d+\/\d+$/, mu = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, gu = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, yu = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, pu = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, xu = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, Bt = (e) => hu.test(e), le = (e) => !!e && !Number.isNaN(Number(e)), Ct = (e) => !!e && Number.isInteger(Number(e)), An = (e) => e.endsWith("%") && le(e.slice(0, -1)), yt = (e) => mu.test(e), bu = () => !0, Du = (e) => (
   // `colorFunctionRegex` check is necessary because color functions can have percentages in them which which would be incorrectly classified as lengths.
   // For example, `hsl(0 0% 0%)` would be classified as a length without this check.
   // I could also use lookbehind assertion in `lengthUnitRegex` but that isn't supported widely enough.
   gu.test(e) && !yu.test(e)
-), Sa = () => !1, vu = (e) => pu.test(e), wu = (e) => xu.test(e), ku = (e) => !Z(e) && !ee(e), Eu = (e) => Qt(e, Ma, Sa), Z = (e) => Ea.test(e), _t = (e) => Qt(e, Na, Du), Ln = (e) => Qt(e, Mu, le), ko = (e) => Qt(e, Ia, Sa), Tu = (e) => Qt(e, Ca, wu), Lr = (e) => Qt(e, ja, vu), ee = (e) => Ta.test(e), sr = (e) => Jt(e, Na), Su = (e) => Jt(e, Nu), Eo = (e) => Jt(e, Ia), Iu = (e) => Jt(e, Ma), Cu = (e) => Jt(e, Ca), Hr = (e) => Jt(e, ja, !0), Qt = (e, t, r) => {
+), Sa = () => !1, vu = (e) => pu.test(e), wu = (e) => xu.test(e), ku = (e) => !Z(e) && !ee(e), Eu = (e) => Qt(e, Ma, Sa), Z = (e) => Ea.test(e), _t = (e) => Qt(e, Na, Du), Ln = (e) => Qt(e, Mu, le), ko = (e) => Qt(e, Ca, Sa), Tu = (e) => Qt(e, Ia, wu), Lr = (e) => Qt(e, ja, vu), ee = (e) => Ta.test(e), sr = (e) => Jt(e, Na), Su = (e) => Jt(e, Nu), Eo = (e) => Jt(e, Ca), Cu = (e) => Jt(e, Ma), Iu = (e) => Jt(e, Ia), Hr = (e) => Jt(e, ja, !0), Qt = (e, t, r) => {
   const n = Ea.exec(e);
   return n ? n[1] ? t(n[1]) : r(n[2]) : !1;
 }, Jt = (e, t, r = !1) => {
   const n = Ta.exec(e);
   return n ? n[1] ? t(n[1]) : r : !1;
-}, Ia = (e) => e === "position" || e === "percentage", Ca = (e) => e === "image" || e === "url", Ma = (e) => e === "length" || e === "size" || e === "bg-size", Na = (e) => e === "length", Mu = (e) => e === "number", Nu = (e) => e === "family-name", ja = (e) => e === "shadow", ju = () => {
+}, Ca = (e) => e === "position" || e === "percentage", Ia = (e) => e === "image" || e === "url", Ma = (e) => e === "length" || e === "size" || e === "bg-size", Na = (e) => e === "length", Mu = (e) => e === "number", Nu = (e) => e === "family-name", ja = (e) => e === "shadow", ju = () => {
   const e = Me("color"), t = Me("font"), r = Me("text"), n = Me("font-weight"), s = Me("tracking"), o = Me("leading"), i = Me("breakpoint"), l = Me("container"), c = Me("spacing"), f = Me("radius"), d = Me("shadow"), y = Me("inset-shadow"), h = Me("text-shadow"), m = Me("drop-shadow"), u = Me("blur"), g = Me("perspective"), p = Me("aspect"), b = Me("ease"), x = Me("animate"), D = () => ["auto", "avoid", "all", "avoid-page", "page", "left", "right", "column"], v = () => [
     "center",
     "top",
@@ -10165,13 +10246,13 @@ const Vd = (e, t) => {
     "bottom-left",
     // Deprecated since Tailwind CSS v4.1.0, see https://github.com/tailwindlabs/tailwindcss/pull/17378
     "left-bottom"
-  ], w = () => [...v(), ee, Z], k = () => ["auto", "hidden", "clip", "visible", "scroll"], T = () => ["auto", "contain", "none"], E = () => [ee, Z, c], j = () => [Bt, "full", "auto", ...E()], N = () => [It, "none", "subgrid", ee, Z], P = () => ["auto", {
-    span: ["full", It, ee, Z]
-  }, It, ee, Z], L = () => [It, "auto", ee, Z], $ = () => ["auto", "min", "max", "fr", ee, Z], R = () => ["start", "end", "center", "between", "around", "evenly", "stretch", "baseline", "center-safe", "end-safe"], H = () => ["start", "end", "center", "stretch", "center-safe", "end-safe"], K = () => ["auto", ...E()], U = () => [Bt, "auto", "full", "dvw", "dvh", "lvw", "lvh", "svw", "svh", "min", "max", "fit", ...E()], I = () => [e, ee, Z], V = () => [...v(), Eo, ko, {
+  ], w = () => [...v(), ee, Z], k = () => ["auto", "hidden", "clip", "visible", "scroll"], T = () => ["auto", "contain", "none"], E = () => [ee, Z, c], j = () => [Bt, "full", "auto", ...E()], N = () => [Ct, "none", "subgrid", ee, Z], P = () => ["auto", {
+    span: ["full", Ct, ee, Z]
+  }, Ct, ee, Z], L = () => [Ct, "auto", ee, Z], $ = () => ["auto", "min", "max", "fr", ee, Z], R = () => ["start", "end", "center", "between", "around", "evenly", "stretch", "baseline", "center-safe", "end-safe"], H = () => ["start", "end", "center", "stretch", "center-safe", "end-safe"], K = () => ["auto", ...E()], U = () => [Bt, "auto", "full", "dvw", "dvh", "lvw", "lvh", "svw", "svh", "min", "max", "fit", ...E()], C = () => [e, ee, Z], V = () => [...v(), Eo, ko, {
     position: [ee, Z]
   }], X = () => ["no-repeat", {
     repeat: ["", "x", "y", "space", "round"]
-  }], S = () => ["auto", "cover", "contain", Iu, Eu, {
+  }], S = () => ["auto", "cover", "contain", Cu, Eu, {
     size: [ee, Z]
   }], A = () => [An, sr, _t], M = () => [
     // Deprecated since Tailwind CSS v4.0.0
@@ -10181,7 +10262,7 @@ const Vd = (e, t) => {
     f,
     ee,
     Z
-  ], F = () => ["", le, sr, _t], C = () => ["solid", "dashed", "dotted", "double"], Y = () => ["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"], G = () => [le, An, Eo, ko], q = () => [
+  ], F = () => ["", le, sr, _t], I = () => ["solid", "dashed", "dotted", "double"], Y = () => ["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"], G = () => [le, An, Eo, ko], q = () => [
     // Deprecated since Tailwind CSS v4.0.0
     "",
     "none",
@@ -10434,7 +10515,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/z-index
        */
       z: [{
-        z: [It, "auto", ee, Z]
+        z: [Ct, "auto", ee, Z]
       }],
       // ------------------------
       // --- Flexbox and Grid ---
@@ -10486,7 +10567,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/order
        */
       order: [{
-        order: [It, "first", "last", "none", ee, Z]
+        order: [Ct, "first", "last", "none", ee, Z]
       }],
       /**
        * Grid Template Columns
@@ -11003,14 +11084,14 @@ const Vd = (e, t) => {
        * @see https://v3.tailwindcss.com/docs/placeholder-color
        */
       "placeholder-color": [{
-        placeholder: I()
+        placeholder: C()
       }],
       /**
        * Text Color
        * @see https://tailwindcss.com/docs/text-color
        */
       "text-color": [{
-        text: I()
+        text: C()
       }],
       /**
        * Text Decoration
@@ -11022,7 +11103,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/text-decoration-style
        */
       "text-decoration-style": [{
-        decoration: [...C(), "wavy"]
+        decoration: [...I(), "wavy"]
       }],
       /**
        * Text Decoration Thickness
@@ -11036,7 +11117,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/text-decoration-color
        */
       "text-decoration-color": [{
-        decoration: I()
+        decoration: C()
       }],
       /**
        * Text Underline Offset
@@ -11164,17 +11245,17 @@ const Vd = (e, t) => {
         bg: ["none", {
           linear: [{
             to: ["t", "tr", "r", "br", "b", "bl", "l", "tl"]
-          }, It, ee, Z],
+          }, Ct, ee, Z],
           radial: ["", ee, Z],
-          conic: [It, ee, Z]
-        }, Cu, Tu]
+          conic: [Ct, ee, Z]
+        }, Iu, Tu]
       }],
       /**
        * Background Color
        * @see https://tailwindcss.com/docs/background-color
        */
       "bg-color": [{
-        bg: I()
+        bg: C()
       }],
       /**
        * Gradient Color Stops From Position
@@ -11202,21 +11283,21 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/gradient-color-stops
        */
       "gradient-from": [{
-        from: I()
+        from: C()
       }],
       /**
        * Gradient Color Stops Via
        * @see https://tailwindcss.com/docs/gradient-color-stops
        */
       "gradient-via": [{
-        via: I()
+        via: C()
       }],
       /**
        * Gradient Color Stops To
        * @see https://tailwindcss.com/docs/gradient-color-stops
        */
       "gradient-to": [{
-        to: I()
+        to: C()
       }],
       // ---------------
       // --- Borders ---
@@ -11418,91 +11499,91 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/border-style
        */
       "border-style": [{
-        border: [...C(), "hidden", "none"]
+        border: [...I(), "hidden", "none"]
       }],
       /**
        * Divide Style
        * @see https://tailwindcss.com/docs/border-style#setting-the-divider-style
        */
       "divide-style": [{
-        divide: [...C(), "hidden", "none"]
+        divide: [...I(), "hidden", "none"]
       }],
       /**
        * Border Color
        * @see https://tailwindcss.com/docs/border-color
        */
       "border-color": [{
-        border: I()
+        border: C()
       }],
       /**
        * Border Color X
        * @see https://tailwindcss.com/docs/border-color
        */
       "border-color-x": [{
-        "border-x": I()
+        "border-x": C()
       }],
       /**
        * Border Color Y
        * @see https://tailwindcss.com/docs/border-color
        */
       "border-color-y": [{
-        "border-y": I()
+        "border-y": C()
       }],
       /**
        * Border Color S
        * @see https://tailwindcss.com/docs/border-color
        */
       "border-color-s": [{
-        "border-s": I()
+        "border-s": C()
       }],
       /**
        * Border Color E
        * @see https://tailwindcss.com/docs/border-color
        */
       "border-color-e": [{
-        "border-e": I()
+        "border-e": C()
       }],
       /**
        * Border Color Top
        * @see https://tailwindcss.com/docs/border-color
        */
       "border-color-t": [{
-        "border-t": I()
+        "border-t": C()
       }],
       /**
        * Border Color Right
        * @see https://tailwindcss.com/docs/border-color
        */
       "border-color-r": [{
-        "border-r": I()
+        "border-r": C()
       }],
       /**
        * Border Color Bottom
        * @see https://tailwindcss.com/docs/border-color
        */
       "border-color-b": [{
-        "border-b": I()
+        "border-b": C()
       }],
       /**
        * Border Color Left
        * @see https://tailwindcss.com/docs/border-color
        */
       "border-color-l": [{
-        "border-l": I()
+        "border-l": C()
       }],
       /**
        * Divide Color
        * @see https://tailwindcss.com/docs/divide-color
        */
       "divide-color": [{
-        divide: I()
+        divide: C()
       }],
       /**
        * Outline Style
        * @see https://tailwindcss.com/docs/outline-style
        */
       "outline-style": [{
-        outline: [...C(), "none", "hidden"]
+        outline: [...I(), "none", "hidden"]
       }],
       /**
        * Outline Offset
@@ -11523,7 +11604,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/outline-color
        */
       "outline-color": [{
-        outline: I()
+        outline: C()
       }],
       // ---------------
       // --- Effects ---
@@ -11547,7 +11628,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/box-shadow#setting-the-shadow-color
        */
       "shadow-color": [{
-        shadow: I()
+        shadow: C()
       }],
       /**
        * Inset Box Shadow
@@ -11561,7 +11642,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/box-shadow#setting-the-inset-shadow-color
        */
       "inset-shadow-color": [{
-        "inset-shadow": I()
+        "inset-shadow": C()
       }],
       /**
        * Ring Width
@@ -11582,7 +11663,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/box-shadow#setting-the-ring-color
        */
       "ring-color": [{
-        ring: I()
+        ring: C()
       }],
       /**
        * Ring Offset Width
@@ -11600,7 +11681,7 @@ const Vd = (e, t) => {
        * @see https://github.com/tailwindlabs/tailwindcss/blob/v4.0.0/packages/tailwindcss/src/utilities.ts#L4158
        */
       "ring-offset-color": [{
-        "ring-offset": I()
+        "ring-offset": C()
       }],
       /**
        * Inset Ring Width
@@ -11614,7 +11695,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/box-shadow#setting-the-inset-ring-color
        */
       "inset-ring-color": [{
-        "inset-ring": I()
+        "inset-ring": C()
       }],
       /**
        * Text Shadow
@@ -11628,7 +11709,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/text-shadow#setting-the-shadow-color
        */
       "text-shadow-color": [{
-        "text-shadow": I()
+        "text-shadow": C()
       }],
       /**
        * Opacity
@@ -11679,10 +11760,10 @@ const Vd = (e, t) => {
         "mask-linear-to": G()
       }],
       "mask-image-linear-from-color": [{
-        "mask-linear-from": I()
+        "mask-linear-from": C()
       }],
       "mask-image-linear-to-color": [{
-        "mask-linear-to": I()
+        "mask-linear-to": C()
       }],
       "mask-image-t-from-pos": [{
         "mask-t-from": G()
@@ -11691,10 +11772,10 @@ const Vd = (e, t) => {
         "mask-t-to": G()
       }],
       "mask-image-t-from-color": [{
-        "mask-t-from": I()
+        "mask-t-from": C()
       }],
       "mask-image-t-to-color": [{
-        "mask-t-to": I()
+        "mask-t-to": C()
       }],
       "mask-image-r-from-pos": [{
         "mask-r-from": G()
@@ -11703,10 +11784,10 @@ const Vd = (e, t) => {
         "mask-r-to": G()
       }],
       "mask-image-r-from-color": [{
-        "mask-r-from": I()
+        "mask-r-from": C()
       }],
       "mask-image-r-to-color": [{
-        "mask-r-to": I()
+        "mask-r-to": C()
       }],
       "mask-image-b-from-pos": [{
         "mask-b-from": G()
@@ -11715,10 +11796,10 @@ const Vd = (e, t) => {
         "mask-b-to": G()
       }],
       "mask-image-b-from-color": [{
-        "mask-b-from": I()
+        "mask-b-from": C()
       }],
       "mask-image-b-to-color": [{
-        "mask-b-to": I()
+        "mask-b-to": C()
       }],
       "mask-image-l-from-pos": [{
         "mask-l-from": G()
@@ -11727,10 +11808,10 @@ const Vd = (e, t) => {
         "mask-l-to": G()
       }],
       "mask-image-l-from-color": [{
-        "mask-l-from": I()
+        "mask-l-from": C()
       }],
       "mask-image-l-to-color": [{
-        "mask-l-to": I()
+        "mask-l-to": C()
       }],
       "mask-image-x-from-pos": [{
         "mask-x-from": G()
@@ -11739,10 +11820,10 @@ const Vd = (e, t) => {
         "mask-x-to": G()
       }],
       "mask-image-x-from-color": [{
-        "mask-x-from": I()
+        "mask-x-from": C()
       }],
       "mask-image-x-to-color": [{
-        "mask-x-to": I()
+        "mask-x-to": C()
       }],
       "mask-image-y-from-pos": [{
         "mask-y-from": G()
@@ -11751,10 +11832,10 @@ const Vd = (e, t) => {
         "mask-y-to": G()
       }],
       "mask-image-y-from-color": [{
-        "mask-y-from": I()
+        "mask-y-from": C()
       }],
       "mask-image-y-to-color": [{
-        "mask-y-to": I()
+        "mask-y-to": C()
       }],
       "mask-image-radial": [{
         "mask-radial": [ee, Z]
@@ -11766,10 +11847,10 @@ const Vd = (e, t) => {
         "mask-radial-to": G()
       }],
       "mask-image-radial-from-color": [{
-        "mask-radial-from": I()
+        "mask-radial-from": C()
       }],
       "mask-image-radial-to-color": [{
-        "mask-radial-to": I()
+        "mask-radial-to": C()
       }],
       "mask-image-radial-shape": [{
         "mask-radial": ["circle", "ellipse"]
@@ -11793,10 +11874,10 @@ const Vd = (e, t) => {
         "mask-conic-to": G()
       }],
       "mask-image-conic-from-color": [{
-        "mask-conic-from": I()
+        "mask-conic-from": C()
       }],
       "mask-image-conic-to-color": [{
-        "mask-conic-to": I()
+        "mask-conic-to": C()
       }],
       /**
        * Mask Mode
@@ -11903,7 +11984,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/filter-drop-shadow#setting-the-shadow-color
        */
       "drop-shadow-color": [{
-        "drop-shadow": I()
+        "drop-shadow": C()
       }],
       /**
        * Grayscale
@@ -12274,7 +12355,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/accent-color
        */
       accent: [{
-        accent: I()
+        accent: C()
       }],
       /**
        * Appearance
@@ -12288,7 +12369,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/just-in-time-mode#caret-color-utilities
        */
       "caret-color": [{
-        caret: I()
+        caret: C()
       }],
       /**
        * Color Scheme
@@ -12534,7 +12615,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/fill
        */
       fill: [{
-        fill: ["none", ...I()]
+        fill: ["none", ...C()]
       }],
       /**
        * Stroke Width
@@ -12548,7 +12629,7 @@ const Vd = (e, t) => {
        * @see https://tailwindcss.com/docs/stroke
        */
       stroke: [{
-        stroke: ["none", ...I()]
+        stroke: ["none", ...C()]
       }],
       // ---------------------
       // --- Accessibility ---
@@ -12862,8 +12943,8 @@ const Ru = "w-full rounded-md border px-3 py-2 text-sm", Ou = "focus:border-gree
   onDelete: s
 }) => {
   const [o, i] = te("0"), [l, c] = te("1"), [f, d] = te("0"), [y, h] = te(""), [m, u] = te(""), [g, p] = te(!1), [b, x] = te(!1), [D, v] = te(!1), [w, k] = te(!1), [T, E] = te(!1), [j, N] = te(""), P = be(null), L = (F) => {
-    const C = parseFloat(F) || 0;
-    return Math.round(C * 2) / 2;
+    const I = parseFloat(F) || 0;
+    return Math.round(I * 2) / 2;
   }, $ = L(o), R = L(l), H = L(f);
   fe(() => {
     e && e.task && t && (i(String(e.task.indirectWorkDaysPre)), c(String(e.task.netWorkDays)), d(String(e.task.indirectWorkDaysPost)), h(e.task.indirectWorkNamePre || ""), u(e.task.indirectWorkNamePost || ""), p(e.task.workOnSaturdays === !1), x(e.task.workOnSundays === !0), v(e.task.workOnHolidays === !0), N(xe(e.startDate, "yyyy-MM-dd")), k(!1), setTimeout(() => {
@@ -12871,15 +12952,15 @@ const Ru = "w-full rounded-md border px-3 py-2 text-sm", Ou = "focus:border-gree
       (F = P.current) == null || F.focus();
     }, 100));
   }, [e == null ? void 0 : e.id, t]), fe(() => {
-    const F = (C) => {
-      C.key === "Escape" && t && (w ? k(!1) : r());
+    const F = (I) => {
+      I.key === "Escape" && t && (w ? k(!1) : r());
     };
     return document.addEventListener("keydown", F), () => document.removeEventListener("keydown", F);
   }, [t, w, r]);
   const K = re(() => {
     if (!e || !e.task || !t) return !1;
-    const F = L(o), C = L(l), Y = L(f);
-    return F !== e.task.indirectWorkDaysPre || C !== e.task.netWorkDays || Y !== e.task.indirectWorkDaysPost || y !== (e.task.indirectWorkNamePre || "") || m !== (e.task.indirectWorkNamePost || "") || g !== (e.task.workOnSaturdays === !1) || b !== (e.task.workOnSundays === !0) || D !== (e.task.workOnHolidays === !0) || j !== xe(e.startDate, "yyyy-MM-dd");
+    const F = L(o), I = L(l), Y = L(f);
+    return F !== e.task.indirectWorkDaysPre || I !== e.task.netWorkDays || Y !== e.task.indirectWorkDaysPost || y !== (e.task.indirectWorkNamePre || "") || m !== (e.task.indirectWorkNamePost || "") || g !== (e.task.workOnSaturdays === !1) || b !== (e.task.workOnSundays === !0) || D !== (e.task.workOnHolidays === !0) || j !== xe(e.startDate, "yyyy-MM-dd");
   }, [
     e,
     t,
@@ -12894,7 +12975,7 @@ const Ru = "w-full rounded-md border px-3 py-2 text-sm", Ou = "focus:border-gree
     j
   ]), U = async () => {
     if (!e || !e.task || T) return;
-    const F = j ? /* @__PURE__ */ new Date(j + "T00:00:00") : e.startDate, C = {
+    const F = j ? /* @__PURE__ */ new Date(j + "T00:00:00") : e.startDate, I = {
       ...e.task,
       indirectWorkDaysPre: $,
       netWorkDays: R,
@@ -12907,7 +12988,7 @@ const Ru = "w-full rounded-md border px-3 py-2 text-sm", Ou = "focus:border-gree
     }, Y = {
       ...e,
       startDate: F,
-      task: C
+      task: I
     };
     E(!0);
     try {
@@ -12917,7 +12998,7 @@ const Ru = "w-full rounded-md border px-3 py-2 text-sm", Ou = "focus:border-gree
     } finally {
       E(!1);
     }
-  }, I = async () => {
+  }, C = async () => {
     if (!(!e || !s || T)) {
       E(!0);
       try {
@@ -12930,8 +13011,8 @@ const Ru = "w-full rounded-md border px-3 py-2 text-sm", Ou = "focus:border-gree
     }
   }, V = (F) => {
     F.key === "Enter" && !F.shiftKey && (F.preventDefault(), U());
-  }, X = (F, C) => {
-    const Y = C.replace(/[^0-9.]/g, ""), G = Y.split("."), q = G.length > 2 ? G[0] + "." + G.slice(1).join("") : Y;
+  }, X = (F, I) => {
+    const Y = I.replace(/[^0-9.]/g, ""), G = Y.split("."), q = G.length > 2 ? G[0] + "." + G.slice(1).join("") : Y;
     F(q);
   }, [S, A] = He.useState(!1);
   if (!t || !e || !e.task) return null;
@@ -13180,7 +13261,7 @@ const Ru = "w-full rounded-md border px-3 py-2 text-sm", Ou = "focus:border-gree
       {
         itemName: e.name,
         title: "공정 삭제",
-        onConfirm: I,
+        onConfirm: C,
         onCancel: () => k(!1)
       }
     )
@@ -13221,7 +13302,7 @@ function Gt(e, t, r) {
     n = i;
   }, o;
 }
-function Io(e, t) {
+function Co(e, t) {
   if (e === void 0)
     throw new Error("Unexpected undefined");
   return e;
@@ -13231,7 +13312,7 @@ const Hu = (e, t) => Math.abs(e - t) < 1.01, zu = (e, t, r) => {
   return function(...s) {
     e.clearTimeout(n), n = e.setTimeout(() => t.apply(this, s), r);
   };
-}, Co = (e) => {
+}, Io = (e) => {
   const { offsetWidth: t, offsetHeight: r } = e;
   return { width: t, height: r };
 }, Fu = (e) => e, $u = (e) => {
@@ -13250,7 +13331,7 @@ const Hu = (e, t) => Math.abs(e - t) < 1.01, zu = (e, t, r) => {
     const { width: l, height: c } = i;
     t({ width: Math.round(l), height: Math.round(c) });
   };
-  if (s(Co(r)), !n.ResizeObserver)
+  if (s(Io(r)), !n.ResizeObserver)
     return () => {
     };
   const o = new n.ResizeObserver((i) => {
@@ -13263,7 +13344,7 @@ const Hu = (e, t) => Math.abs(e - t) < 1.01, zu = (e, t, r) => {
           return;
         }
       }
-      s(Co(r));
+      s(Io(r));
     };
     e.options.useAnimationFrameWithResizeObserver ? requestAnimationFrame(l) : l();
   });
@@ -13563,11 +13644,11 @@ class Uu {
     ), this.getVirtualItemForOffset = (r) => {
       const n = this.getMeasurements();
       if (n.length !== 0)
-        return Io(
+        return Co(
           n[_a(
             0,
             n.length - 1,
-            (s) => Io(n[s]).start,
+            (s) => Co(n[s]).start,
             r
           )]
         );
@@ -14663,38 +14744,38 @@ const or = "flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium tran
   onError: u,
   setViewMode: g
 }) => {
-  const [p, b] = te(null), [x, D] = te(!1), [v, w] = te(!1), [k, T] = te(null), [E, j] = te(!1), N = W((C, Y) => {
-    g(C, Y), m == null || m(C, Y);
-  }, [g, m]), P = W((C) => {
-    r === "MASTER" && C.type === "CP" && N("DETAIL", C.id);
-  }, [r, N]), L = W((C) => {
-    b(C), w(!1), D(!0);
+  const [p, b] = te(null), [x, D] = te(!1), [v, w] = te(!1), [k, T] = te(null), [E, j] = te(!1), N = W((I, Y) => {
+    g(I, Y), m == null || m(I, Y);
+  }, [g, m]), P = W((I) => {
+    r === "MASTER" && I.type === "CP" && N("DETAIL", I.id);
+  }, [r, N]), L = W((I) => {
+    b(I), w(!1), D(!0);
   }, []), $ = W(() => {
-    const C = {
+    const I = {
       id: `milestone-${Date.now()}`,
       name: "",
       date: /* @__PURE__ */ new Date(),
       description: ""
     };
-    b(C), w(!0), D(!0);
-  }, []), R = W((C) => {
+    b(I), w(!0), D(!0);
+  }, []), R = W((I) => {
     const Y = {
       id: `milestone-${Date.now()}`,
       name: "",
-      date: C,
+      date: I,
       description: "",
       milestoneType: r === "MASTER" ? "MASTER" : "DETAIL"
     };
     b(Y), w(!0), D(!0);
   }, [r]), H = W(() => {
     D(!1), b(null), w(!1);
-  }, []), K = W((C) => {
-    v && f ? (f(C), w(!1)) : d && d(C);
-  }, [v, f, d]), U = W((C) => {
-    y && y(C), H();
-  }, [y, H]), I = W((C) => {
-    T(C), j(!0);
-  }, []), V = W((C) => {
+  }, []), K = W((I) => {
+    v && f ? (f(I), w(!1)) : d && d(I);
+  }, [v, f, d]), U = W((I) => {
+    y && y(I), H();
+  }, [y, H]), C = W((I) => {
+    T(I), j(!0);
+  }, []), V = W((I) => {
     if (!n || !l) return;
     const Y = {
       id: `task-${Date.now()}`,
@@ -14702,8 +14783,8 @@ const or = "flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium tran
       wbsLevel: 2,
       type: "TASK",
       name: "새 공정",
-      startDate: C,
-      endDate: C,
+      startDate: I,
+      endDate: I,
       task: {
         netWorkDays: 1,
         indirectWorkDaysPre: 0,
@@ -14714,52 +14795,52 @@ const or = "flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium tran
     l(Y);
   }, [n, l]), X = W(() => {
     j(!1), T(null);
-  }, []), S = W((C) => {
-    i && i(C);
-  }, [i]), A = W((C) => {
-    c && c(C), X();
+  }, []), S = W((I) => {
+    i && i(I);
+  }, [i]), A = W((I) => {
+    c && c(I), X();
   }, [c, X]);
   fe(() => {
     if (k && E) {
-      const C = e.find((Y) => Y.id === k.id);
-      C && T(C);
+      const I = e.find((Y) => Y.id === k.id);
+      I && T(I);
     }
   }, [e]), fe(() => {
     if (p && x) {
-      const C = t.find((Y) => Y.id === p.id);
-      C && b(C);
+      const I = t.find((Y) => Y.id === p.id);
+      I && b(I);
     }
   }, [t]);
-  const M = W(async (C) => {
+  const M = W(async (I) => {
     if (i)
       try {
-        const Y = e.find((q) => q.id === C.taskId);
+        const Y = e.find((q) => q.id === I.taskId);
         if (!Y || !Y.task) return;
         const G = {
           ...Y,
-          startDate: C.newStartDate,
-          endDate: C.newEndDate,
+          startDate: I.newStartDate,
+          endDate: I.newEndDate,
           task: {
             ...Y.task,
-            indirectWorkDaysPre: C.newIndirectWorkDaysPre,
-            indirectWorkDaysPost: C.newIndirectWorkDaysPost,
-            netWorkDays: C.newNetWorkDays
+            indirectWorkDaysPre: I.newIndirectWorkDaysPre,
+            indirectWorkDaysPost: I.newIndirectWorkDaysPost,
+            netWorkDays: I.newNetWorkDays
           }
         };
         await i(G);
       } catch (Y) {
-        console.error("Failed to update task:", Y), u == null || u(Y, { action: "bar_drag", taskId: C.taskId });
+        console.error("Failed to update task:", Y), u == null || u(Y, { action: "bar_drag", taskId: I.taskId });
       }
-  }, [e, i, u]), F = W(async (C) => {
+  }, [e, i, u]), F = W(async (I) => {
     if (!(!i && !h))
       try {
         if (h) {
-          await h(C);
+          await h(I);
           return;
         }
         if (i)
-          if (C.taskUpdates && C.taskUpdates.length > 0)
-            for (const Y of C.taskUpdates) {
+          if (I.taskUpdates && I.taskUpdates.length > 0)
+            for (const Y of I.taskUpdates) {
               const G = e.find((he) => he.id === Y.taskId);
               if (!G) continue;
               const q = $e(G.endDate, G.startDate), Q = ne(Y.newStartDate, q), de = {
@@ -14770,11 +14851,11 @@ const or = "flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium tran
               await i(de);
             }
           else {
-            const Y = C.deltaDays >= 0 ? "right" : "left";
-            for (const G of C.affectedTaskIds) {
+            const Y = I.deltaDays >= 0 ? "right" : "left";
+            for (const G of I.affectedTaskIds) {
               const q = e.find((Te) => Te.id === G);
               if (!q) continue;
-              let Q = ne(q.startDate, C.deltaDays);
+              let Q = ne(q.startDate, I.deltaDays);
               je(Q, s, o) && (Q = hs(Q, Y, s, o));
               const de = $e(q.endDate, q.startDate), he = ne(Q, de), pe = {
                 ...q,
@@ -14787,8 +14868,8 @@ const or = "flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium tran
       } catch (Y) {
         console.error("Failed to update group tasks:", Y), u == null || u(Y, {
           action: "bar_drag",
-          taskId: C.groupId,
-          details: { affectedTaskIds: C.affectedTaskIds }
+          taskId: I.groupId,
+          details: { affectedTaskIds: I.affectedTaskIds }
         });
       }
   }, [e, i, h, u, s, o]);
@@ -14810,7 +14891,7 @@ const or = "flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium tran
     handleMilestoneSave: K,
     handleMilestoneDelete: U,
     // Task Handlers
-    handleTaskDoubleClick: I,
+    handleTaskDoubleClick: C,
     handleContextMenuAddTask: V,
     handleCloseTaskEditModal: X,
     handleTaskEditSave: S,
@@ -14855,9 +14936,9 @@ function mh({
   loadedFileName: H,
   onError: K,
   className: U,
-  style: I
+  style: C
 }) {
-  const { viewMode: V, activeCPId: X, zoomLevel: S } = gc(), { setViewMode: A, setZoomLevel: M } = yc(), { sidebarWidth: F, setSidebarWidth: C } = pc(), { expandedTaskIds: Y, toggleTask: G, expandAll: q, collapseAll: Q, setExpandedTaskIds: de } = da(), { focusedTaskId: he } = yn(), { isCompactMode: pe, toggleCompactMode: Te } = xc(), We = re(
+  const { viewMode: V, activeCPId: X, zoomLevel: S } = gc(), { setViewMode: A, setZoomLevel: M } = yc(), { sidebarWidth: F, setSidebarWidth: I } = pc(), { expandedTaskIds: Y, toggleTask: G, expandAll: q, collapseAll: Q, setExpandedTaskIds: de } = da(), { focusedTaskId: he } = yn(), { isCompactMode: pe, toggleCompactMode: Te } = xc(), We = re(
     () => Nl((V === "DETAIL" || V === "UNIFIED") && pe),
     [V, pe]
   ), qe = be(null), _e = be(null), ve = be(null), [De, Pe] = te(!1), [Ve, tt] = te(!1), [nt, we] = te(null), {
@@ -14936,22 +15017,22 @@ function mh({
   }, [e]), Ze = re(() => {
     if (V === "MASTER") {
       const Oe = [], et = (Be) => {
-        (Fe.get(Be) || []).forEach((Ce) => {
-          Ce.wbsLevel === 1 && (Be === null || Y.has(Be)) && (Oe.push(Ce), Ce.type === "GROUP" && et(Ce.id));
+        (Fe.get(Be) || []).forEach((Ie) => {
+          Ie.wbsLevel === 1 && (Be === null || Y.has(Be)) && (Oe.push(Ie), Ie.type === "GROUP" && et(Ie.id));
         });
       };
       return et(null), Oe;
     } else if (V === "DETAIL") {
       const Oe = [], et = (Be) => {
-        (Fe.get(Be) || []).forEach((Ce) => {
-          Ce.wbsLevel === 2 && (Be === X || Y.has(Be)) && (Oe.push(Ce), Ce.type === "GROUP" && et(Ce.id));
+        (Fe.get(Be) || []).forEach((Ie) => {
+          Ie.wbsLevel === 2 && (Be === X || Y.has(Be)) && (Oe.push(Ie), Ie.type === "GROUP" && et(Ie.id));
         });
       };
       return et(X), Oe;
     } else {
       const Oe = [], et = (Be) => {
-        (Fe.get(Be) || []).forEach((Ce) => {
-          Ce.wbsLevel === 1 ? (Be === null || Y.has(Be)) && (Oe.push(Ce), Y.has(Ce.id) && et(Ce.id)) : Ce.wbsLevel === 2 && (Oe.push(Ce), Ce.type === "GROUP" && Y.has(Ce.id) && et(Ce.id));
+        (Fe.get(Be) || []).forEach((Ie) => {
+          Ie.wbsLevel === 1 ? (Be === null || Y.has(Be)) && (Oe.push(Ie), Y.has(Ie.id) && et(Ie.id)) : Ie.wbsLevel === 2 && (Oe.push(Ie), Ie.type === "GROUP" && Y.has(Ie.id) && et(Ie.id));
         });
       };
       return et(null), Oe;
@@ -14974,9 +15055,9 @@ function mh({
     minDate: Ka,
     pixelsPerDay: wr[S].pixelsPerDay,
     sidebarWidth: F
-  }), { isResizing: Cr, handleResizeStart: qa, handleResizeDoubleClick: Qa } = of({
+  }), { isResizing: Ir, handleResizeStart: qa, handleResizeDoubleClick: Qa } = of({
     sidebarWidth: F,
-    setSidebarWidth: C,
+    setSidebarWidth: I,
     viewMode: V,
     sidebarTotalWidth: nt
   }), { scrollToFirstTask: Ja } = sf({
@@ -15113,7 +15194,7 @@ function mh({
     {
       ref: qe,
       className: `sa-gantt-root flex h-full w-full flex-col ${U || ""}`,
-      style: { backgroundColor: "var(--gantt-bg-secondary)", ...I },
+      style: { backgroundColor: "var(--gantt-bg-secondary)", ...C },
       children: [
         /* @__PURE__ */ a.jsx(
           rf,
@@ -15155,15 +15236,15 @@ function mh({
                 top: 0,
                 bottom: 0,
                 width: 4,
-                backgroundColor: Cr ? "var(--gantt-resizer-active)" : "var(--gantt-resizer)"
+                backgroundColor: Ir ? "var(--gantt-resizer-active)" : "var(--gantt-resizer)"
               },
               onMouseDown: qa,
               onDoubleClick: Qa,
               onMouseEnter: (Oe) => {
-                Cr || (Oe.currentTarget.style.backgroundColor = "var(--gantt-resizer-hover)");
+                Ir || (Oe.currentTarget.style.backgroundColor = "var(--gantt-resizer-hover)");
               },
               onMouseLeave: (Oe) => {
-                Cr || (Oe.currentTarget.style.backgroundColor = "var(--gantt-resizer)");
+                Ir || (Oe.currentTarget.style.backgroundColor = "var(--gantt-resizer)");
               },
               title: "드래그하여 너비 조절 / 더블클릭으로 초기화"
             }
@@ -15248,7 +15329,7 @@ function mh({
                 )
               }
             ),
-            Cr && /* @__PURE__ */ a.jsx("div", { className: "fixed inset-0 z-50 cursor-col-resize" })
+            Ir && /* @__PURE__ */ a.jsx("div", { className: "fixed inset-0 z-50 cursor-col-resize" })
           ] })
         ] }),
         /* @__PURE__ */ a.jsx(
@@ -15753,7 +15834,7 @@ var Ts = Symbol.for("immer-nothing"), fr = Symbol.for("immer-draftable"), ze = S
 ] : [];
 function Le(e, ...t) {
   if (process.env.NODE_ENV !== "production") {
-    const r = La[e], n = Ct(r) ? r.apply(null, t) : r;
+    const r = La[e], n = It(r) ? r.apply(null, t) : r;
     throw new Error(`[Immer] ${n}`);
   }
   throw new Error(
@@ -15763,7 +15844,7 @@ function Le(e, ...t) {
 var Xe = Object, Ot = Xe.getPrototypeOf, mr = "constructor", kr = "prototype", os = "configurable", nn = "enumerable", Vr = "writable", gr = "value", Dt = (e) => !!e && !!e[ze];
 function ft(e) {
   var t;
-  return e ? Ha(e) || Tr(e) || !!e[fr] || !!((t = e[mr]) != null && t[fr]) || Sr(e) || Ir(e) : !1;
+  return e ? Ha(e) || Tr(e) || !!e[fr] || !!((t = e[mr]) != null && t[fr]) || Sr(e) || Cr(e) : !1;
 }
 var uf = Xe[kr][mr].toString(), _o = /* @__PURE__ */ new WeakMap();
 function Ha(e) {
@@ -15775,7 +15856,7 @@ function Ha(e) {
   const r = Xe.hasOwnProperty.call(t, mr) && t[mr];
   if (r === Object)
     return !0;
-  if (!Ct(r))
+  if (!It(r))
     return !1;
   let n = _o.get(r);
   return n === void 0 && (n = Function.toString.call(r), _o.set(r, n)), n === uf;
@@ -15787,7 +15868,7 @@ function Er(e, t, r = !0) {
 }
 function At(e) {
   const t = e[ze];
-  return t ? t.type_ : Tr(e) ? 1 : Sr(e) ? 2 : Ir(e) ? 3 : 0;
+  return t ? t.type_ : Tr(e) ? 1 : Sr(e) ? 2 : Cr(e) ? 3 : 0;
 }
 var hr = (e, t, r = At(e)) => r === 2 ? e.has(t) : Xe[kr].hasOwnProperty.call(e, t), pt = (e, t, r = At(e)) => (
   // @ts-ignore
@@ -15798,7 +15879,7 @@ var hr = (e, t, r = At(e)) => r === 2 ? e.has(t) : Xe[kr].hasOwnProperty.call(e,
 function ff(e, t) {
   return e === t ? e !== 0 || 1 / e === 1 / t : e !== e && t !== t;
 }
-var Tr = Array.isArray, Sr = (e) => e instanceof Map, Ir = (e) => e instanceof Set, Ut = (e) => typeof e == "object", Ct = (e) => typeof e == "function", Gn = (e) => typeof e == "boolean";
+var Tr = Array.isArray, Sr = (e) => e instanceof Map, Cr = (e) => e instanceof Set, Ut = (e) => typeof e == "object", It = (e) => typeof e == "function", Gn = (e) => typeof e == "boolean";
 function hf(e) {
   const t = +e;
   return Number.isInteger(t) && String(t) === e;
@@ -15807,7 +15888,7 @@ var mf = (e) => Ut(e) ? e == null ? void 0 : e[ze] : null, xt = (e) => e.copy_ |
 function as(e, t) {
   if (Sr(e))
     return new Map(e);
-  if (Ir(e))
+  if (Cr(e))
     return new Set(e);
   if (Tr(e))
     return Array[kr].slice.call(e);
@@ -15835,7 +15916,7 @@ function as(e, t) {
     return Xe.assign(s, e);
   }
 }
-function Is(e, t = !1) {
+function Cs(e, t = !1) {
   return Dn(e) || Dt(e) || !ft(e) || (At(e) > 1 && Xe.defineProperties(e, {
     set: Fr,
     add: Fr,
@@ -15844,7 +15925,7 @@ function Is(e, t = !1) {
   }), Xe.freeze(e), t && Er(
     e,
     (r, n) => {
-      Is(n, !0);
+      Cs(n, !0);
     },
     !1
   )), e;
@@ -15929,7 +16010,7 @@ function Ho(e, t) {
   return r.copy_;
 }
 function bf(e, t, r = !1) {
-  !e.parent_ && e.immer_.autoFreeze_ && e.canAutoFreeze_ && Is(t, r);
+  !e.parent_ && e.immer_.autoFreeze_ && e.canAutoFreeze_ && Cs(t, r);
 }
 function Fa(e) {
   e.finalized_ = !0, e.scope_.unfinalizedDrafts_--;
@@ -16155,7 +16236,7 @@ function Yr(e) {
 var Tf = class {
   constructor(e) {
     this.autoFreeze_ = !0, this.useStrictShallowCopy_ = !1, this.useStrictIteration_ = !1, this.produce = (t, r, n) => {
-      if (Ct(t) && !Ct(r)) {
+      if (It(t) && !It(r)) {
         const o = r;
         r = t;
         const i = this;
@@ -16163,7 +16244,7 @@ var Tf = class {
           return i.produce(c, (d) => r.call(this, d, ...f));
         };
       }
-      Ct(r) || Le(6), n !== void 0 && !Ct(n) && Le(7);
+      It(r) || Le(6), n !== void 0 && !It(n) && Le(7);
       let s;
       if (ft(t)) {
         const o = Ao(this), i = ds(o, t, void 0);
@@ -16175,7 +16256,7 @@ var Tf = class {
         }
         return Oo(o, n), Lo(s, o);
       } else if (!t || !Ut(t)) {
-        if (s = r(t), s === void 0 && (s = t), s === Ts && (s = void 0), this.autoFreeze_ && Is(s, !0), n) {
+        if (s = r(t), s === void 0 && (s = t), s === Ts && (s = void 0), this.autoFreeze_ && Cs(s, !0), n) {
           const o = [], i = [];
           Lt(an).generateReplacementPatches_(t, s, {
             patches_: o,
@@ -16186,7 +16267,7 @@ var Tf = class {
       } else
         Le(1, t);
     }, this.produceWithPatches = (t, r) => {
-      if (Ct(t))
+      if (It(t))
         return (i, ...l) => this.produceWithPatches(i, (c) => t(c, ...l));
       let n, s;
       return [this.produce(t, r, (i, l) => {
@@ -16251,7 +16332,7 @@ var Tf = class {
   }
 };
 function ds(e, t, r, n) {
-  const [s, o] = Sr(t) ? Lt(on).proxyMap_(t, r) : Ir(t) ? Lt(on).proxySet_(t, r) : kf(t, r);
+  const [s, o] = Sr(t) ? Lt(on).proxyMap_(t, r) : Cr(t) ? Lt(on).proxySet_(t, r) : kf(t, r);
   return ((r == null ? void 0 : r.scope_) ?? za()).drafts_.push(s), o.callbacks_ = (r == null ? void 0 : r.callbacks_) ?? [], o.key_ = n, r && n !== void 0 ? vf(r, o, n) : o.callbacks_.push(function(c) {
     var d;
     (d = c.mapSetPlugin_) == null || d.fixSetContents(o);
@@ -16281,7 +16362,7 @@ function Va(e) {
     n
   ), t && (t.finalized_ = !1), r;
 }
-function If() {
+function Cf() {
   process.env.NODE_ENV !== "production" && La.push(
     'Sets cannot have "replace" patches.',
     function(u) {
@@ -16465,7 +16546,7 @@ function If() {
       for (let T = 0; T < b.length - 1; T++) {
         const E = At(D);
         let j = b[T];
-        typeof j != "string" && typeof j != "number" && (j = "" + j), (E === 0 || E === 1) && (j === "__proto__" || j === mr) && Le(19), Ct(D) && j === kr && Le(19), D = pt(D, j), Ut(D) || Le(18, b.join("/"));
+        typeof j != "string" && typeof j != "number" && (j = "" + j), (E === 0 || E === 1) && (j === "__proto__" || j === mr) && Le(19), It(D) && j === kr && Le(19), D = pt(D, j), Ut(D) || Le(18, b.join("/"));
       }
       const v = At(D), w = h(p.value), k = b[b.length - 1];
       switch (x) {
@@ -16514,7 +16595,7 @@ function If() {
       return new Map(
         Array.from(u.entries()).map(([p, b]) => [p, h(b)])
       );
-    if (Ir(u))
+    if (Cr(u))
       return new Set(Array.from(u).map(h));
     const g = Object.create(Ot(u));
     for (const p in u)
@@ -16531,7 +16612,7 @@ function If() {
     getPath: t
   });
 }
-var us = new Tf(), Cf = us.produce, zo = /* @__PURE__ */ us.applyPatches.bind(us);
+var us = new Tf(), If = us.produce, zo = /* @__PURE__ */ us.applyPatches.bind(us);
 function fs(e, t) {
   return e === t ? !0 : !e || !t ? !1 : e.getTime() === t.getTime();
 }
@@ -16574,7 +16655,7 @@ function jf(e, t) {
       return !1;
   return !0;
 }
-If();
+Cf();
 const Wf = 50;
 function Mt(e) {
   if (e === null || typeof e != "object")
@@ -16612,7 +16693,7 @@ function Eh(e) {
       ))
         return d;
       let h = [], m = [];
-      const u = Cf(
+      const u = If(
         d.present,
         (p) => {
           Object.keys(p).forEach((b) => {
@@ -16709,10 +16790,10 @@ function Th(e, t) {
 function Sh(e) {
   return e != null && e.task !== void 0 && e.task !== null;
 }
-function Ih(e) {
+function Ch(e) {
   return e != null && e.cp !== void 0 && e.cp !== null;
 }
-function Ch(e) {
+function Ih(e) {
   return e != null && e.type === "GROUP";
 }
 function Mh(e) {
@@ -16742,7 +16823,7 @@ function Rh(e) {
 function Oh(e) {
   return Array.isArray(e) && e.length > 0;
 }
-const Cs = (e) => {
+const Is = (e) => {
   if (!e || typeof e != "object") return !1;
   const t = e;
   return (
@@ -16784,7 +16865,7 @@ const Cs = (e) => {
     const t = JSON.parse(e);
     if (!Array.isArray(t))
       return console.error("Invalid tasks data format: expected array"), null;
-    const r = t.filter(Cs);
+    const r = t.filter(Is);
     return r.length !== t.length && console.warn(
       `[deserializeTasks] ${t.length - r.length}개의 유효하지 않은 Task가 필터링됨`
     ), r.map((n) => {
@@ -16866,7 +16947,7 @@ const Cs = (e) => {
     const t = JSON.parse(e);
     if (!t.tasks || !Array.isArray(t.tasks))
       throw new Error("유효하지 않은 파일 형식입니다. tasks 배열이 필요합니다.");
-    const r = t.tasks.filter(Cs).map((o) => {
+    const r = t.tasks.filter(Is).map((o) => {
       var i;
       return {
         ...o,
@@ -16891,7 +16972,7 @@ const Cs = (e) => {
   } catch (t) {
     return console.error("Failed to parse imported data:", t), null;
   }
-}, Ah = (e) => e.filter(Cs).map((t) => ({
+}, Ah = (e) => e.filter(Is).map((t) => ({
   ...t,
   wbsLevel: t.wbsLevel,
   type: t.type,
@@ -17278,8 +17359,8 @@ const Hh = (e) => new Qf(e), ie = {
         if (x.type === "CP" && x.cp)
           $ = ie.CP_WORK;
         else if (x.type === "TASK" && x.task) {
-          const R = $e(j, x.startDate), { netWorkDays: H, indirectWorkDaysPre: K, indirectWorkDaysPost: U } = x.task, I = K + H + U;
-          R < K ? $ = ie.TASK_INDIRECT : R < K + H ? $ = ie.TASK_NET_WORK : R < I && ($ = ie.TASK_INDIRECT);
+          const R = $e(j, x.startDate), { netWorkDays: H, indirectWorkDaysPre: K, indirectWorkDaysPost: U } = x.task, C = K + H + U;
+          R < K ? $ = ie.TASK_INDIRECT : R < K + H ? $ = ie.TASK_NET_WORK : R < C && ($ = ie.TASK_INDIRECT);
         } else x.type === "GROUP" && ($ = ie.GROUP_BAR);
         L.fill = {
           type: "pattern",
@@ -17387,21 +17468,21 @@ export {
   uh as getKoreanHolidaysForYears,
   dh as getPixelsPerDay,
   Mh as isCPTask,
-  Ch as isGroupTask,
+  Ih as isGroupTask,
   je as isHoliday,
   _h as isLevel1Task,
   Ph as isLevel2Task,
   Oh as isNonEmptyArray,
   Nh as isRegularTask,
   Rh as isRootTask,
-  Ih as isTaskWithCP,
+  Ch as isTaskWithCP,
   Sh as isTaskWithDetails,
   Ya as isValidAnchorDependencyData,
   _f as isValidDate,
   Wh as isValidDependency,
   jh as isValidMilestone,
   Ms as isValidMilestoneData,
-  Cs as isValidTaskData,
+  Is as isValidTaskData,
   oh as isWeekend,
   Uf as parseImportedData,
   Lh as parseMockMilestones,
