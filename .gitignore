@@ -4,11 +4,11 @@ node_modules/
 .pnp.js
 
 # Build outputs
-dist/
+# dist/
 dist-demo/
 build/
 *.local
-
+ 
 # Vite
 *.local
 .vite/
