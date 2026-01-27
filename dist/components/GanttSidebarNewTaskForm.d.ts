@@ -1,0 +1,24 @@
+import { default as React } from 'react';
+import { ConstructionTask } from '../types';
+
+interface GanttSidebarNewTaskFormProps {
+    columns: Array<{
+        id: string;
+        label: string;
+        width: number;
+        minWidth: number;
+    }>;
+    tasks: ConstructionTask[];
+    activeCPId: string | null;
+    onTaskCreate?: (task: Partial<ConstructionTask>) => void | Promise<void>;
+    onCancel: () => void;
+    isVirtualized?: boolean;
+    virtualRowIndex?: number;
+}
+/**
+ * 새 Task 추가 폼 컴포넌트
+ *
+ * Detail View에서 새 공정을 추가할 때 사용되는 입력 폼입니다.
+ */
+export declare const GanttSidebarNewTaskForm: React.FC<GanttSidebarNewTaskFormProps>;
+export {};
